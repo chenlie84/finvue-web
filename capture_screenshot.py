@@ -4,6 +4,7 @@ import time
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from PIL import Image
 
 import config
 
@@ -74,7 +75,20 @@ def capture(
         time.sleep(1)
         
         print(f"正在保存截图到 {output_file}")
-        driver.save_screenshot(str(output_file))
+        # 先保存到临时文件
+        temp_file = output_file.parent / f"temp_{output_file.name}"
+        driver.save_screenshot(str(temp_file))
+        
+        # 使用PIL裁剪到实际内容大小（2倍分辨率）
+        print("正在裁剪图片到实际内容区域...")
+        img = Image.open(temp_file)
+        # 裁剪到原始尺寸的2倍（因为scale-factor=2）
+        cropped = img.crop((0, 0, window_width * 2, window_height * 2))
+        cropped.save(str(output_file))
+        
+        # 删除临时文件
+        temp_file.unlink()
+        
         print("截图完成")
         
     except Exception as e:
