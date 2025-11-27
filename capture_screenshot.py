@@ -40,6 +40,11 @@ def capture(
     options.add_argument('--disable-gpu')
     options.add_argument('--remote-debugging-port=9222')
     
+    # 提高截图质量的设置
+    options.add_argument('--force-device-scale-factor=2')  # 2倍分辨率
+    options.add_argument('--high-dpi-support=2')  # 高DPI支持
+    options.add_argument('--disable-font-subpixel-positioning')  # 改善字体渲染
+    
     driver = None
     try:
         print(f"正在启动Chrome浏览器...")
@@ -59,8 +64,14 @@ def capture(
         print("等待页面加载...")
         time.sleep(3)
         
-        # 设置窗口大小并截图
-        driver.set_window_size(window_width, window_height)
+        # 设置窗口大小（因为 scale-factor=2，所以需要2倍尺寸）
+        driver.set_window_size(window_width * 2, window_height * 2)
+        
+        # 执行JavaScript来确保高质量渲染
+        driver.execute_script("document.body.style.zoom='100%'")
+        
+        # 再等待一下确保渲染完成
+        time.sleep(1)
         
         print(f"正在保存截图到 {output_file}")
         driver.save_screenshot(str(output_file))
