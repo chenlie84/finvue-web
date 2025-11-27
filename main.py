@@ -38,7 +38,7 @@ app.mount(
 async def index(request: Request):
     rows = fetch_all_rows()
     title = "CRS填写客户数"
-    cutoff_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cutoff_time = datetime.now().strftime("%Y-%m-%d %H:00:00")
     return templates.TemplateResponse(
         "report.html",
         {
@@ -56,34 +56,6 @@ def get_app() -> FastAPI:
 
 if __name__ == "__main__":
     import uvicorn
-    import threading
-    import time
-    from capture_screenshot import capture
 
-    # 启动服务器的函数
-    def run_server():
-        uvicorn.run("main:app", host="127.0.0.1", port=8000, log_level="error")
-
-    # 在后台线程启动服务器
-    server_thread = threading.Thread(target=run_server, daemon=True)
-    server_thread.start()
-
-    # 等待服务器启动
-    print("正在启动服务器...")
-    time.sleep(3)
-
-    try:
-        # 截图
-        print("正在截取网页...")
-        screenshot_path = capture(
-            url="http://127.0.0.1:8000/",
-            output_path="output/crs_screenshot.png",
-            window_width=1100,
-            window_height=768,
-        )
-        print(f"截图已保存到: {screenshot_path}")
-    except Exception as e:
-        print(f"截图失败: {e}")
-    finally:
-        print("完成，正在关闭...")
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
 

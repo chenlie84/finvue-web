@@ -24,10 +24,8 @@
                   <th>区域</th>
                   <th>目标填写客户数</th>
                   <th>总填写客户数</th>
-                  <th>上传资产证明图片客户数</th>
                   <th>今日填写客户数</th>
                   <th>距离目标GAP</th>
-                  <th>填写销售数</th>
                   <th>完成度</th>
                 </tr>
               </thead>
@@ -37,10 +35,8 @@
                   <td class="cell-region">{{ row["区域"] }}</td>
                   <td>{{ row["目标填写客户数"] }}</td>
                   <td>{{ row["总填写客户数"] }}</td>
-                  <td>{{ row["上传资产证明图片客户数"] }}</td>
                   <td>{{ row["今日填写客户数"] }}</td>
                   <td>{{ row["距离目标gap"] }}</td>
-                  <td>{{ row["填写销售数"] }}</td>
                   <td>{{ row["完成度"] | percent }}</td>
                 </tr>
                 {% endfor %}

@@ -42,10 +42,8 @@ def fetch_all_rows() -> List[Dict]:
             `区域`,
             `目标填写客户数`,
             `总填写客户数`,
-            `上传资产证明图片客户数`,
             `今日填写客户数`,
             `距离目标gap`,
-            `填写销售数`,
             `完成度`
         FROM crs_tianxieshuju
         ORDER BY
