@@ -5,18 +5,20 @@
     <title>数据页面列表</title>
     <link rel="stylesheet" href="/static/style.css" />
   </head>
-  <body>
+  <body class="index-page">
     <div class="page">
-      <div class="board">
+      <div class="board board-list">
         <div class="board-header">
-          <h1 style="font-size: 40px; color: #FFD700;">数据页面列表</h1>
+          <h1 class="index-title">数据页面列表</h1>
         </div>
         <div class="board-body">
-          <ul style="font-size: 22px; margin-top: 40px;">
+          <ul class="page-list">
             {% for page in pages %}
-            <li style="margin-bottom: 18px;">
-              <a href="/{{ page.id }}" style="color: #4fc3f7; text-decoration: none; font-weight: bold;">{{ page.title }}</a>
-              <span style="color: #aaa; margin-left: 12px;">({{ page.id }})</span>
+            <li class="page-list-item">
+              <a href="/{{ page.id }}" class="page-link">
+                <span class="page-link-title">{{ page.title }}</span>
+                <span class="page-link-id">{{ page.id }}</span>
+              </a>
             </li>
             {% endfor %}
           </ul>
