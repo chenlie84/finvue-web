@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>数据页面列表</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <div class="board">
+        <div class="board-header">
+          <h1 style="font-size: 40px; color: #FFD700;">数据页面列表</h1>
+        </div>
+        <div class="board-body">
+          <ul style="font-size: 22px; margin-top: 40px;">
+            {% for page in pages %}
+            <li style="margin-bottom: 18px;">
+              <a href="/{{ page.id }}" style="color: #4fc3f7; text-decoration: none; font-weight: bold;">{{ page.title }}</a>
+              <span style="color: #aaa; margin-left: 12px;">({{ page.id }})</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

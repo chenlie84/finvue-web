@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="page">
+      <div class="board">
+        <div class="board-header">
+          <img src="/static/title.png" alt="{{ title }}" class="board-title-image" />
+        </div>
+        <div class="board-body">
+          <div class="cutoff-row">
+            <div class="cutoff-box">
+              截止时间： {{ cutoff_time }}
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>区域</th>
+                  <th>目标填写客户数</th>
+                  <th>总填写客户数</th>
+                  <th>今日填写客户数</th>
+                  <th>距离目标GAP</th>
+                  <th>完成度</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in rows %}
+                <tr class="{% if row['区域'] == '合计' %}summary-row{% endif %}">
+                  <td class="cell-region">{{ row["区域"] }}</td>
+                  <td>{{ row["目标填写客户数"] }}</td>
+                  <td>{{ row["总填写客户数"] }}</td>
+                  <td>{{ row["今日填写客户数"] }}</td>
+                  <td>{{ row["距离目标gap"] }}</td>
+                  <td>{{ row["完成度"] | percent }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+  </html>

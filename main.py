@@ -1,12 +1,12 @@
 from pathlib import Path
 from datetime import datetime
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from db_utils import fetch_all_rows
+from pages.registry import PageRegistry
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -36,18 +36,35 @@ app.mount(
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    rows = fetch_all_rows()
-    title = "CRS填写客户数"
-    cutoff_time = datetime.now().strftime("%Y-%m-%d %H:00:00")
-    return templates.TemplateResponse(
-        "report.html",
-        {
-            "request": request,
-            "title": title,
-            "rows": rows,
-            "cutoff_time": cutoff_time,
-        },
-    )
+    """首页显示所有页面列表"""
+    pages = PageRegistry.get_all()
+    context = {
+        "request": request,
+        "pages": [
+            {"id": page.page_id, "title": page.title}
+            for page in pages.values()
+        ]
+    }
+    return templates.TemplateResponse("index.html", context)
+
+
+@app.get("/{page_id}", response_class=HTMLResponse)
+async def get_page(request: Request, page_id: str):
+    """
+    页面视图
+    
+    Args:
+        page_id: 页面ID (例如: crs, sales)
+    """
+    try:
+        page = PageRegistry.get(page_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Page '{page_id}' not found")
+    
+    context = page.get_context()
+    context["request"] = request
+    
+    return templates.TemplateResponse(page.template, context)
 
 
 def get_app() -> FastAPI:
