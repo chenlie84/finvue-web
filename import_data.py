@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS `crs_tianxieshuju` (
   `总填写客户数` bigint DEFAULT NULL,
   `今日填写客户数` bigint DEFAULT NULL,
   `距离目标gap` bigint DEFAULT NULL,
-  `完成度` double DEFAULT NULL
+  `完成度` double DEFAULT NULL,
+  `时间` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 """
 
@@ -40,14 +41,16 @@ def import_from_json(json_path: str = "data/crs.json", truncate: bool = True) ->
                     `总填写客户数`,
                     `今日填写客户数`,
                     `距离目标gap`,
-                    `完成度`
+                    `完成度`,
+                    `时间`
                 ) VALUES (
                     %(区域)s,
                     %(目标填写客户数)s,
                     %(总填写客户数)s,
                     %(今日填写客户数)s,
                     %(距离目标gap)s,
-                    %(完成度)s
+                    %(完成度)s,
+                    %(时间)s
                 )
             """
             for record in records:
