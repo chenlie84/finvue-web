@@ -5,7 +5,9 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
+from db_utils import fetch_customer_activity
 from pages.registry import PageRegistry
 
 
@@ -46,6 +48,25 @@ async def index(request: Request):
         ]
     }
     return templates.TemplateResponse("index.html", context)
+
+
+class CustomerActivityRequest(BaseModel):
+    customer_code: str
+
+
+@app.post("/api/customer_activity")
+async def get_customer_activity(req: CustomerActivityRequest):
+    """
+    查询客户活跃度接口
+
+    传参 customer_code，返回 customer_code, flag_activity, dt
+    """
+    rows = fetch_customer_activity(req.customer_code)
+    # 将 datetime 转为字符串以便 JSON 序列化
+    for row in rows:
+        if "dt" in row and isinstance(row["dt"], datetime):
+            row["dt"] = row["dt"].strftime("%Y-%m-%d %H:%M:%S")
+    return {"data": rows}
 
 
 @app.get("/{page_id}", response_class=HTMLResponse)

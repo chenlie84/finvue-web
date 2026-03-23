@@ -55,3 +55,33 @@ def fetch_all_rows() -> List[Dict]:
         cursor.execute(sql)
         rows = cursor.fetchall()
     return rows
+
+
+def fetch_customer_activity(customer_code: str | None = None) -> List[Dict]:
+    """
+    查询 cl_customer_activity 表，返回 customer_code, flag_activity, dt
+
+    Args:
+        customer_code: 可选, 按 customer_code 过滤
+    """
+    if customer_code:
+        sql = """
+            SELECT customer_code, flag_activity, dt
+            FROM cl_customer_activity
+            WHERE customer_code = %s
+        """
+        params = (customer_code,)
+    else:
+        sql = """
+            SELECT customer_code, flag_activity, dt
+            FROM cl_customer_activity
+        """
+        params = None
+
+    with db_cursor() as cursor:
+        if params:
+            cursor.execute(sql, params)
+        else:
+            cursor.execute(sql)
+        rows = cursor.fetchall()
+    return rows
