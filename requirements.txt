@@ -8,6 +8,7 @@ pymysql==1.1.0
 
 # HTTP 请求
 requests==2.31.0
+httpx>=0.25.0
 
 # 工具库
 python-multipart==0.0.6

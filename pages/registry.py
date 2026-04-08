@@ -5,6 +5,7 @@
 from typing import Dict, Type
 from pages.base import BasePage
 from pages.crs_page import CRSPage
+from pages.chat_page import ChatPage
 
 
 class PageRegistry:
@@ -55,8 +56,7 @@ class PageRegistry:
 def init_pages():
     """初始化并注册所有页面"""
     PageRegistry.register(CRSPage())
-    # 未来添加新页面：
-    # PageRegistry.register(NewPage())
+    PageRegistry.register(ChatPage())
 
 
 # 自动初始化

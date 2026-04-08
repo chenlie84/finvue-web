@@ -22,3 +22,8 @@ else:
     MYSQL_PASSWORD = "ns7ubvy96ncHncOTOeHS"
     # ChromeDriver 路径（线上环境）
     CHROMEDRIVER_PATH = '/data1/users/zhaoxu/HTML2IMAGE/bin/chromedriver'
+
+
+MODEL = "qwen3.5-max"
+API_KEY = "sk-proj-c82571a641563737409d61138993ea84243e7e444f12f7dd3b0f1650a19fec5b"
+

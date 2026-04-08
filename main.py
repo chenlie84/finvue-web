@@ -1,13 +1,17 @@
 from pathlib import Path
 from datetime import datetime
+from typing import List
 
+import httpx
 from fastapi import FastAPI, Query, Request, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
 from db_utils import fetch_customer_activity
 from pages.registry import PageRegistry
+from config import MODEL, API_KEY
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -64,6 +68,58 @@ async def get_customer_activity(
         if "dt" in row and isinstance(row["dt"], datetime):
             row["dt"] = row["dt"].strftime("%Y-%m-%d %H:%M:%S")
     return {"data": rows}
+
+
+# ========== Chat API ==========
+
+QWEN_API_URL = "http://aigc-api.aigc.paas.idc/v1/chat/completions"
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+
+
+@app.post("/api/chat")
+async def chat_stream(req: ChatRequest):
+    """
+    流式聊天接口，代理请求到 Qwen 大模型 API
+    """
+    payload = {
+        "model": MODEL,
+        "messages": [m.model_dump() for m in req.messages],
+        "stream": True,
+    }
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    async def event_generator():
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            async with client.stream(
+                "POST", QWEN_API_URL, json=payload, headers=headers
+            ) as resp:
+                if resp.status_code != 200:
+                    body = await resp.aread()
+                    yield f"data: {{\"error\": \"{body.decode()}\"}}"
+                    return
+                async for line in resp.aiter_lines():
+                    if line:
+                        yield line + "\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.get("/{page_id}", response_class=HTMLResponse)
