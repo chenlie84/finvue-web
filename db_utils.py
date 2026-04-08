@@ -1,5 +1,5 @@
 import contextlib
-from typing import Iterator, List, Dict
+from typing import Dict, Iterator, List, Optional
 
 import pymysql
 
@@ -57,7 +57,7 @@ def fetch_all_rows() -> List[Dict]:
     return rows
 
 
-def fetch_customer_activity(customer_code: str | None = None) -> List[Dict]:
+def fetch_customer_activity(customer_code: Optional[str] = None) -> List[Dict]:
     """
     查询 cl_customer_activity 表，返回 customer_code, flag_activity, dt
 
