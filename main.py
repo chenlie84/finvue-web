@@ -122,6 +122,78 @@ async def chat_stream(req: ChatRequest):
     )
 
 
+# ========== LLM Proxy API ==========
+
+class ProxyRequest(BaseModel):
+    """
+    通用模型中转请求，格式兼容 OpenAI chat/completions。
+    客户端需额外传入 api_key 用于鉴权。
+    """
+    model: str
+    api_key: str
+    messages: List[ChatMessage]
+    temperature: float = 1.0
+    max_tokens: int = 2048
+    stream: bool = True
+
+
+@app.post("/api/proxy/chat/completions")
+async def proxy_chat_completions(req: ProxyRequest):
+    """
+    模型中转接口 —— 格式兼容 OpenAI chat/completions。
+
+    客户端传入 model、api_key、messages 等参数，
+    服务端转发到内部 AIGC API 并将响应原样返回。
+    """
+    payload = {
+        "model": req.model,
+        "messages": [m.model_dump() for m in req.messages],
+        "temperature": req.temperature,
+        "max_tokens": req.max_tokens,
+        "stream": req.stream,
+    }
+    headers = {
+        "Authorization": f"Bearer {req.api_key}",
+        "Content-Type": "application/json",
+    }
+
+    if req.stream:
+        # 流式响应
+        async def proxy_stream():
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                async with client.stream(
+                    "POST", QWEN_API_URL, json=payload, headers=headers
+                ) as resp:
+                    if resp.status_code != 200:
+                        body = await resp.aread()
+                        yield f"data: {{\"error\": \"{body.decode()}\"}}\n\n"
+                        return
+                    async for line in resp.aiter_lines():
+                        if line:
+                            yield line + "\n"
+
+        return StreamingResponse(
+            proxy_stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
+        )
+    else:
+        # 非流式响应，直接返回 JSON
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(
+                QWEN_API_URL, json=payload, headers=headers
+            )
+            if resp.status_code != 200:
+                raise HTTPException(
+                    status_code=resp.status_code,
+                    detail=resp.text,
+                )
+            return resp.json()
+
+
 @app.get("/{page_id}", response_class=HTMLResponse)
 async def get_page(request: Request, page_id: str):
     """
