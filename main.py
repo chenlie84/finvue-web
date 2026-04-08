@@ -137,7 +137,7 @@ class ProxyRequest(BaseModel):
     stream: bool = True
 
 
-@app.post("/api/proxy/chat/completions")
+@app.post("/v1/chat/completions")
 async def proxy_chat_completions(req: ProxyRequest):
     """
     模型中转接口 —— 格式兼容 OpenAI chat/completions。
