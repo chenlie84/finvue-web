@@ -1,6 +1,6 @@
 from pathlib import Path
 from datetime import datetime
-from typing import List
+from typing import Any, List, Union
 
 import httpx
 from fastapi import FastAPI, Query, Request, HTTPException
@@ -183,6 +183,96 @@ async def proxy_chat_completions(req: ProxyRequest):
     else:
         # 非流式响应，直接返回 JSON
         async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(
+                QWEN_API_URL, json=payload, headers=headers
+            )
+            if resp.status_code != 200:
+                raise HTTPException(
+                    status_code=resp.status_code,
+                    detail=resp.text,
+                )
+            return resp.json()
+
+
+# ========== Multimodal LLM Proxy API ==========
+
+class MultimodalMessage(BaseModel):
+    """
+    多模态消息，content 可以是字符串或 OpenAI 多模态格式的列表。
+    例如:
+        {"role": "user", "content": "你好"}
+    或:
+        {"role": "user", "content": [
+            {"type": "text", "text": "这是什么?"},
+            {"type": "image_url", "image_url": {"url": "data:image/png;base64,..."}}
+        ]}
+    """
+    role: str
+    content: Union[str, List[Any]]
+
+
+class MultimodalProxyRequest(BaseModel):
+    """
+    多模态模型中转请求，格式兼容 OpenAI chat/completions。
+    支持文字和图片混合输入。
+    """
+    model: str
+    api_key: str
+    messages: List[MultimodalMessage]
+    temperature: float = 1.0
+    max_tokens: int = 2048
+    stream: bool = True
+
+
+@app.post("/z/chat/completions")
+async def proxy_multimodal_chat_completions(req: MultimodalProxyRequest):
+    """
+    多模态模型中转接口 —— 格式兼容 OpenAI chat/completions。
+
+    支持文字和图片输入，兼容如下模型：
+        - gemini-3.1-flash-image-preview
+        - doubao-seed-1-8-251215
+        - qwen3.5-ultra
+
+    客户端传入 model、api_key、messages（可含 image_url）等参数，
+    服务端转发到内部 AIGC API 并将响应原样返回。
+    """
+    payload = {
+        "model": req.model,
+        "messages": [m.model_dump() for m in req.messages],
+        "temperature": req.temperature,
+        "max_tokens": req.max_tokens,
+        "stream": req.stream,
+    }
+    headers = {
+        "Authorization": f"Bearer {req.api_key}",
+        "Content-Type": "application/json",
+    }
+
+    if req.stream:
+        async def proxy_stream():
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                async with client.stream(
+                    "POST", QWEN_API_URL, json=payload, headers=headers
+                ) as resp:
+                    if resp.status_code != 200:
+                        body = await resp.aread()
+                        yield f"data: {{\"error\": \"{body.decode()}\"}}\n\n"
+                        return
+                    async for line in resp.aiter_lines():
+                        if line:
+                            yield line + "\n"
+
+        return StreamingResponse(
+            proxy_stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
+        )
+    else:
+        async with httpx.AsyncClient(timeout=300.0) as client:
             resp = await client.post(
                 QWEN_API_URL, json=payload, headers=headers
             )
