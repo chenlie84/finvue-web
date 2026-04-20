@@ -165,10 +165,25 @@ def advance_week(anchor_name: str) -> None:
             (anchor_name, current_week),
         )
 
-        # 推进 current_week（封顶 4），若达到 4 则置 status 为"已完成"
-        new_week = min(current_week + 1, 4)
-        new_status = "已完成" if new_week >= 4 else "进行中"
-        cursor.execute(
-            "UPDATE sop_anchors SET current_week = %s, status = %s WHERE anchor_name = %s",
-            (new_week, new_status, anchor_name),
-        )
+        # 推进 current_week（封顶 4）；若 advance 调用时 current_week 已是 4，则把 status 标为"已完成"
+        # 用 Python 变量 current_week（调用前的值）判断，避免 MySQL 在同一 UPDATE 里读到已修改的值
+        new_status_expr = "已完成" if current_week >= 4 else None
+        if new_status_expr is not None:
+            cursor.execute(
+                """
+                UPDATE sop_anchors
+                SET current_week = LEAST(current_week + 1, 4),
+                    status = %s
+                WHERE anchor_name = %s
+                """,
+                (new_status_expr, anchor_name),
+            )
+        else:
+            cursor.execute(
+                """
+                UPDATE sop_anchors
+                SET current_week = LEAST(current_week + 1, 4)
+                WHERE anchor_name = %s
+                """,
+                (anchor_name,),
+            )
