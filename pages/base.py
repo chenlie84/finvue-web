@@ -23,15 +23,14 @@ class BasePage(ABC):
         self.title = title
         self.template = template
     
-    @abstractmethod
     def get_data(self) -> List[Dict[str, Any]]:
         """
-        获取页面数据
-        
+        获取页面数据。默认返回空列表，读写型页面（如 SOP 执行台）可不覆盖此方法。
+
         Returns:
             数据列表
         """
-        pass
+        return []
     
     def get_context(self) -> Dict[str, Any]:
         """
