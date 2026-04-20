@@ -109,3 +109,66 @@ def list_progress(anchor_name: str) -> List[Dict]:
     with db_cursor() as cursor:
         cursor.execute(sql, (anchor_name,))
         return list(cursor.fetchall())
+
+
+# ============================================================
+# sop_week_completion
+# ============================================================
+
+def mark_week_complete(anchor_name: str, week: int) -> None:
+    """记录某周的达标日期（幂等，重复调用覆盖日期）。"""
+    sql = """
+        INSERT INTO sop_week_completion (anchor_name, week, completed_at)
+        VALUES (%s, %s, CURDATE()) AS new_row
+        ON DUPLICATE KEY UPDATE completed_at = new_row.completed_at
+    """
+    with db_cursor() as cursor:
+        cursor.execute(sql, (anchor_name, week))
+
+
+def list_week_completions(anchor_name: str) -> Dict[int, date]:
+    """返回 {week: completed_at} 字典。"""
+    sql = """
+        SELECT week, completed_at
+        FROM sop_week_completion
+        WHERE anchor_name = %s
+    """
+    with db_cursor() as cursor:
+        cursor.execute(sql, (anchor_name,))
+        return {row["week"]: row["completed_at"] for row in cursor.fetchall()}
+
+
+# ============================================================
+# 复合操作
+# ============================================================
+
+def advance_week(anchor_name: str) -> None:
+    """本周达标，进入下一周。current_week 封顶 4；达到 4 时 status = '已完成'。"""
+    with db_cursor() as cursor:
+        # 查当前周
+        cursor.execute(
+            "SELECT current_week FROM sop_anchors WHERE anchor_name = %s",
+            (anchor_name,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            raise ValueError(f"anchor not found: {anchor_name}")
+        current_week = row["current_week"]
+
+        # 标记本周完成
+        cursor.execute(
+            """
+            INSERT INTO sop_week_completion (anchor_name, week, completed_at)
+            VALUES (%s, %s, CURDATE()) AS new_row
+            ON DUPLICATE KEY UPDATE completed_at = new_row.completed_at
+            """,
+            (anchor_name, current_week),
+        )
+
+        # 推进 current_week（封顶 4），若达到 4 则置 status 为"已完成"
+        new_week = min(current_week + 1, 4)
+        new_status = "已完成" if new_week >= 4 else "进行中"
+        cursor.execute(
+            "UPDATE sop_anchors SET current_week = %s, status = %s WHERE anchor_name = %s",
+            (new_week, new_status, anchor_name),
+        )

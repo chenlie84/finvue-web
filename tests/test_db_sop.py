@@ -115,3 +115,37 @@ def test_upsert_progress_three_levels_coexist():
     )
     rows = db_sop.list_progress("王老师")
     assert len(rows) == 3
+
+
+def test_mark_week_complete_inserts_row():
+    db_sop.upsert_anchor(anchor_name="王老师", operator_name="阿杰")
+    db_sop.mark_week_complete(anchor_name="王老师", week=1)
+    completions = db_sop.list_week_completions("王老师")
+    assert completions == {1: completions[1]}  # 存在 key=1
+    assert completions[1] is not None  # 是日期
+
+
+def test_mark_week_complete_is_idempotent():
+    db_sop.upsert_anchor(anchor_name="王老师", operator_name="阿杰")
+    db_sop.mark_week_complete(anchor_name="王老师", week=1)
+    db_sop.mark_week_complete(anchor_name="王老师", week=1)  # 重复
+    completions = db_sop.list_week_completions("王老师")
+    assert list(completions.keys()) == [1]  # 仍然只有一条
+
+
+def test_advance_week_increments_and_marks_complete():
+    db_sop.upsert_anchor(anchor_name="王老师", operator_name="阿杰")
+    # 初始 current_week=1
+    db_sop.advance_week("王老师")
+    anchor = db_sop.get_anchor("王老师")
+    assert anchor["current_week"] == 2
+    assert 1 in db_sop.list_week_completions("王老师")
+
+
+def test_advance_week_caps_at_4_and_marks_done():
+    db_sop.upsert_anchor(anchor_name="王老师", operator_name="阿杰")
+    for _ in range(5):
+        db_sop.advance_week("王老师")  # 1→2→3→4→4（封顶）
+    anchor = db_sop.get_anchor("王老师")
+    assert anchor["current_week"] == 4
+    assert anchor["status"] == "已完成"
