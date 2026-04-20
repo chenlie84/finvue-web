@@ -257,6 +257,28 @@
       }
     }
 
+    function getDirty() {
+      return loadJson(DIRTY_KEY, {});
+    }
+
+    function setDirty(key, value) {
+      const dirty = getDirty();
+      dirty[key] = value;
+      localStorage.setItem(DIRTY_KEY, JSON.stringify(dirty));
+    }
+
+    function clearDirtyKeys(keys) {
+      const dirty = getDirty();
+      keys.forEach((k) => delete dirty[k]);
+      localStorage.setItem(DIRTY_KEY, JSON.stringify(dirty));
+    }
+
+    function dirtyKeyFor(anchorName, week, actionIndex, subIndex = -1, childIndex = -1) {
+      return `${anchorName}|${week}|${actionIndex}|${subIndex}|${childIndex}`;
+    }
+
+    const MAIN_NOTE_DIRTY_SUFFIX = "|__main_note__";
+
     function saveDb() {
       // no-op: 主数据源已改为服务端，这里保留空函数避免旧调用点报错。
       // 后续 Task 会改写各调用点直接调 API。
@@ -668,17 +690,15 @@
 
       phaseListEl.querySelectorAll(".step-note").forEach((textarea) => {
         textarea.addEventListener("input", () => {
-          const liveAnchor = ensureAnchorRecord();
-          if (!liveAnchor) return;
+          const anchor = getAnchorRecord(anchorNameEl.value);
+          if (!anchor) return;
           const week = Number(textarea.dataset.weekNote);
           const index = Number(textarea.dataset.noteIndex);
-          liveAnchor.weekNotes[week][index] = textarea.value;
-          liveAnchor.lastSavedDate = TODAY();
-          updateAnchorDerivedFields(liveAnchor);
-          saveDb();
-          saveDraft();
-          renderSummary();
-          flashStatus(`已保存动作备注：${liveAnchor.anchorName} ｜ ${TODAY()}`);
+          anchor.weekNotes[week][index] = textarea.value;
+          setDirty(
+            dirtyKeyFor(anchor.anchorName, week, index),
+            textarea.value,
+          );
         });
       });
 
@@ -850,35 +870,78 @@
       }
     }
 
-    function saveProgress() {
-      const anchor = ensureAnchorRecord();
-      if (!anchor) {
-        flashStatus("请先填写运营名字和主播名字。");
+    async function saveProgress() {
+      const anchorName = normalizeAnchorName(anchorNameEl.value);
+      const operatorName = operatorNameEl.value.trim();
+
+      if (!anchorName || !operatorName) {
+        alert("请先填写运营名和主播名。");
         return;
       }
 
-      anchor.note = noteTextEl.value.trim();
-      anchor.lastSavedDate = TODAY();
-      anchor.status = anchor.currentWeek >= 4 && anchor.weekCompletedAt[4] ? "已完成" : "进行中";
-      updateAnchorDerivedFields(anchor);
+      saveBtnEl.disabled = true;
+      try {
+        // 1) UPSERT 主播元数据（首次即创建）
+        const anchorResp = await fetch(`${API_BASE}/anchors/${encodeURIComponent(anchorName)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            operatorName,
+            note: noteTextEl.value,
+            currentBlocker: (db.anchors[anchorName]?.currentBlocker) || null,
+          }),
+        });
+        if (!anchorResp.ok) throw new Error(`PUT anchor 失败：${anchorResp.status}`);
+        const fullAnchor = await anchorResp.json();
+        db.anchors[anchorName] = hydrateAnchorFromServer(fullAnchor);
 
-      db.logs.unshift({
-        anchorName: anchor.anchorName,
-        operatorName: anchor.operatorName,
-        savedDate: TODAY(),
-        currentWeek: anchor.currentWeek,
-        blocker: anchor.currentBlocker,
-        note: anchor.note
-      });
+        // 2) 扫描脏值，批量 PUT /progress
+        const dirty = getDirty();
+        const flushedKeys = [];
+        for (const [key, value] of Object.entries(dirty)) {
+          if (!key.startsWith(anchorName + "|")) continue;
+          if (key.endsWith(MAIN_NOTE_DIRTY_SUFFIX)) {
+            flushedKeys.push(key);  // 主播级 note 已随第 1 步写入
+            continue;
+          }
+          const parts = key.split("|");
+          // parts = [anchorName, week, actionIndex, subIndex, childIndex]
+          const body = {
+            week: Number(parts[1]),
+            actionIndex: Number(parts[2]),
+            subIndex: Number(parts[3]),
+            childIndex: Number(parts[4]),
+            note: value,
+          };
+          const resp = await fetch(
+            `${API_BASE}/anchors/${encodeURIComponent(anchorName)}/progress`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            },
+          );
+          if (!resp.ok) {
+            console.error(`PUT /progress 失败 ${key}`, resp.status);
+            continue;  // 保留脏值，下次再试
+          }
+          flushedKeys.push(key);
+        }
+        clearDirtyKeys(flushedKeys);
 
-      saveDb();
-      saveDraft();
-      renderWorkflow();
-      renderOverview();
-      renderSummary();
-      renderQuickPicks();
-      triggerButtonFeedback(saveBtnEl);
-      flashStatus(`已保存全部动作：${anchor.anchorName} ｜ ${TODAY()} ｜ 第 ${anchor.currentWeek} 周`);
+        saveTextEl.textContent = `已保存（${TODAY()}）`;
+        panelAlertEl.className = "panel-alert success show";
+        panelAlertEl.textContent = "保存成功。";
+        renderWorkflow();
+        renderOverview();
+        renderSummary();
+        renderQuickPicks();
+      } catch (err) {
+        console.error(err);
+        alert(`保存失败：${err.message}`);
+      } finally {
+        saveBtnEl.disabled = false;
+      }
     }
 
     function advanceWeek() {
@@ -1324,12 +1387,11 @@
     }
 
     function bindLiveFields() {
-      [operatorNameEl, anchorNameEl, noteTextEl].forEach((el) => {
+      [operatorNameEl, anchorNameEl].forEach((el) => {
         el.addEventListener("input", () => {
           const anchor = getAnchorRecord(anchorNameEl.value);
           if (anchor) {
             anchor.operatorName = operatorNameEl.value.trim() || anchor.operatorName;
-            anchor.note = noteTextEl.value.trim();
             updateAnchorDerivedFields(anchor);
             saveDb();
           }
@@ -1340,6 +1402,15 @@
           renderSummary();
           renderQuickPicks();
         });
+      });
+
+      noteTextEl.addEventListener("input", () => {
+        const name = normalizeAnchorName(anchorNameEl.value);
+        if (!name) return;
+        const anchor = getAnchorRecord(name);
+        if (!anchor) return;
+        anchor.note = noteTextEl.value;
+        setDirty(name + MAIN_NOTE_DIRTY_SUFFIX, noteTextEl.value);
       });
 
       [summaryKeywordEl, summaryStatusEl, summaryOperatorEl].forEach((el) => {
