@@ -1,5 +1,7 @@
     const STORE_KEY = "anchor_onboarding_sop_v2";
     const DRAFT_KEY = "anchor_onboarding_sop_draft_v2";
+    const DIRTY_KEY = "anchor_onboarding_sop_dirty_v2";  // 未保存的 textarea 脏值（Task 14 用）
+    const API_BASE = "/api/sop";
     const MAX_DAYS = 28;
     const TODAY = () => new Date().toISOString().slice(0, 10);
 
@@ -240,7 +242,7 @@
     const panelAlertEl = document.getElementById("panelAlert");
     const saveBtnEl = document.getElementById("saveBtn");
 
-    let db = loadJson(STORE_KEY, initialState);
+    let db = { anchors: {} };  // 运行时内存态，由服务端拉取初始化
     let pendingStepFeedback = null;
     let expandedSummaryAnchor = null;
     let collapsedWorkflowSteps = {};
@@ -256,7 +258,71 @@
     }
 
     function saveDb() {
-      localStorage.setItem(STORE_KEY, JSON.stringify(db));
+      // no-op: 主数据源已改为服务端，这里保留空函数避免旧调用点报错。
+      // 后续 Task 会改写各调用点直接调 API。
+    }
+
+    async function initFromServer() {
+      try {
+        const resp = await fetch(`${API_BASE}/anchors`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const { anchors } = await resp.json();
+        db.anchors = {};
+        for (const a of anchors) {
+          db.anchors[a.anchorName] = hydrateAnchorFromServer(a);
+        }
+      } catch (err) {
+        console.error("加载主播数据失败：", err);
+        alert("加载主播数据失败，请检查网络或刷新。");
+      }
+    }
+
+    /**
+     * 把服务端返回的扁平 progress 数组转成前端嵌套结构。
+     */
+    function hydrateAnchorFromServer(serverAnchor) {
+      const anchor = {
+        anchorName: serverAnchor.anchorName,
+        operatorName: serverAnchor.operatorName,
+        startDate: serverAnchor.startDate,
+        lastSavedDate: serverAnchor.lastSavedDate,
+        currentWeek: serverAnchor.currentWeek,
+        status: serverAnchor.status,
+        note: serverAnchor.note || "",
+        currentBlocker: serverAnchor.currentBlocker || "未填写备注",
+        warning: serverAnchor.warning,
+        weekActions: buildEmptyWeekActions(),
+        weekNotes: buildEmptyWeekNotes(),
+        weekSubActions: buildEmptyWeekSubActions(),
+        weekSubNotes: buildEmptyWeekSubNotes(),
+        weekSubChildActions: buildEmptyWeekSubChildActions(),
+        weekSubChildNotes: buildEmptyWeekSubChildNotes(),
+        weekCompletedAt: {},
+      };
+
+      // 覆盖 progress
+      for (const p of serverAnchor.progress || []) {
+        if (p.subIndex === -1 && p.childIndex === -1) {
+          // action 层
+          anchor.weekActions[p.week][p.actionIndex] = p.checked;
+          anchor.weekNotes[p.week][p.actionIndex] = p.note || "";
+        } else if (p.childIndex === -1) {
+          // substep 层
+          anchor.weekSubActions[p.week][p.actionIndex][p.subIndex] = p.checked;
+          anchor.weekSubNotes[p.week][p.actionIndex][p.subIndex] = p.note || "";
+        } else {
+          // child 层
+          anchor.weekSubChildActions[p.week][p.actionIndex][p.subIndex][p.childIndex] = p.checked;
+          anchor.weekSubChildNotes[p.week][p.actionIndex][p.subIndex][p.childIndex] = p.note || "";
+        }
+      }
+
+      // weekCompletions
+      for (const [week, iso] of Object.entries(serverAnchor.weekCompletions || {})) {
+        anchor.weekCompletedAt[week] = iso;
+      }
+
+      return anchor;
     }
 
     function saveDraft() {
@@ -1292,10 +1358,13 @@
       document.getElementById("exportBtn").addEventListener("click", exportCsv);
     }
 
-    loadDraft();
-    renderWorkflow();
-    renderOverview();
-    renderSummary();
-    renderPlan();
-    renderQuickPicks();
-    bindLiveFields();
+    window.addEventListener("DOMContentLoaded", async () => {
+      await initFromServer();
+      loadDraft();
+      renderWorkflow();
+      renderOverview();
+      renderSummary();
+      renderPlan();
+      renderQuickPicks();
+      bindLiveFields();
+    });
