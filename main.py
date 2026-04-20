@@ -1,15 +1,14 @@
-from pathlib import Path
+"""主播带新计划 · SOP 执行台 FastAPI 应用。"""
 from datetime import date
+from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Query, Request, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
-from db_utils import fetch_customer_activity
-from pages.registry import PageRegistry
 import db_sop
 
 
@@ -19,18 +18,6 @@ app = FastAPI()
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
-
-def format_percent(value) -> str:
-    if value is None:
-        return "0.00%"
-    try:
-        return f"{float(value) * 100:.2f}%"
-    except (TypeError, ValueError):
-        return "0.00%"
-
-
-templates.env.filters["percent"] = format_percent
-
 app.mount(
     "/static",
     StaticFiles(directory=str(BASE_DIR / "static")),
@@ -38,36 +25,19 @@ app.mount(
 )
 
 
-@app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    """首页显示所有页面列表"""
-    pages = PageRegistry.get_all()
-    context = {
-        "request": request,
-        "pages": [
-            {"id": page.page_id, "title": page.title}
-            for page in pages.values()
-        ]
-    }
-    return templates.TemplateResponse("index.html", context)
+@app.get("/")
+async def index():
+    """根路径重定向到 /sop。"""
+    return RedirectResponse(url="/sop")
 
 
-@app.get("/api/customer_activity")
-async def get_customer_activity(
-    customer_code: str = Query(..., description="客户编号"),
-):
-    """
-    查询客户活跃度接口
-
-    传参 customer_code，返回 customer_code, flag_activity, dt
-    """
-    rows = fetch_customer_activity(customer_code)
-    # 将 datetime 转为字符串以便 JSON 序列化
-    from datetime import datetime
-    for row in rows:
-        if "dt" in row and isinstance(row["dt"], datetime):
-            row["dt"] = row["dt"].strftime("%Y-%m-%d %H:%M:%S")
-    return {"data": rows}
+@app.get("/sop", response_class=HTMLResponse)
+async def sop_page(request: Request):
+    """渲染 SOP 执行台页面。"""
+    return templates.TemplateResponse(
+        "sop.html",
+        {"request": request, "title": "主播带新计划执行台"},
+    )
 
 
 # ============================================================
@@ -186,25 +156,6 @@ async def api_advance_week(anchor_name: str):
     db_sop.advance_week(anchor_name)
     row = db_sop.get_anchor(anchor_name)
     return _build_full_anchor(row)
-
-
-@app.get("/{page_id}", response_class=HTMLResponse)
-async def get_page(request: Request, page_id: str):
-    """
-    页面视图
-
-    Args:
-        page_id: 页面ID (例如: crs, sales)
-    """
-    try:
-        page = PageRegistry.get(page_id)
-    except KeyError:
-        raise HTTPException(status_code=404, detail=f"Page '{page_id}' not found")
-
-    context = page.get_context()
-    context["request"] = request
-
-    return templates.TemplateResponse(page.template, context)
 
 
 def get_app() -> FastAPI:

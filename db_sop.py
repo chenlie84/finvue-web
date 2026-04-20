@@ -1,12 +1,44 @@
 """SOP 执行台数据访问层。
 
 封装 sop_anchors / sop_action_progress / sop_week_completion 三张表的 CRUD。
-复用 db_utils.db_cursor() 做事务管理。
 """
+import contextlib
 from datetime import date
-from typing import Dict, List, Optional
+from typing import Dict, Iterator, List, Optional
 
-from db_utils import db_cursor
+import pymysql
+
+import config
+
+
+def get_connection() -> pymysql.connections.Connection:
+    return pymysql.connect(
+        host=config.MYSQL_HOST,
+        port=config.MYSQL_PORT,
+        user=config.MYSQL_USER,
+        password=config.MYSQL_PASSWORD,
+        database=config.MYSQL_DATABASE,
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.DictCursor,
+        autocommit=False,
+    )
+
+
+@contextlib.contextmanager
+def db_cursor() -> Iterator[pymysql.cursors.Cursor]:
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        try:
+            yield cursor
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cursor.close()
+    finally:
+        conn.close()
 
 
 # ============================================================

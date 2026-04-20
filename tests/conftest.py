@@ -5,7 +5,7 @@
 """
 import pytest
 
-from db_utils import db_cursor
+from db_sop import db_cursor
 
 
 @pytest.fixture(autouse=True)
