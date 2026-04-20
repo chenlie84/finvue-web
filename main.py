@@ -1,9 +1,9 @@
 from pathlib import Path
-from datetime import datetime, date
+from datetime import date
 from typing import Optional
 
-from fastapi import FastAPI, Query, Request, HTTPException, Body
-from fastapi.responses import HTMLResponse, Response
+from fastapi import FastAPI, Query, Request, HTTPException
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
@@ -63,6 +63,7 @@ async def get_customer_activity(
     """
     rows = fetch_customer_activity(customer_code)
     # 将 datetime 转为字符串以便 JSON 序列化
+    from datetime import datetime
     for row in rows:
         if "dt" in row and isinstance(row["dt"], datetime):
             row["dt"] = row["dt"].strftime("%Y-%m-%d %H:%M:%S")
@@ -148,11 +149,10 @@ async def api_upsert_anchor(anchor_name: str, payload: AnchorUpsertRequest):
 
 
 @app.delete("/api/sop/anchors/{anchor_name}", status_code=204)
-async def api_delete_anchor(anchor_name: str):
+async def api_delete_anchor(anchor_name: str) -> None:
     if db_sop.get_anchor(anchor_name) is None:
         raise HTTPException(status_code=404, detail=f"anchor not found: {anchor_name}")
     db_sop.delete_anchor(anchor_name)
-    return Response(status_code=204)
 
 
 @app.get("/{page_id}", response_class=HTMLResponse)
