@@ -73,8 +73,39 @@ def upsert_progress(
     checked: Optional[bool] = None,
     note: Optional[str] = None,
 ) -> None:
-    raise NotImplementedError
+    """UPSERT 一条进度行。
+
+    三层层级用 (sub_index, child_index) 编码：
+      action 层    = (-1, -1)
+      substep 层   = (>=0, -1)
+      child 层     = (>=0, >=0)
+
+    checked / note 传 None 表示"不更新此字段"。
+    """
+    sql = """
+        INSERT INTO sop_action_progress
+            (anchor_name, week, action_index, sub_index, child_index, checked, note)
+        VALUES (%s, %s, %s, %s, %s, %s, %s) AS new_row
+        ON DUPLICATE KEY UPDATE
+            checked = COALESCE(new_row.checked, sop_action_progress.checked),
+            note    = COALESCE(new_row.note, sop_action_progress.note)
+    """
+    checked_int = None if checked is None else (1 if checked else 0)
+    with db_cursor() as cursor:
+        cursor.execute(
+            sql,
+            (anchor_name, week, action_index, sub_index, child_index, checked_int, note),
+        )
 
 
 def list_progress(anchor_name: str) -> List[Dict]:
-    raise NotImplementedError
+    """列出某主播全部进度行。"""
+    sql = """
+        SELECT week, action_index, sub_index, child_index, checked, note, updated_at
+        FROM sop_action_progress
+        WHERE anchor_name = %s
+        ORDER BY week, action_index, sub_index, child_index
+    """
+    with db_cursor() as cursor:
+        cursor.execute(sql, (anchor_name,))
+        return list(cursor.fetchall())

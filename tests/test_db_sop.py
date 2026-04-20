@@ -52,3 +52,66 @@ def test_list_anchors_returns_all():
     anchors = db_sop.list_anchors()
     names = {a["anchor_name"] for a in anchors}
     assert names == {"主播A", "主播B"}
+
+
+def test_upsert_progress_inserts_new_row():
+    db_sop.upsert_anchor(anchor_name="王老师", operator_name="阿杰")
+    db_sop.upsert_progress(
+        anchor_name="王老师", week=1, action_index=0, checked=True, note="OK",
+    )
+    rows = db_sop.list_progress("王老师")
+    assert len(rows) == 1
+    assert rows[0]["week"] == 1
+    assert rows[0]["action_index"] == 0
+    assert rows[0]["sub_index"] == -1
+    assert rows[0]["child_index"] == -1
+    assert rows[0]["checked"] == 1
+    assert rows[0]["note"] == "OK"
+
+
+def test_upsert_progress_updates_existing():
+    db_sop.upsert_anchor(anchor_name="王老师", operator_name="阿杰")
+    db_sop.upsert_progress(
+        anchor_name="王老师", week=1, action_index=0, checked=True,
+    )
+    db_sop.upsert_progress(
+        anchor_name="王老师", week=1, action_index=0, checked=False,
+    )
+    rows = db_sop.list_progress("王老师")
+    assert len(rows) == 1
+    assert rows[0]["checked"] == 0
+
+
+def test_upsert_progress_preserves_unset_fields():
+    """checked 和 note 分别传，另一个字段不应被清空。"""
+    db_sop.upsert_anchor(anchor_name="王老师", operator_name="阿杰")
+    db_sop.upsert_progress(
+        anchor_name="王老师", week=1, action_index=0, checked=True, note="初始备注",
+    )
+    # 只更新 checked，不传 note
+    db_sop.upsert_progress(
+        anchor_name="王老师", week=1, action_index=0, checked=False,
+    )
+    rows = db_sop.list_progress("王老师")
+    assert rows[0]["checked"] == 0
+    assert rows[0]["note"] == "初始备注"  # note 保留
+
+
+def test_upsert_progress_three_levels_coexist():
+    """同 (week, action_index) 下 action / substep / child 三层互不冲突。"""
+    db_sop.upsert_anchor(anchor_name="王老师", operator_name="阿杰")
+    # action 层
+    db_sop.upsert_progress(
+        anchor_name="王老师", week=1, action_index=0, checked=True,
+    )
+    # substep 层
+    db_sop.upsert_progress(
+        anchor_name="王老师", week=1, action_index=0, sub_index=0, checked=True,
+    )
+    # child 层
+    db_sop.upsert_progress(
+        anchor_name="王老师", week=1, action_index=0, sub_index=0, child_index=0,
+        checked=True,
+    )
+    rows = db_sop.list_progress("王老师")
+    assert len(rows) == 3
