@@ -559,7 +559,8 @@
             <div ${isWeekCollapsed ? 'style="display:none;"' : ""}>
               ${week.actions.map((action, index) => {
                 const checked = checks[index];
-                const disabled = week.id !== currentWeekId;
+                const anchorExists = !!anchor;
+                const disabled = !anchorExists || week.id !== currentWeekId;
                 const noteValue = notes[index] || "";
                 const currentSubChecks = subChecks[index] || [];
                 const currentSubChildChecks = subChildChecks[index] || [];
@@ -664,21 +665,33 @@
       });
 
       phaseListEl.querySelectorAll('input[data-week][data-index]').forEach((input) => {
-        input.addEventListener("change", () => {
-          const liveAnchor = ensureAnchorRecord();
+        input.addEventListener("change", async () => {
+          const anchorName = normalizeAnchorName(anchorNameEl.value);
+          const liveAnchor = getAnchorRecord(anchorName);
           if (!liveAnchor) {
             input.checked = !input.checked;
-            flashStatus("先输入运营名字和主播名字，再勾选动作。");
+            panelAlertEl.className = "panel-alert warn show";
+            panelAlertEl.textContent = "请先点 '保存全部动作' 创建主播，再勾选。";
             return;
           }
           const week = Number(input.dataset.week);
           const index = Number(input.dataset.index);
+          const prev = liveAnchor.weekActions[week][index];
           pendingStepFeedback = `${week}-${index}`;
           liveAnchor.weekActions[week][index] = input.checked;
           liveAnchor.note = noteTextEl.value.trim();
           liveAnchor.lastSavedDate = TODAY();
           updateAnchorDerivedFields(liveAnchor);
-          saveDb();
+          try {
+            await putProgressChecked({
+              anchorName, week, actionIndex: index, checked: input.checked,
+            });
+          } catch (err) {
+            liveAnchor.weekActions[week][index] = prev;
+            input.checked = prev;
+            alert(err.message);
+            return;
+          }
           saveDraft();
           renderWorkflow();
           renderOverview();
@@ -703,16 +716,32 @@
       });
 
       phaseListEl.querySelectorAll('[data-sub-week]').forEach((input) => {
-        input.addEventListener("change", () => {
-          const liveAnchor = ensureAnchorRecord();
-          if (!liveAnchor) return;
+        input.addEventListener("change", async () => {
+          const anchorName = normalizeAnchorName(anchorNameEl.value);
+          const liveAnchor = getAnchorRecord(anchorName);
+          if (!liveAnchor) {
+            input.checked = !input.checked;
+            panelAlertEl.className = "panel-alert warn show";
+            panelAlertEl.textContent = "请先点 '保存全部动作' 创建主播，再勾选。";
+            return;
+          }
           const week = Number(input.dataset.subWeek);
           const actionIndex = Number(input.dataset.subAction);
           const subIndex = Number(input.dataset.subIndex);
+          const prev = liveAnchor.weekSubActions[week][actionIndex][subIndex];
           liveAnchor.weekSubActions[week][actionIndex][subIndex] = input.checked;
           liveAnchor.lastSavedDate = TODAY();
           updateAnchorDerivedFields(liveAnchor);
-          saveDb();
+          try {
+            await putProgressChecked({
+              anchorName, week, actionIndex, subIndex, checked: input.checked,
+            });
+          } catch (err) {
+            liveAnchor.weekSubActions[week][actionIndex][subIndex] = prev;
+            input.checked = prev;
+            alert(err.message);
+            return;
+          }
           saveDraft();
           renderWorkflow();
           renderOverview();
@@ -722,17 +751,33 @@
       });
 
       phaseListEl.querySelectorAll('[data-child-week]').forEach((input) => {
-        input.addEventListener("change", () => {
-          const liveAnchor = ensureAnchorRecord();
-          if (!liveAnchor) return;
+        input.addEventListener("change", async () => {
+          const anchorName = normalizeAnchorName(anchorNameEl.value);
+          const liveAnchor = getAnchorRecord(anchorName);
+          if (!liveAnchor) {
+            input.checked = !input.checked;
+            panelAlertEl.className = "panel-alert warn show";
+            panelAlertEl.textContent = "请先点 '保存全部动作' 创建主播，再勾选。";
+            return;
+          }
           const week = Number(input.dataset.childWeek);
           const actionIndex = Number(input.dataset.childAction);
           const subIndex = Number(input.dataset.childSub);
           const childIndex = Number(input.dataset.childIndex);
+          const prev = liveAnchor.weekSubChildActions[week][actionIndex][subIndex][childIndex];
           liveAnchor.weekSubChildActions[week][actionIndex][subIndex][childIndex] = input.checked;
           liveAnchor.lastSavedDate = TODAY();
           updateAnchorDerivedFields(liveAnchor);
-          saveDb();
+          try {
+            await putProgressChecked({
+              anchorName, week, actionIndex, subIndex, childIndex, checked: input.checked,
+            });
+          } catch (err) {
+            liveAnchor.weekSubChildActions[week][actionIndex][subIndex][childIndex] = prev;
+            input.checked = prev;
+            alert(err.message);
+            return;
+          }
           saveDraft();
           renderWorkflow();
           renderOverview();
@@ -867,6 +912,20 @@
       } else {
         trainingWarnEl.className = "info-banner";
         trainingWarnEl.innerHTML = `当前主播：<strong>${anchor.anchorName}</strong> ｜ 培训 <strong>${days} 天</strong> ｜ 当前在 <strong>第 ${anchor.currentWeek} 周</strong>。若本周未达标，动作会继续循环，不会自动推进。`;
+      }
+    }
+
+    async function putProgressChecked({ anchorName, week, actionIndex, subIndex = -1, childIndex = -1, checked }) {
+      const resp = await fetch(
+        `${API_BASE}/anchors/${encodeURIComponent(anchorName)}/progress`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ week, actionIndex, subIndex, childIndex, checked }),
+        },
+      );
+      if (!resp.ok) {
+        throw new Error(`PUT /progress 失败：${resp.status}`);
       }
     }
 
