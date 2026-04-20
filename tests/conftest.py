@@ -17,10 +17,13 @@ def clean_sop_tables():
 
 
 def _truncate_all():
-    # TRUNCATE 不遵守 FK 约束顺序，需临时关闭外键检查
+    # 临时关闭外键检查以允许 TRUNCATE 父表（被 FK 引用的表无法 TRUNCATE）
+    # try/finally 确保异常时也能恢复 FK 检查
     with db_cursor() as cursor:
         cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
-        cursor.execute("TRUNCATE TABLE sop_week_completion")
-        cursor.execute("TRUNCATE TABLE sop_action_progress")
-        cursor.execute("TRUNCATE TABLE sop_anchors")
-        cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+        try:
+            cursor.execute("TRUNCATE TABLE sop_week_completion")
+            cursor.execute("TRUNCATE TABLE sop_action_progress")
+            cursor.execute("TRUNCATE TABLE sop_anchors")
+        finally:
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
