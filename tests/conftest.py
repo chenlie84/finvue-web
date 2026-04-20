@@ -1,7 +1,7 @@
 """pytest 公共 fixture：SOP 表清理。
 
-所有 SOP 集成测试共享一个 session 级 engine，
-每个测试函数前后清空 sop_anchors（级联清空其它两表）。
+每个测试函数前后 TRUNCATE SOP 三张表，
+通过 db_utils.db_cursor() 直接操作本地 DEV MySQL。
 """
 import pytest
 
@@ -17,10 +17,8 @@ def clean_sop_tables():
 
 
 def _truncate_all():
-    # sop_anchors 被 CASCADE 删除会带走子表，但显式删除顺序更清晰
+    # 顺序：子表先（避免触发 FK 约束），父表后
     with db_cursor() as cursor:
-        cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
         cursor.execute("TRUNCATE TABLE sop_week_completion")
         cursor.execute("TRUNCATE TABLE sop_action_progress")
         cursor.execute("TRUNCATE TABLE sop_anchors")
-        cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
