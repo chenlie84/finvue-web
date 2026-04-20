@@ -155,6 +155,39 @@ async def api_delete_anchor(anchor_name: str) -> None:
     db_sop.delete_anchor(anchor_name)
 
 
+class ProgressUpsertRequest(BaseModel):
+    week: int = Field(..., ge=1, le=4)
+    actionIndex: int = Field(..., ge=0)
+    subIndex: int = Field(-1, ge=-1)
+    childIndex: int = Field(-1, ge=-1)
+    checked: Optional[bool] = None
+    note: Optional[str] = None
+
+
+@app.put("/api/sop/anchors/{anchor_name}/progress", status_code=204)
+async def api_upsert_progress(anchor_name: str, payload: ProgressUpsertRequest) -> None:
+    if db_sop.get_anchor(anchor_name) is None:
+        raise HTTPException(status_code=404, detail=f"anchor not found: {anchor_name}")
+    db_sop.upsert_progress(
+        anchor_name=anchor_name,
+        week=payload.week,
+        action_index=payload.actionIndex,
+        sub_index=payload.subIndex,
+        child_index=payload.childIndex,
+        checked=payload.checked,
+        note=payload.note,
+    )
+
+
+@app.post("/api/sop/anchors/{anchor_name}/advance")
+async def api_advance_week(anchor_name: str):
+    if db_sop.get_anchor(anchor_name) is None:
+        raise HTTPException(status_code=404, detail=f"anchor not found: {anchor_name}")
+    db_sop.advance_week(anchor_name)
+    row = db_sop.get_anchor(anchor_name)
+    return _build_full_anchor(row)
+
+
 @app.get("/{page_id}", response_class=HTMLResponse)
 async def get_page(request: Request, page_id: str):
     """

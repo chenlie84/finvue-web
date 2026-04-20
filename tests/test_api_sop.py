@@ -78,3 +78,75 @@ def test_delete_anchor():
     resp = client.delete("/api/sop/anchors/王老师")
     assert resp.status_code == 204
     assert client.get("/api/sop/anchors/王老师").status_code == 404
+
+
+# ============================================================
+# PUT /api/sop/anchors/{name}/progress
+# ============================================================
+
+def test_put_progress_on_missing_anchor_returns_404():
+    resp = client.put(
+        "/api/sop/anchors/不存在/progress",
+        json={"week": 1, "actionIndex": 0, "checked": True},
+    )
+    assert resp.status_code == 404
+
+
+def test_put_progress_upsert_action_level():
+    client.put("/api/sop/anchors/王老师", json={"operatorName": "阿杰"})
+    resp = client.put(
+        "/api/sop/anchors/王老师/progress",
+        json={"week": 1, "actionIndex": 0, "checked": True, "note": "OK"},
+    )
+    assert resp.status_code == 204
+
+    detail = client.get("/api/sop/anchors/王老师").json()
+    assert len(detail["progress"]) == 1
+    item = detail["progress"][0]
+    assert item["week"] == 1 and item["actionIndex"] == 0
+    assert item["subIndex"] == -1 and item["childIndex"] == -1
+    assert item["checked"] is True and item["note"] == "OK"
+
+
+def test_put_progress_substep_and_child_coexist():
+    client.put("/api/sop/anchors/王老师", json={"operatorName": "阿杰"})
+    # substep
+    client.put(
+        "/api/sop/anchors/王老师/progress",
+        json={"week": 1, "actionIndex": 0, "subIndex": 0, "checked": True},
+    )
+    # child
+    client.put(
+        "/api/sop/anchors/王老师/progress",
+        json={"week": 1, "actionIndex": 0, "subIndex": 0, "childIndex": 2, "checked": True},
+    )
+    detail = client.get("/api/sop/anchors/王老师").json()
+    assert len(detail["progress"]) == 2
+
+
+def test_put_progress_validation():
+    client.put("/api/sop/anchors/王老师", json={"operatorName": "阿杰"})
+    # week 超出 1-4
+    resp = client.put(
+        "/api/sop/anchors/王老师/progress",
+        json={"week": 5, "actionIndex": 0, "checked": True},
+    )
+    assert resp.status_code == 422
+
+
+# ============================================================
+# POST /api/sop/anchors/{name}/advance
+# ============================================================
+
+def test_advance_increments_week_and_records_completion():
+    client.put("/api/sop/anchors/王老师", json={"operatorName": "阿杰"})
+    resp = client.post("/api/sop/anchors/王老师/advance")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["currentWeek"] == 2
+    assert "1" in body["weekCompletions"]
+
+
+def test_advance_missing_anchor_returns_404():
+    resp = client.post("/api/sop/anchors/不存在/advance")
+    assert resp.status_code == 404
