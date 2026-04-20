@@ -11,6 +11,8 @@
 - 每个文件内多条 SQL 用 ; 分隔（支持 -- 行注释）
 - 已应用的迁移记录在 schema_migrations 表里，再次启动自动跳过
 """
+from __future__ import annotations
+
 from pathlib import Path
 
 import pymysql
