@@ -1,17 +1,16 @@
 from pathlib import Path
-from datetime import datetime
-from typing import Any, List, Union
+from datetime import datetime, date
+from typing import Optional
 
-import httpx
-from fastapi import FastAPI, Query, Request, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import FastAPI, Query, Request, HTTPException, Body
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from db_utils import fetch_customer_activity
 from pages.registry import PageRegistry
-from config import MODEL, API_KEY
+import db_sop
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -70,225 +69,97 @@ async def get_customer_activity(
     return {"data": rows}
 
 
-# ========== Chat API ==========
+# ============================================================
+# SOP 执行台 API
+# ============================================================
 
-QWEN_API_URL = "http://aigc-api.aigc.paas.idc/v1/chat/completions"
-
-
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-
-
-class ChatRequest(BaseModel):
-    messages: List[ChatMessage]
+class AnchorUpsertRequest(BaseModel):
+    operatorName: str = Field(..., min_length=1, description="运营姓名")
+    note: Optional[str] = None
+    currentBlocker: Optional[str] = None
 
 
-@app.post("/api/chat")
-async def chat_stream(req: ChatRequest):
-    """
-    流式聊天接口，代理请求到 Qwen 大模型 API
-    """
-    payload = {
-        "model": MODEL,
-        "messages": [m.model_dump() for m in req.messages],
-        "stream": True,
+def _anchor_to_response(anchor_row: dict) -> dict:
+    """把 DB 行转成前端响应，顺便计算 warning 派生字段。"""
+    start_date = anchor_row["start_date"]
+    today = date.today()
+    days = (today - start_date).days + 1 if start_date else 0
+    warning = days > 28
+
+    return {
+        "anchorName":     anchor_row["anchor_name"],
+        "operatorName":   anchor_row["operator_name"],
+        "startDate":      anchor_row["start_date"].isoformat() if anchor_row["start_date"] else None,
+        "lastSavedDate":  anchor_row["last_saved_date"].isoformat() if anchor_row["last_saved_date"] else None,
+        "currentWeek":    anchor_row["current_week"],
+        "status":         anchor_row["status"],
+        "note":           anchor_row["note"],
+        "currentBlocker": anchor_row["current_blocker"],
+        "warning":        warning,
     }
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json",
+
+
+def _progress_to_response(row: dict) -> dict:
+    return {
+        "week":        row["week"],
+        "actionIndex": row["action_index"],
+        "subIndex":    row["sub_index"],
+        "childIndex":  row["child_index"],
+        "checked":     bool(row["checked"]),
+        "note":        row["note"] or "",
     }
 
-    async def event_generator():
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            async with client.stream(
-                "POST", QWEN_API_URL, json=payload, headers=headers
-            ) as resp:
-                if resp.status_code != 200:
-                    body = await resp.aread()
-                    yield f"data: {{\"error\": \"{body.decode()}\"}}"
-                    return
-                async for line in resp.aiter_lines():
-                    if line:
-                        yield line + "\n"
 
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
+def _build_full_anchor(anchor_row: dict) -> dict:
+    """构造一个带 progress 和 weekCompletions 的完整响应对象。"""
+    resp = _anchor_to_response(anchor_row)
+    name = anchor_row["anchor_name"]
+    resp["progress"] = [_progress_to_response(r) for r in db_sop.list_progress(name)]
+    resp["weekCompletions"] = {
+        str(week): dt.isoformat() for week, dt in db_sop.list_week_completions(name).items()
+    }
+    return resp
+
+
+@app.get("/api/sop/anchors")
+async def api_list_anchors():
+    anchors = db_sop.list_anchors()
+    return {"anchors": [_build_full_anchor(a) for a in anchors]}
+
+
+@app.get("/api/sop/anchors/{anchor_name}")
+async def api_get_anchor(anchor_name: str):
+    row = db_sop.get_anchor(anchor_name)
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"anchor not found: {anchor_name}")
+    return _build_full_anchor(row)
+
+
+@app.put("/api/sop/anchors/{anchor_name}")
+async def api_upsert_anchor(anchor_name: str, payload: AnchorUpsertRequest):
+    db_sop.upsert_anchor(
+        anchor_name=anchor_name,
+        operator_name=payload.operatorName,
+        note=payload.note,
+        current_blocker=payload.currentBlocker,
     )
+    row = db_sop.get_anchor(anchor_name)
+    return _build_full_anchor(row)
 
 
-# ========== LLM Proxy API ==========
-
-class ProxyRequest(BaseModel):
-    """
-    通用模型中转请求，格式兼容 OpenAI chat/completions。
-    客户端需额外传入 api_key 用于鉴权。
-    """
-    model: str
-    api_key: str
-    messages: List[ChatMessage]
-    temperature: float = 1.0
-    max_tokens: int = 2048
-    stream: bool = True
-
-
-@app.post("/v1/chat/completions")
-async def proxy_chat_completions(req: ProxyRequest):
-    """
-    模型中转接口 —— 格式兼容 OpenAI chat/completions。
-
-    客户端传入 model、api_key、messages 等参数，
-    服务端转发到内部 AIGC API 并将响应原样返回。
-    """
-    payload = {
-        "model": req.model,
-        "messages": [m.model_dump() for m in req.messages],
-        "temperature": req.temperature,
-        "max_tokens": req.max_tokens,
-        "stream": req.stream,
-    }
-    headers = {
-        "Authorization": f"Bearer {req.api_key}",
-        "Content-Type": "application/json",
-    }
-
-    if req.stream:
-        # 流式响应
-        async def proxy_stream():
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                async with client.stream(
-                    "POST", QWEN_API_URL, json=payload, headers=headers
-                ) as resp:
-                    if resp.status_code != 200:
-                        body = await resp.aread()
-                        yield f"data: {{\"error\": \"{body.decode()}\"}}\n\n"
-                        return
-                    async for line in resp.aiter_lines():
-                        if line:
-                            yield line + "\n"
-
-        return StreamingResponse(
-            proxy_stream(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "X-Accel-Buffering": "no",
-            },
-        )
-    else:
-        # 非流式响应，直接返回 JSON
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(
-                QWEN_API_URL, json=payload, headers=headers
-            )
-            if resp.status_code != 200:
-                raise HTTPException(
-                    status_code=resp.status_code,
-                    detail=resp.text,
-                )
-            return resp.json()
-
-
-# ========== Multimodal LLM Proxy API ==========
-
-class MultimodalMessage(BaseModel):
-    """
-    多模态消息，content 可以是字符串或 OpenAI 多模态格式的列表。
-    例如:
-        {"role": "user", "content": "你好"}
-    或:
-        {"role": "user", "content": [
-            {"type": "text", "text": "这是什么?"},
-            {"type": "image_url", "image_url": {"url": "data:image/png;base64,..."}}
-        ]}
-    """
-    role: str
-    content: Union[str, List[Any]]
-
-
-class MultimodalProxyRequest(BaseModel):
-    """
-    多模态模型中转请求，格式兼容 OpenAI chat/completions。
-    支持文字和图片混合输入。
-    """
-    model: str
-    api_key: str
-    messages: List[MultimodalMessage]
-    temperature: float = 1.0
-    max_tokens: int = 2048
-    stream: bool = True
-
-
-@app.post("/z/chat/completions")
-async def proxy_multimodal_chat_completions(req: MultimodalProxyRequest):
-    """
-    多模态模型中转接口 —— 格式兼容 OpenAI chat/completions。
-
-    支持文字和图片输入，兼容如下模型：
-        - gemini-3.1-flash-image-preview
-        - doubao-seed-1-8-251215
-        - qwen3.5-ultra
-
-    客户端传入 model、api_key、messages（可含 image_url）等参数，
-    服务端转发到内部 AIGC API 并将响应原样返回。
-    """
-    payload = {
-        "model": req.model,
-        "messages": [m.model_dump() for m in req.messages],
-        "temperature": req.temperature,
-        "max_tokens": req.max_tokens,
-        "stream": req.stream,
-    }
-    headers = {
-        "Authorization": f"Bearer {req.api_key}",
-        "Content-Type": "application/json",
-    }
-
-    if req.stream:
-        async def proxy_stream():
-            async with httpx.AsyncClient(timeout=300.0) as client:
-                async with client.stream(
-                    "POST", QWEN_API_URL, json=payload, headers=headers
-                ) as resp:
-                    if resp.status_code != 200:
-                        body = await resp.aread()
-                        yield f"data: {{\"error\": \"{body.decode()}\"}}\n\n"
-                        return
-                    async for line in resp.aiter_lines():
-                        if line:
-                            yield line + "\n"
-
-        return StreamingResponse(
-            proxy_stream(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "X-Accel-Buffering": "no",
-            },
-        )
-    else:
-        async with httpx.AsyncClient(timeout=300.0) as client:
-            resp = await client.post(
-                QWEN_API_URL, json=payload, headers=headers
-            )
-            if resp.status_code != 200:
-                raise HTTPException(
-                    status_code=resp.status_code,
-                    detail=resp.text,
-                )
-            return resp.json()
+@app.delete("/api/sop/anchors/{anchor_name}", status_code=204)
+async def api_delete_anchor(anchor_name: str):
+    if db_sop.get_anchor(anchor_name) is None:
+        raise HTTPException(status_code=404, detail=f"anchor not found: {anchor_name}")
+    db_sop.delete_anchor(anchor_name)
+    return Response(status_code=204)
 
 
 @app.get("/{page_id}", response_class=HTMLResponse)
 async def get_page(request: Request, page_id: str):
     """
     页面视图
-    
+
     Args:
         page_id: 页面ID (例如: crs, sales)
     """
@@ -296,10 +167,10 @@ async def get_page(request: Request, page_id: str):
         page = PageRegistry.get(page_id)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Page '{page_id}' not found")
-    
+
     context = page.get_context()
     context["request"] = request
-    
+
     return templates.TemplateResponse(page.template, context)
 
 
@@ -311,4 +182,3 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)
-
