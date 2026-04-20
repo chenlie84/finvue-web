@@ -1,4 +1,5 @@
 """主播带新计划 · SOP 执行台 FastAPI 应用。"""
+from contextlib import asynccontextmanager
 from datetime import date
 from pathlib import Path
 from typing import Optional
@@ -10,11 +11,23 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 import db_sop
+import migrate
 
 
 BASE_DIR = Path(__file__).resolve().parent
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """应用启动时自动应用所有未执行的 sql/migrations/*.sql。
+
+    失败会抛异常，让 uvicorn 启动失败——比"起来了但表缺"更安全。
+    """
+    migrate.run_migrations()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
