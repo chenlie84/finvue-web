@@ -1003,42 +1003,28 @@
       }
     }
 
-    function advanceWeek() {
-      const anchor = ensureAnchorRecord();
-      if (!anchor) {
-        flashStatus("请先填写运营名字和主播名字。");
+    async function advanceWeek() {
+      const anchorName = normalizeAnchorName(anchorNameEl.value);
+      if (!anchorName || !getAnchorRecord(anchorName)) {
+        alert("请先保存主播。");
         return;
       }
+      if (!confirm(`确认标记 ${anchorName} 本周达标并进入下一周？`)) return;
 
-      const currentChecks = anchor.weekActions[anchor.currentWeek] || [];
-      if (!currentChecks.every(Boolean)) {
-        flashStatus("当前周大项还没勾完，先完成大项再推进。");
-        return;
+      try {
+        const resp = await fetch(
+          `${API_BASE}/anchors/${encodeURIComponent(anchorName)}/advance`,
+          { method: "POST" },
+        );
+        if (!resp.ok) throw new Error(`POST /advance 失败：${resp.status}`);
+        const fullAnchor = await resp.json();
+        db.anchors[anchorName] = hydrateAnchorFromServer(fullAnchor);
+        renderOverview();
+        renderWorkflow();
+        renderSummary();
+      } catch (err) {
+        alert(err.message);
       }
-
-      anchor.note = noteTextEl.value.trim();
-      anchor.lastSavedDate = TODAY();
-      anchor.weekCompletedAt[anchor.currentWeek] = TODAY();
-
-      if (anchor.currentWeek < 4) {
-        anchor.currentWeek += 1;
-        anchor.status = "进行中";
-        anchor.currentBlocker = "进入下一周待执行";
-      } else {
-        anchor.status = "已完成";
-        anchor.currentBlocker = "已完成四周标准计划";
-      }
-
-      updateAnchorDerivedFields(anchor);
-      saveDb();
-      saveDraft();
-      renderWorkflow();
-      renderOverview();
-      renderSummary();
-      renderQuickPicks();
-      flashStatus(anchor.status === "已完成"
-        ? `已完成：${anchor.anchorName} 的 4 周标准计划`
-        : `已推进：${anchor.anchorName} 进入第 ${anchor.currentWeek} 周`);
     }
 
     function renderOverview() {
