@@ -119,14 +119,24 @@ def upsert_progress(
             (anchor_name, week, action_index, sub_index, child_index, checked, note)
         VALUES (%s, %s, %s, %s, %s, %s, %s) AS new_row
         ON DUPLICATE KEY UPDATE
-            checked = COALESCE(new_row.checked, sop_action_progress.checked),
+            checked = IF(%s IS NULL, sop_action_progress.checked, new_row.checked),
             note    = COALESCE(new_row.note, sop_action_progress.note)
     """
     checked_int = None if checked is None else (1 if checked else 0)
+    checked_insert = 0 if checked is None else checked_int
     with db_cursor() as cursor:
         cursor.execute(
             sql,
-            (anchor_name, week, action_index, sub_index, child_index, checked_int, note),
+            (
+                anchor_name,
+                week,
+                action_index,
+                sub_index,
+                child_index,
+                checked_insert,
+                note,
+                checked_int,
+            ),
         )
 
 

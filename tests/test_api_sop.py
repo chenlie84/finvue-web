@@ -135,6 +135,23 @@ def test_put_progress_upsert_action_level():
     assert item["checked"] is True and item["note"] == "OK"
 
 
+def test_put_progress_note_only_preserves_checked():
+    client.put("/api/sop/anchors/王老师", json={"operatorName": "阿杰"})
+    client.put(
+        "/api/sop/anchors/王老师/progress",
+        json={"week": 1, "actionIndex": 0, "checked": True},
+    )
+    resp = client.put(
+        "/api/sop/anchors/王老师/progress",
+        json={"week": 1, "actionIndex": 0, "note": "备注自动保存"},
+    )
+    assert resp.status_code == 204
+
+    item = client.get("/api/sop/anchors/王老师").json()["progress"][0]
+    assert item["checked"] is True
+    assert item["note"] == "备注自动保存"
+
+
 def test_put_progress_substep_and_child_coexist():
     client.put("/api/sop/anchors/王老师", json={"operatorName": "阿杰"})
     # substep

@@ -248,6 +248,7 @@
     let collapsedWorkflowSteps = {};
     let collapsedWorkflowWeeks = {};
     let customOptions = [];
+    let stepNoteSaveTimers = {};
 
     function loadJson(key, fallback) {
       try {
@@ -789,7 +790,11 @@
           updateAnchorDerivedFields(liveAnchor);
           try {
             await putProgressChecked({
-              anchorName, week, actionIndex: index, checked: input.checked,
+              anchorName,
+              week,
+              actionIndex: index,
+              checked: input.checked,
+              note: liveAnchor.weekNotes[week]?.[index] || "",
             });
           } catch (err) {
             liveAnchor.weekActions[week][index] = prev;
@@ -817,6 +822,11 @@
             dirtyKeyFor(anchor.anchorName, week, index),
             textarea.value,
           );
+          scheduleStepNoteSave(textarea);
+        });
+
+        textarea.addEventListener("blur", () => {
+          saveStepNote(textarea);
         });
       });
 
@@ -1020,13 +1030,64 @@
       }
     }
 
-    async function putProgressChecked({ anchorName, week, actionIndex, subIndex = -1, childIndex = -1, checked }) {
+    function getStepNoteContext(textarea) {
+      const anchor = getAnchorRecord(anchorNameEl.value);
+      if (!anchor) return null;
+      const week = Number(textarea.dataset.weekNote);
+      const actionIndex = Number(textarea.dataset.noteIndex);
+      return {
+        anchor,
+        anchorName: anchor.anchorName,
+        week,
+        actionIndex,
+        dirtyKey: dirtyKeyFor(anchor.anchorName, week, actionIndex),
+      };
+    }
+
+    function scheduleStepNoteSave(textarea) {
+      const ctx = getStepNoteContext(textarea);
+      if (!ctx) return;
+      window.clearTimeout(stepNoteSaveTimers[ctx.dirtyKey]);
+      stepNoteSaveTimers[ctx.dirtyKey] = window.setTimeout(() => {
+        saveStepNote(textarea);
+      }, 700);
+    }
+
+    async function saveStepNote(textarea) {
+      const ctx = getStepNoteContext(textarea);
+      if (!ctx) return;
+      window.clearTimeout(stepNoteSaveTimers[ctx.dirtyKey]);
+
+      const note = textarea.value;
+      ctx.anchor.weekNotes[ctx.week][ctx.actionIndex] = note;
+      try {
+        await putProgressChecked({
+          anchorName: ctx.anchorName,
+          week: ctx.week,
+          actionIndex: ctx.actionIndex,
+          note,
+        });
+        clearDirtyKeys([ctx.dirtyKey]);
+        ctx.anchor.lastSavedDate = TODAY();
+        renderSummary();
+        flashStatus(`已自动保存备注：${ctx.anchorName} ｜ ${TODAY()}`);
+      } catch (err) {
+        console.error("保存动作备注失败：", err);
+        panelAlertEl.className = "panel-alert warn show";
+        panelAlertEl.textContent = "备注自动保存失败，请稍后重试或点击保存全部动作。";
+      }
+    }
+
+    async function putProgressChecked({ anchorName, week, actionIndex, subIndex = -1, childIndex = -1, checked, note }) {
+      const body = { week, actionIndex, subIndex, childIndex };
+      if (checked !== undefined) body.checked = checked;
+      if (note !== undefined) body.note = note;
       const resp = await fetch(
         `${API_BASE}/anchors/${encodeURIComponent(anchorName)}/progress`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ week, actionIndex, subIndex, childIndex, checked }),
+          body: JSON.stringify(body),
         },
       );
       if (!resp.ok) {

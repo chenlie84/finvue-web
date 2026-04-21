@@ -97,6 +97,29 @@ def test_upsert_progress_preserves_unset_fields():
     assert rows[0]["note"] == "初始备注"  # note 保留
 
 
+def test_upsert_progress_note_only_preserves_existing_checked():
+    db_sop.upsert_anchor(anchor_name="王老师", operator_name="阿杰")
+    db_sop.upsert_progress(
+        anchor_name="王老师", week=1, action_index=0, checked=True,
+    )
+    db_sop.upsert_progress(
+        anchor_name="王老师", week=1, action_index=0, note="补充备注",
+    )
+    rows = db_sop.list_progress("王老师")
+    assert rows[0]["checked"] == 1
+    assert rows[0]["note"] == "补充备注"
+
+
+def test_upsert_progress_note_only_inserts_unchecked_row():
+    db_sop.upsert_anchor(anchor_name="王老师", operator_name="阿杰")
+    db_sop.upsert_progress(
+        anchor_name="王老师", week=1, action_index=0, note="补充备注",
+    )
+    rows = db_sop.list_progress("王老师")
+    assert rows[0]["checked"] == 0
+    assert rows[0]["note"] == "补充备注"
+
+
 def test_upsert_progress_three_levels_coexist():
     """同 (week, action_index) 下 action / substep / child 三层互不冲突。"""
     db_sop.upsert_anchor(anchor_name="王老师", operator_name="阿杰")
