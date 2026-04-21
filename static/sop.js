@@ -247,6 +247,7 @@
     let expandedSummaryAnchor = null;
     let collapsedWorkflowSteps = {};
     let collapsedWorkflowWeeks = {};
+    let customOptions = [];
 
     function loadJson(key, fallback) {
       try {
@@ -489,6 +490,60 @@
       return typeof substep === "object" && substep.mode === "options";
     }
 
+    function isCustomOptionGroup(substep) {
+      return isSubstepOptionGroup(substep);
+    }
+
+    function appendCustomOptionToPlan(option) {
+      const week = weeklyPlan.find((item) => item.id === option.week);
+      const substep = week?.actions?.[option.actionIndex]?.substeps?.[option.subIndex];
+      if (!isCustomOptionGroup(substep)) return false;
+      if (substep.children.includes(option.label)) return false;
+      substep.children.push(option.label);
+      return true;
+    }
+
+    function extendAnchorChildStateForOption(option) {
+      Object.values(db.anchors).forEach((anchor) => {
+        const childChecks = anchor.weekSubChildActions?.[option.week]?.[option.actionIndex]?.[option.subIndex];
+        const childNotes = anchor.weekSubChildNotes?.[option.week]?.[option.actionIndex]?.[option.subIndex];
+        if (childChecks && childChecks.length < getSubstepChildren(weeklyPlan[option.week - 1].actions[option.actionIndex].substeps[option.subIndex]).length) {
+          childChecks.push(false);
+        }
+        if (childNotes && childNotes.length < getSubstepChildren(weeklyPlan[option.week - 1].actions[option.actionIndex].substeps[option.subIndex]).length) {
+          childNotes.push("");
+        }
+      });
+    }
+
+    async function initCustomOptions() {
+      try {
+        const resp = await fetch(`${API_BASE}/options`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const { options } = await resp.json();
+        customOptions = options || [];
+        customOptions.forEach(appendCustomOptionToPlan);
+      } catch (err) {
+        console.error("加载人工选项失败：", err);
+        alert("加载人工选项失败，请检查网络或刷新。");
+      }
+    }
+
+    async function addCustomOption({ week, actionIndex, subIndex, label }) {
+      const cleaned = label.trim();
+      if (!cleaned) return;
+      const resp = await fetch(`${API_BASE}/options`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ week, actionIndex, subIndex, label: cleaned }),
+      });
+      if (!resp.ok) throw new Error(`新增选项失败：${resp.status}`);
+      const option = await resp.json();
+      customOptions = customOptions.filter((item) => item.id !== option.id).concat(option);
+      appendCustomOptionToPlan(option);
+      extendAnchorChildStateForOption(option);
+    }
+
     function isSubstepComplete(substep, checked, childChecks) {
       const children = getSubstepChildren(substep);
       if (!children.length) return checked;
@@ -635,6 +690,22 @@
                                   `).join("")}
                                 </div>
                               ` : ""}
+                              ${isCustomOptionGroup(substep) ? `
+                                <div class="custom-option-adder">
+                                  <input
+                                    type="text"
+                                    data-custom-option-input="${week.id}-${index}-${subIndex}"
+                                    placeholder="手动添加${escapeHtml(getSubstepTitle(substep))}"
+                                    ${anchorExists && week.id !== currentWeekId ? "disabled" : ""}
+                                  >
+                                  <button
+                                    type="button"
+                                    class="custom-option-btn"
+                                    data-add-custom-option="${week.id}-${index}-${subIndex}"
+                                    ${anchorExists && week.id !== currentWeekId ? "disabled" : ""}
+                                  >添加</button>
+                                </div>
+                              ` : ""}
                             </div>
                           `).join("")}
                         </div>
@@ -661,6 +732,40 @@
           const key = button.dataset.toggleStep;
           collapsedWorkflowSteps[key] = !collapsedWorkflowSteps[key];
           renderWorkflow();
+        });
+      });
+
+      phaseListEl.querySelectorAll("[data-add-custom-option]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const [week, actionIndex, subIndex] = button.dataset.addCustomOption.split("-").map(Number);
+          const input = phaseListEl.querySelector(`[data-custom-option-input="${button.dataset.addCustomOption}"]`);
+          const label = input?.value.trim() || "";
+          if (!label) {
+            input?.focus();
+            return;
+          }
+          button.disabled = true;
+          try {
+            await addCustomOption({ week, actionIndex, subIndex, label });
+            const substepTitle = getSubstepTitle(weeklyPlan.find((item) => item.id === week)?.actions?.[actionIndex]?.substeps?.[subIndex]);
+            if (input) input.value = "";
+            renderWorkflow();
+            renderSummary();
+            renderPlan();
+            flashStatus(`已添加${substepTitle || "选项"}：${label}`);
+          } catch (err) {
+            alert(err.message);
+          } finally {
+            button.disabled = false;
+          }
+        });
+      });
+
+      phaseListEl.querySelectorAll("[data-custom-option-input]").forEach((input) => {
+        input.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          phaseListEl.querySelector(`[data-add-custom-option="${input.dataset.customOptionInput}"]`)?.click();
         });
       });
 
@@ -1232,6 +1337,12 @@
               <div class="summary-meta">
                 <span class="meta-pill">${anchor.warning ? "已超期" : `第 ${anchor.currentWeek} 周`}</span>
                 <span class="meta-pill">${anchor.status}</span>
+                <button
+                  type="button"
+                  class="summary-delete-btn"
+                  data-delete-anchor="${escapeHtml(anchor.anchorName)}"
+                  aria-label="删除 ${escapeHtml(anchor.anchorName)}"
+                >删除</button>
               </div>
             </div>
             <div class="summary-body">
@@ -1281,6 +1392,38 @@
           const anchorName = card.dataset.summaryAnchor;
           expandedSummaryAnchor = expandedSummaryAnchor === anchorName ? null : anchorName;
           renderSummary();
+        });
+      });
+
+      summaryGridEl.querySelectorAll("[data-delete-anchor]").forEach((button) => {
+        button.addEventListener("click", async (event) => {
+          event.stopPropagation();
+          const anchorName = button.dataset.deleteAnchor;
+          if (!confirm(`确认删除主播「${anchorName}」？删除后该主播的所有进度记录也会一起删除。`)) return;
+
+          button.disabled = true;
+          try {
+            const resp = await fetch(`${API_BASE}/anchors/${encodeURIComponent(anchorName)}`, {
+              method: "DELETE",
+            });
+            if (!resp.ok) throw new Error(`删除失败：${resp.status}`);
+
+            delete db.anchors[anchorName];
+            if (expandedSummaryAnchor === anchorName) expandedSummaryAnchor = null;
+            if (normalizeAnchorName(anchorNameEl.value) === anchorName) {
+              anchorNameEl.value = "";
+              noteTextEl.value = "";
+            }
+            renderOverview();
+            renderWorkflow();
+            renderSummary();
+            renderQuickPicks();
+            flashStatus(`已删除主播：${anchorName}`);
+          } catch (err) {
+            alert(err.message);
+          } finally {
+            button.disabled = false;
+          }
         });
       });
     }
@@ -1475,6 +1618,7 @@
     }
 
     window.addEventListener("DOMContentLoaded", async () => {
+      await initCustomOptions();
       await initFromServer();
       loadDraft();
       renderWorkflow();

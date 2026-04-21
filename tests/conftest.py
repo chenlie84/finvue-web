@@ -25,5 +25,6 @@ def _truncate_all():
             cursor.execute("TRUNCATE TABLE sop_week_completion")
             cursor.execute("TRUNCATE TABLE sop_action_progress")
             cursor.execute("TRUNCATE TABLE sop_anchors")
+            cursor.execute("TRUNCATE TABLE sop_custom_options")
         finally:
             cursor.execute("SET FOREIGN_KEY_CHECKS = 1")

@@ -547,6 +547,46 @@
       font-weight: 600;
     }
 
+    .custom-option-adder {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin-top: 8px;
+      margin-left: 12px;
+      padding-left: 10px;
+      border-left: 2px solid rgba(39, 96, 58, 0.12);
+    }
+
+    .custom-option-adder input {
+      min-width: 0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .custom-option-btn {
+      border: 1px solid var(--rule-2);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .custom-option-btn:hover:not(:disabled) {
+      border-color: rgba(39, 96, 58, 0.34);
+      color: var(--ok);
+    }
+
+    .custom-option-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
     .subsubstep-note {
       width: 100%;
       min-height: 48px;
@@ -857,6 +897,28 @@
       gap: 8px;
       flex-wrap: wrap;
       align-items: flex-start;
+    }
+
+    .summary-delete-btn {
+      border: 1px solid rgba(192, 57, 43, 0.22);
+      background: #fff;
+      color: var(--danger);
+      border-radius: 999px;
+      padding: 5px 10px;
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      line-height: 1.7;
+    }
+
+    .summary-delete-btn:hover:not(:disabled) {
+      background: var(--danger-bg);
+      border-color: rgba(192, 57, 43, 0.34);
+    }
+
+    .summary-delete-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
     }
 
     .meta-pill {

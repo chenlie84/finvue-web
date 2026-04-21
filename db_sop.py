@@ -171,6 +171,67 @@ def list_week_completions(anchor_name: str) -> Dict[int, date]:
 
 
 # ============================================================
+# sop_custom_options
+# ============================================================
+
+def list_custom_options() -> List[Dict]:
+    """列出人工添加的标准选项。"""
+    sql = """
+        SELECT id, week, action_index, sub_index, label, sort_order, created_at
+        FROM sop_custom_options
+        ORDER BY week, action_index, sub_index, sort_order, id
+    """
+    with db_cursor() as cursor:
+        cursor.execute(sql)
+        return list(cursor.fetchall())
+
+
+def add_custom_option(week: int, action_index: int, sub_index: int, label: str) -> Dict:
+    """新增人工选项；同一路径下相同文案幂等返回已有行。"""
+    normalized_label = label.strip()
+    if not normalized_label:
+        raise ValueError("label is required")
+
+    with db_cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT id, week, action_index, sub_index, label, sort_order, created_at
+            FROM sop_custom_options
+            WHERE week = %s AND action_index = %s AND sub_index = %s AND label = %s
+            """,
+            (week, action_index, sub_index, normalized_label),
+        )
+        existing = cursor.fetchone()
+        if existing is not None:
+            return existing
+
+        cursor.execute(
+            """
+            SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort
+            FROM sop_custom_options
+            WHERE week = %s AND action_index = %s AND sub_index = %s
+            """,
+            (week, action_index, sub_index),
+        )
+        next_sort = cursor.fetchone()["next_sort"]
+        cursor.execute(
+            """
+            INSERT INTO sop_custom_options (week, action_index, sub_index, label, sort_order)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (week, action_index, sub_index, normalized_label, next_sort),
+        )
+        cursor.execute(
+            """
+            SELECT id, week, action_index, sub_index, label, sort_order, created_at
+            FROM sop_custom_options
+            WHERE id = LAST_INSERT_ID()
+            """
+        )
+        return cursor.fetchone()
+
+
+# ============================================================
 # 复合操作
 # ============================================================
 

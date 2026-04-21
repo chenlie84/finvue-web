@@ -21,6 +21,33 @@ def test_get_anchors_empty():
 
 
 # ============================================================
+# /api/sop/options
+# ============================================================
+
+def test_custom_options_empty():
+    resp = client.get("/api/sop/options")
+    assert resp.status_code == 200
+    assert resp.json() == {"options": []}
+
+
+def test_post_custom_option_and_list():
+    resp = client.post(
+        "/api/sop/options",
+        json={"week": 1, "actionIndex": 1, "subIndex": 0, "label": "宏观择时"},
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["week"] == 1
+    assert body["actionIndex"] == 1
+    assert body["subIndex"] == 0
+    assert body["label"] == "宏观择时"
+
+    listed = client.get("/api/sop/options").json()["options"]
+    assert len(listed) == 1
+    assert listed[0]["label"] == "宏观择时"
+
+
+# ============================================================
 # PUT /api/sop/anchors/{name}
 # ============================================================
 

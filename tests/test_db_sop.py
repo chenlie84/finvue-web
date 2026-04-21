@@ -133,6 +133,19 @@ def test_mark_week_complete_is_idempotent():
     assert list(completions.keys()) == [1]  # 仍然只有一条
 
 
+def test_add_custom_option_is_listed_and_idempotent():
+    first = db_sop.add_custom_option(week=1, action_index=1, sub_index=0, label="宏观择时")
+    second = db_sop.add_custom_option(week=1, action_index=1, sub_index=0, label="宏观择时")
+
+    assert first["id"] == second["id"]
+    options = db_sop.list_custom_options()
+    assert len(options) == 1
+    assert options[0]["label"] == "宏观择时"
+    assert options[0]["week"] == 1
+    assert options[0]["action_index"] == 1
+    assert options[0]["sub_index"] == 0
+
+
 def test_advance_week_increments_and_marks_complete():
     db_sop.upsert_anchor(anchor_name="王老师", operator_name="阿杰")
     # 初始 current_week=1

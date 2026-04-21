@@ -63,6 +63,13 @@ class AnchorUpsertRequest(BaseModel):
     currentBlocker: Optional[str] = None
 
 
+class CustomOptionCreateRequest(BaseModel):
+    week: int = Field(..., ge=1, le=4)
+    actionIndex: int = Field(..., ge=0)
+    subIndex: int = Field(..., ge=0)
+    label: str = Field(..., min_length=1, max_length=64)
+
+
 def _anchor_to_response(anchor_row: dict) -> dict:
     """把 DB 行转成前端响应，顺便计算 warning 派生字段。"""
     start_date = anchor_row["start_date"]
@@ -94,6 +101,17 @@ def _progress_to_response(row: dict) -> dict:
     }
 
 
+def _custom_option_to_response(row: dict) -> dict:
+    return {
+        "id": row["id"],
+        "week": row["week"],
+        "actionIndex": row["action_index"],
+        "subIndex": row["sub_index"],
+        "label": row["label"],
+        "sortOrder": row["sort_order"],
+    }
+
+
 def _build_full_anchor(anchor_row: dict) -> dict:
     """构造一个带 progress 和 weekCompletions 的完整响应对象。"""
     resp = _anchor_to_response(anchor_row)
@@ -109,6 +127,22 @@ def _build_full_anchor(anchor_row: dict) -> dict:
 async def api_list_anchors():
     anchors = db_sop.list_anchors()
     return {"anchors": [_build_full_anchor(a) for a in anchors]}
+
+
+@app.get("/api/sop/options")
+async def api_list_custom_options():
+    return {"options": [_custom_option_to_response(row) for row in db_sop.list_custom_options()]}
+
+
+@app.post("/api/sop/options", status_code=201)
+async def api_add_custom_option(payload: CustomOptionCreateRequest):
+    row = db_sop.add_custom_option(
+        week=payload.week,
+        action_index=payload.actionIndex,
+        sub_index=payload.subIndex,
+        label=payload.label,
+    )
+    return _custom_option_to_response(row)
 
 
 @app.get("/api/sop/anchors/{anchor_name}")
