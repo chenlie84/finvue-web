@@ -1,0 +1,2 @@
+"""FinVue FastAPI route package."""
+

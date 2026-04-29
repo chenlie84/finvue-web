@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>粉丝个人数据页</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg0:#0A0B0E;--bg1:#11131A;--bg2:#181B24;--bg3:#1E2230;--border:#252836;--border2:#2E3347;--gold:#C8922A;--gold2:#E5B84A;--gold-dim:rgba(200,146,42,.12);--text0:#EAE6DD;--text1:#9B97A0;--text2:#5A566A;--green:#2DBD85;--red:#E05252;--blue:#4A90D9;--purple:#9B7FE8;--primary:var(--gold);--primary-light:var(--gold2);--bg:var(--bg0);--card:var(--bg1);--panel:var(--bg2);--text:var(--text0);--dim:var(--text1);--muted:var(--text2);--accent:var(--green);--danger:var(--red);--warning:var(--gold2)}
+*{box-sizing:border-box}body{font-family:Outfit,"Noto Sans SC",sans-serif;background:var(--bg);color:var(--text);margin:0;padding:38px;line-height:1.65;background-image:linear-gradient(rgba(200,146,42,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(200,146,42,.035) 1px,transparent 1px);background-size:48px 48px}.container{max-width:1360px;margin:0 auto}.topbar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:30px}.back{color:var(--dim);text-decoration:none;border:1px solid var(--border2);border-radius:8px;padding:8px 14px;background:var(--bg1)}.back:hover{color:var(--gold);border-color:var(--gold)}header{background:rgba(17,19,26,.92);border:1px solid var(--border);border-top:2px solid var(--gold);border-radius:12px;padding:30px;margin-bottom:24px}h1{font-family:"Playfair Display",Georgia,serif;font-size:42px;font-weight:600;line-height:1.1;margin:0}.subtitle{color:var(--dim);margin-top:10px}.dashboard{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px}.stat{background:rgba(17,19,26,.92);padding:20px;border-radius:12px;border:1px solid var(--border)}.stat-label{color:var(--dim);font-size:13px;margin-bottom:8px}.stat-value{font-family:"JetBrains Mono",monospace;font-size:28px;font-weight:500;color:var(--gold2)}.good{color:var(--green)}.warn{color:var(--gold2)}section{background:rgba(17,19,26,.92);padding:24px;border-radius:12px;margin-bottom:22px;border:1px solid var(--border)}h2{font-family:Outfit,sans-serif;font-size:20px;font-weight:600;margin:0 0 18px;display:flex;align-items:center;gap:12px}h2:before{content:"";width:4px;height:24px;border-radius:2px;background:var(--gold)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.pill{display:inline-flex;align-items:center;padding:5px 11px;border-radius:999px;background:var(--gold-dim);color:var(--gold2);font-size:12px;margin:4px}.pill.gold{background:var(--gold-dim);color:var(--gold2)}.pill.green{background:rgba(45,189,133,.12);color:var(--green)}.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:8px}table{width:100%;border-collapse:collapse;font-size:13px;min-width:760px}th{padding:12px 14px;text-align:left;color:var(--text1);background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap}td{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top}tr:last-child td{border-bottom:none}.empty{color:var(--dim);padding:34px;text-align:center;background:var(--card);border:1px solid var(--border);border-radius:12px}.card-line{padding:14px 0;border-bottom:1px solid rgba(255,255,255,.06)}.card-line:last-child{border-bottom:none}.line-title{font-weight:700}.line-meta{color:var(--dim);font-size:12px;margin-top:4px}.select{background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;min-width:240px}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}@media(max-width:1080px){.dashboard{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}}@media(max-width:620px){body{padding:22px}.dashboard{grid-template-columns:1fr}h1{font-size:34px}.topbar{display:block}.back{display:inline-flex;margin-bottom:14px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="topbar">
+    <a class="back" href="/">返回客户库</a>
+    <div id="status" class="subtitle">读取客户资料...</div>
+  </div>
+  <div id="app"></div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const fmt = (n) => Number(n || 0).toLocaleString("zh-CN");
+const parseDate = (v) => { const d = new Date(v || 0); return Number.isNaN(d.getTime()) ? null : d; };
+const formatDate = (v) => { const d = parseDate(v); return d ? d.toLocaleString("zh-CN",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}) : "—"; };
+const monthKey = (v) => { const d = parseDate(v); return d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}` : ""; };
+const seconds = (s) => Number(s?.watchDurationSeconds || 0);
+const rank = (s) => Number(s?.watchRank || 0);
+const genderText = (v) => ({1:"男",2:"女"})[Number(v)] || "";
+const durationText = (value) => {
+  const n = Number(value || 0);
+  if (!n) return "未提供";
+  if (n >= 3600) return `${Math.floor(n / 3600)}小时${Math.round((n % 3600) / 60)}分钟`;
+  if (n >= 60) return `${Math.round(n / 60)}分钟`;
+  return `${n}秒`;
+};
+function normalizeCustomer(c){return {...c, customerName:String(c?.customerName||"未命名客户"), sessions:Array.isArray(c?.sessions)?c.sessions:[], tags:Array.isArray(c?.tags)?c.tags:[], labels:Array.isArray(c?.labels)?c.labels:[]};}
+function anchorOf(s,c){return String(s?.anchorName || c?.latestAnchorName || "未识别主播").trim() || "未识别主播";}
+function customerStats(customer, anchorName){
+  const allSessions = customer.sessions.slice().sort((a,b)=>new Date(b?.analyzedAt||0)-new Date(a?.analyzedAt||0));
+  const sessions = anchorName ? allSessions.filter(s=>anchorOf(s,customer)===anchorName) : allSessions;
+  const anchors = [...new Set(allSessions.map(s=>anchorOf(s,customer)))];
+  const bestRank = sessions.reduce((best,s)=>{const r=rank(s);return r && (!best || r<best)?r:best},0);
+  const avgWatch = sessions.length ? Math.round(sessions.reduce((sum,s)=>sum+seconds(s),0)/sessions.length) : 0;
+  const totalWatch = sessions.reduce((sum,s)=>sum+seconds(s),0);
+  const latest = sessions[0] || null;
+  const months = [...new Set(sessions.map(s=>monthKey(s.analyzedAt)).filter(Boolean))].sort();
+  return { allSessions, sessions, anchors, bestRank, avgWatch, totalWatch, latest, months };
+}
+function inferPersona(customer, stats){
+  const tags = new Set([...(customer.tags||[]), ...(customer.labels||[]), ...stats.sessions.flatMap(s=>[...(s.tags||[]), ...(s.labels||[])])].filter(Boolean).map(String));
+  const segments = [];
+  const reasons = [];
+  if (stats.sessions.length >= 20) segments.push("死忠铁粉");
+  else if (stats.sessions.length >= 10) segments.push("高粘性粉");
+  else if (stats.sessions.length >= 4) segments.push("中频稳定粉");
+  else segments.push("偶发客户");
+  if (stats.bestRank && stats.bestRank <= 10) segments.push("榜单前排");
+  if (stats.avgWatch >= 1800 || stats.sessions.some(s=>seconds(s)>=1800)) segments.push("长停留客户");
+  if ([...tags].some(t=>/粉丝团|粉丝/.test(t))) segments.push("粉丝关系已建立");
+  if ([...tags].some(t=>/消费等级|打赏|送礼/.test(t)) || stats.sessions.some(s=>Number(s.payLevel||0)>0 || Number(s.contributionValue||0)>0)) segments.push("付费潜力");
+  reasons.push(`历史沉淀 ${stats.sessions.length} 场，最好排名 ${stats.bestRank ? `Top ${stats.bestRank}` : "未提供"}。`);
+  reasons.push(`平均观看 ${durationText(stats.avgWatch)}，累计观看 ${durationText(stats.totalWatch)}。`);
+  if (stats.anchors.length > 1) reasons.push(`跨 ${stats.anchors.length} 个主播出现，需要识别是否为多主播活跃粉。`);
+  return { segments:[...new Set(segments)], reasons };
+}
+function monthlyRows(sessions){
+  const grouped = new Map();
+  sessions.forEach(s => {
+    const key = monthKey(s.analyzedAt) || "未知月份";
+    const row = grouped.get(key) || { key, sessions:[], watch:0, bestRank:0, anchors:new Set(), themes:new Set() };
+    row.sessions.push(s);
+    row.watch += seconds(s);
+    const r = rank(s);
+    if (r && (!row.bestRank || r < row.bestRank)) row.bestRank = r;
+    row.anchors.add(anchorOf(s,{}));
+    if (s.liveTheme) row.themes.add(s.liveTheme);
+    grouped.set(key,row);
+  });
+  return [...grouped.values()].sort((a,b)=>b.key.localeCompare(a.key));
+}
+function findCustomer(customers, customerParam){
+  const target = decodeURIComponent(customerParam || "").trim();
+  if (!target) return null;
+  return customers.find(c => String(c.id||"")===target || String(c.customerName||"")===target) || null;
+}
+function render(customer, anchorName){
+  const stats = customerStats(customer, anchorName);
+  const persona = inferPersona(customer, stats);
+  const age = stats.sessions.find(s=>s.customerAge)?.customerAge || "";
+  const gender = stats.sessions.find(s=>s.customerGender)?.customerGender || "";
+  const location = stats.sessions.find(s=>s.customerLocation)?.customerLocation || "";
+  const monthRows = monthlyRows(stats.sessions);
+  const tagItems = [...new Set([...(customer.tags||[]), ...(customer.labels||[]), ...stats.sessions.flatMap(s=>[...(s.tags||[]), ...(s.labels||[])])].filter(Boolean).map(String))].slice(0, 32);
+  const anchorOptions = stats.anchors.map(name=>`<option value="${esc(name)}" ${name===anchorName?'selected':''}>${esc(name)}</option>`).join("");
+  $("status").textContent = `${customer.customerName} · ${stats.sessions.length} 条记录`;
+  $("app").innerHTML = `
+    <header>
+      <h1>${esc(customer.customerName)}</h1>
+      <div class="subtitle">${esc(anchorName || "全部主播")} · ${esc(persona.segments.slice(0,3).join(" / "))}</div>
+      <div class="controls">
+        <select class="select" onchange="switchAnchor(this.value)">
+          <option value="">全部主播</option>
+          ${anchorOptions}
+        </select>
+        ${anchorName ? `<a class="back" href="/customer-trends.html?anchor=${encodeURIComponent(anchorName)}">查看该主播趋势看板</a>` : ""}
+      </div>
+    </header>
+    <div class="dashboard">
+      <div class="stat"><div class="stat-label">历史观看场次</div><div class="stat-value">${fmt(stats.sessions.length)}</div></div>
+      <div class="stat"><div class="stat-label">关联主播数</div><div class="stat-value">${fmt(stats.anchors.length)}</div></div>
+      <div class="stat"><div class="stat-label">最好排名</div><div class="stat-value warn">${stats.bestRank ? `Top ${fmt(stats.bestRank)}` : "—"}</div></div>
+      <div class="stat"><div class="stat-label">平均观看</div><div class="stat-value good">${esc(durationText(stats.avgWatch))}</div></div>
+      <div class="stat"><div class="stat-label">最近观看</div><div class="stat-value">${esc(formatDate(stats.latest?.analyzedAt))}</div></div>
+    </div>
+    <div class="grid">
+      <section>
+        <h2>客户画像</h2>
+        <div>${persona.segments.map(t=>`<span class="pill gold">${esc(t)}</span>`).join("")}</div>
+        <div style="margin-top:14px;color:var(--dim);font-size:14px;">${persona.reasons.map(t=>`<div class="card-line">${esc(t)}</div>`).join("")}</div>
+        <div style="margin-top:14px;">
+          ${age ? `<span class="pill">${esc(age)}岁</span>` : ""}
+          ${gender ? `<span class="pill">${esc(genderText(gender))}</span>` : ""}
+          ${location ? `<span class="pill">${esc(location)}</span>` : ""}
+        </div>
+      </section>
+      <section>
+        <h2>标签沉淀</h2>
+        <div>${tagItems.length ? tagItems.map(t=>`<span class="pill ${/粉丝|消费|打赏|送礼/.test(t) ? "green" : ""}">${esc(t)}</span>`).join("") : `<div class="empty">暂无标签。</div>`}</div>
+      </section>
+    </div>
+    <section>
+      <h2>月度观看变化</h2>
+      <div class="table-wrap"><table><thead><tr><th>月份</th><th>观看场次</th><th>最好排名</th><th>累计观看</th><th>涉及主播</th><th>主题样本</th></tr></thead><tbody>
+        ${monthRows.map(row=>`<tr><td>${esc(row.key)}</td><td>${fmt(row.sessions.length)}</td><td>${row.bestRank ? `Top ${fmt(row.bestRank)}` : "—"}</td><td>${esc(durationText(row.watch))}</td><td>${esc([...row.anchors].join("、") || "—")}</td><td>${esc([...row.themes].slice(0,2).join(" / ") || "未填写主题")}</td></tr>`).join("") || `<tr><td colspan="6" class="empty">暂无月份数据。</td></tr>`}
+      </tbody></table></div>
+    </section>
+    <section>
+      <h2>历史场次明细</h2>
+      <div class="table-wrap"><table><thead><tr><th>时间</th><th>主播</th><th>直播主题</th><th>榜单</th><th>排名</th><th>观看时长</th><th>来源</th></tr></thead><tbody>
+        ${stats.sessions.map(s=>`<tr><td>${esc(formatDate(s.analyzedAt))}</td><td>${esc(anchorOf(s,customer))}</td><td>${esc(s.liveTheme || s.liveMetrics?.liveTitle || "未填写主题")}</td><td>${esc(s.metricType || "观看榜")}</td><td>${rank(s) ? `Top ${fmt(rank(s))}` : "—"}</td><td>${esc(s.watchDurationRaw || durationText(seconds(s)))}</td><td>${esc(s.sourceFile || "本地库")}</td></tr>`).join("") || `<tr><td colspan="7" class="empty">暂无场次记录。</td></tr>`}
+      </tbody></table></div>
+    </section>
+  `;
+}
+function switchAnchor(anchorName){
+  const params = new URLSearchParams(location.search);
+  if (anchorName) params.set("anchor", anchorName); else params.delete("anchor");
+  location.href = `/customer-profile.html?${params.toString()}`;
+}
+async function main(){
+  const params = new URLSearchParams(location.search);
+  const customerParam = params.get("customer") || "";
+  const anchorName = params.get("anchor") || "";
+  try {
+    const res = await fetch("/api/customer-library?mode=compact", { credentials:"include" });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok) throw new Error(data.error || "读取客户库失败，请先登录主系统");
+    const customers = (Array.isArray(data.customers)?data.customers:[]).map(normalizeCustomer);
+    const customer = findCustomer(customers, customerParam);
+    if (!customer) {
+      $("status").textContent = "未找到客户";
+      $("app").innerHTML = `<div class="empty">未找到该粉丝资料。可能是客户名称已合并或参数已过期，请从客户库重新打开。</div>`;
+      return;
+    }
+    render(customer, anchorName);
+  } catch (err) {
+    $("status").textContent = "读取失败";
+    $("app").innerHTML = `<div class="empty">${esc(err.message)}</div>`;
+  }
+}
+main();
+</script>
+</body>
+</html>

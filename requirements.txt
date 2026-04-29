@@ -1,17 +1,9 @@
-# Web 框架
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-jinja2==3.1.2
-
-# 数据库
-pymysql==1.1.0
-
-# HTTP 请求
-requests==2.31.0
-httpx>=0.25.0,<0.28.0
-
-# 工具库
-python-multipart==0.0.6
-
-# 测试
-pytest==7.4.3
+fastapi==0.115.14
+uvicorn[standard]==0.35.0
+jinja2==3.1.6
+pymysql==1.1.1
+python-multipart==0.0.20
+itsdangerous==2.2.0
+httpx==0.28.1
+pydantic==2.11.7
+reportlab==4.2.5

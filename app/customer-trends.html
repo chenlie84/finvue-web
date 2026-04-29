@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>粉丝运营趋势看板</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg0:#0A0B0E;--bg1:#11131A;--bg2:#181B24;--bg3:#1E2230;--border:#252836;--border2:#2E3347;--gold:#C8922A;--gold2:#E5B84A;--gold-dim:rgba(200,146,42,.12);--text0:#EAE6DD;--text1:#9B97A0;--text2:#5A566A;--green:#2DBD85;--red:#E05252;--blue:#4A90D9;--purple:#9B7FE8;--primary:var(--gold);--primary-light:var(--gold2);--bg:var(--bg0);--card:var(--bg1);--text:var(--text0);--dim:var(--text1);--muted:var(--text2);--accent:var(--green);--danger:var(--red);--warning:var(--gold2)}
+*{box-sizing:border-box}body{font-family:Outfit,"Noto Sans SC",sans-serif;background:var(--bg);color:var(--text);margin:0;padding:38px;line-height:1.65;background-image:linear-gradient(rgba(200,146,42,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(200,146,42,.035) 1px,transparent 1px);background-size:48px 48px}.container{max-width:1420px;margin:0 auto}.topbar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:34px}.back{color:var(--dim);text-decoration:none;border:1px solid var(--border2);border-radius:8px;padding:8px 14px;background:var(--bg1)}.back:hover{color:var(--gold);border-color:var(--gold)}header{text-align:center;margin-bottom:34px}h1{font-family:"Playfair Display",Georgia,serif;font-size:42px;font-weight:600;line-height:1.1;margin:0;color:var(--text0)}.subtitle{color:var(--dim);margin-top:10px}.dashboard{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:28px}.stat{background:rgba(17,19,26,.92);padding:22px;border-radius:12px;border:1px solid var(--border);border-top:2px solid var(--gold)}.stat-label{color:var(--dim);font-size:13px;margin-bottom:8px}.stat-value{font-family:"JetBrains Mono",monospace;font-size:32px;font-weight:500;color:var(--gold2)}.active{color:var(--green)}.lost{color:var(--red)}.warn{color:var(--gold2)}section{background:rgba(17,19,26,.92);padding:28px;border-radius:12px;margin-bottom:24px;border:1px solid var(--border)}h2{font-family:Outfit,sans-serif;font-size:20px;font-weight:600;margin:0 0 20px;display:flex;align-items:center;gap:12px}h2:before{content:"";width:4px;height:24px;border-radius:2px;background:var(--gold)}.note{color:var(--dim);font-size:13px;margin:-8px 0 14px}.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:8px}table{width:100%;border-collapse:collapse;font-size:13px;min-width:760px}th{padding:12px 14px;text-align:left;color:var(--text1);background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap}td{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top}tr:last-child td{border-bottom:none}.progress{height:7px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden;margin-top:8px}.fill{height:100%;background:var(--gold)}.fill.good{background:var(--green)}.heat{text-align:center;font-family:"JetBrains Mono",monospace;border-left:1px solid rgba(255,255,255,.04)}.empty{color:var(--dim);padding:30px;text-align:center}.pill{display:inline-flex;padding:4px 10px;border-radius:999px;background:var(--gold-dim);color:var(--gold2);font-size:12px;margin:3px}.controls{display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap}.select{background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;min-width:260px}@media(max-width:900px){body{padding:22px}.dashboard{grid-template-columns:repeat(2,1fr)}h1{font-size:34px}}@media(max-width:620px){.dashboard{grid-template-columns:1fr}.topbar{display:block}.back{display:inline-flex;margin-bottom:14px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="topbar"><a class="back" href="/">返回客户库</a><div id="status" class="subtitle">读取客户库...</div></div>
+  <header>
+    <h1 id="pageTitle">核心用户运营趋势深度看板</h1>
+    <div class="subtitle" id="pageSub">RETENTION DEPTH: FULL VS LOYAL CORE</div>
+    <div class="controls" id="anchorControls"></div>
+  </header>
+  <div id="app"></div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const fmt = (n) => Number(n || 0).toLocaleString("zh-CN");
+const pct = (a,b) => b ? `${(a / b * 100).toFixed(2)}%` : "0.00%";
+const parseDate = (v) => { const d = new Date(v || 0); return Number.isNaN(d.getTime()) ? null : d; };
+const monthKey = (v) => { const d = parseDate(v); return d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}` : ""; };
+const addMonths = (key, offset) => { const [y,m] = key.split("-").map(Number); const d = new Date(y, m - 1 + offset, 1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; };
+const heat = (value) => {
+  const alpha = Math.max(0, Math.min(.82, value / 100 * .82));
+  const color = value >= 45 ? "white" : "var(--text)";
+  return `background:rgba(99,102,241,${alpha});color:${color}`;
+};
+const rank = (s) => Number(s?.watchRank || 0);
+const seconds = (s) => Number(s?.watchDurationSeconds || 0);
+
+function normalizeCustomer(c){return {...c, customerName:String(c?.customerName||"未命名客户"), sessions:Array.isArray(c?.sessions)?c.sessions:[]};}
+function anchorOf(s,c){return String(s?.anchorName || c?.latestAnchorName || "未识别主播").trim() || "未识别主播";}
+function buildAnchorGroups(customers){
+  const map = new Map();
+  customers.map(normalizeCustomer).forEach(c => {
+    const byAnchor = new Map();
+    c.sessions.forEach(s => {
+      if (s?.metricType && s.metricType !== "观看榜") return;
+      const name = anchorOf(s,c);
+      const arr = byAnchor.get(name) || [];
+      arr.push(s);
+      byAnchor.set(name, arr);
+    });
+    if (!byAnchor.size) byAnchor.set(anchorOf(null,c), []);
+    byAnchor.forEach((sessions, anchorName) => {
+      const group = map.get(anchorName) || { anchorName, customers: [] };
+      group.customers.push({...c, sessions});
+      map.set(anchorName, group);
+    });
+  });
+  return [...map.values()].sort((a,b) => b.customers.length - a.customers.length);
+}
+function customerStats(c, refDate){
+  const sessions = c.sessions.slice().sort((a,b)=>new Date(a.analyzedAt||0)-new Date(b.analyzedAt||0));
+  const months = [...new Set(sessions.map(s=>monthKey(s.analyzedAt)).filter(Boolean))];
+  const roomCount = new Set(sessions.map(s=>s.roomId || s.sessionId || s.analyzedAt).filter(Boolean)).size;
+  const latest = sessions[sessions.length-1] || null;
+  const latestDate = parseDate(latest?.analyzedAt);
+  const firstMonth = months[0] || "";
+  const active = latestDate && refDate ? (refDate - latestDate) / 86400000 <= 30 : false;
+  return { sessions, months, firstMonth, active, count:roomCount, latestDate, bestRank:sessions.reduce((best,s)=>{const r=rank(s);return r && (!best || r<best)?r:best},0), avgWatch:sessions.length?Math.round(sessions.reduce((sum,s)=>sum+seconds(s),0)/sessions.length):0 };
+}
+function segmentRows(items, refDate){
+  const defs = [
+    ["死忠铁粉","出现 ≥ 20 场",(x)=>x.count>=20],
+    ["高粘性粉","出现 10-19 场",(x)=>x.count>=10&&x.count<=19],
+    ["中频稳定粉","出现 4-9 场",(x)=>x.count>=4&&x.count<=9],
+    ["偶发高价值粉","出现 1-3 场",(x)=>x.count>=1&&x.count<=3]
+  ];
+  const stats = items.map(c=>customerStats(c, refDate));
+  return defs.map(([name,desc,fn]) => {
+    const arr = stats.filter(fn);
+    const active = arr.filter(x=>x.active).length;
+    return { name, desc, total: arr.length, active, rate: arr.length ? active / arr.length * 100 : 0 };
+  });
+}
+function cohortRows(items, refDate, coreOnly=false){
+  const stats = items.map(c=>customerStats(c, refDate)).filter(x=>x.firstMonth && (!coreOnly || x.count>=4));
+  const observedMonths = new Set(stats.flatMap(x=>x.months));
+  const cohorts = [...new Set(stats.map(x=>x.firstMonth))].sort();
+  return cohorts.map(cohort => {
+    const base = stats.filter(x=>x.firstMonth===cohort);
+    const cells = Array.from({length:7}, (_,i)=>{
+      const m = addMonths(cohort,i);
+      const hasData = observedMonths.has(m);
+      const active = base.filter(x=>x.months.includes(m)).length;
+      return { month: m, hasData, value: base.length ? active / base.length * 100 : 0 };
+    });
+    return { cohort, total: base.length, cells };
+  });
+}
+function monthlyRows(items){
+  const stats = items.map(c=>customerStats(c, null)).filter(x=>x.months.length);
+  const months = [...new Set(stats.flatMap(x=>x.months))].sort();
+  return months.map((m,idx)=>{
+    const prev = idx > 0 ? months[idx-1] : "";
+    const currentSet = new Set(stats.filter(x=>x.months.includes(m)).map((_,i)=>i));
+    const prevSet = new Set(stats.filter(x=>x.months.includes(prev)).map((_,i)=>i));
+    const active = stats.filter(x=>x.months.includes(m)).length;
+    const added = stats.filter(x=>x.firstMonth===m).length;
+    const retained = prev ? stats.filter(x=>x.months.includes(prev)&&x.months.includes(m)).length : 0;
+    const lost = prev ? stats.filter(x=>x.months.includes(prev)&&!x.months.includes(m)).length : 0;
+    const liveCount = new Set(stats.flatMap(x=>x.sessions.filter(s=>monthKey(s.analyzedAt)===m).map(s=>s.roomId || s.sessionId || s.analyzedAt))).size;
+    return { m, liveCount, active, added, retained, lost };
+  });
+}
+function render(group){
+  const customers = group.customers || [];
+  const allSessions = customers.flatMap(c=>c.sessions||[]);
+  const refDate = allSessions.map(s=>parseDate(s.analyzedAt)).filter(Boolean).sort((a,b)=>b-a)[0] || new Date();
+  const stats = customers.map(c=>customerStats(c, refDate));
+  const core = stats.filter(x=>x.count>=4);
+  const activeCore = core.filter(x=>x.active).length;
+  const churnedCore = core.length - activeCore;
+  const newActive = stats.filter(x=>x.active && x.count<=3).length;
+  $("pageTitle").textContent = `${group.anchorName} · 核心用户运营趋势看板`;
+  $("pageSub").textContent = `${customers.length} 位客户 · ${allSessions.length} 条观看记录 · 基准日期 ${refDate.toLocaleDateString("zh-CN")}`;
+  const segs = segmentRows(customers, refDate);
+  const coreCohort = cohortRows(customers, refDate, true);
+  const allCohort = cohortRows(customers, refDate, false);
+  const months = monthlyRows(customers);
+  $("app").innerHTML = `
+    <div class="dashboard">
+      <div class="stat"><div class="stat-label">核心追随粉 Active</div><div class="stat-value active">${fmt(activeCore)}</div></div>
+      <div class="stat"><div class="stat-label">核心流失粉 Churned</div><div class="stat-value lost">${fmt(churnedCore)}</div></div>
+      <div class="stat"><div class="stat-label">新晋活跃粉 New</div><div class="stat-value warn">${fmt(newActive)}</div></div>
+      <div class="stat"><div class="stat-label">核心粉丝总量 ≥4场</div><div class="stat-value">${fmt(core.length)}</div></div>
+    </div>
+    <section><h2>1. 粉丝层级留存透视</h2><div class="table-wrap"><table><thead><tr><th>粉丝层级与定义</th><th>总基数</th><th>近30天活跃数</th><th>层级活跃率</th></tr></thead><tbody>
+      ${segs.map(row=>`<tr><td><strong>${esc(row.name)}</strong><br><small style="color:var(--dim)">${esc(row.desc)}</small></td><td>${fmt(row.total)}</td><td class="active">${fmt(row.active)}</td><td>${row.rate.toFixed(2)}%<div class="progress"><div class="fill ${row.rate>=60?'good':''}" style="width:${Math.min(100,row.rate)}%"></div></div></td></tr>`).join("")}
+    </tbody></table></div></section>
+    <section><h2>2. 核心粉丝留存矩阵</h2><p class="note">仅看稳定及以上粉丝（出现 ≥4 场）。T+1M 表示自然月后一月；若该月没有主播数据，显示“无数据”，不计为 0 留存。</p>${renderCohort(coreCohort)}</section>
+    <section><h2>3. 全量用户同期群留存矩阵</h2><p class="note">按自然月 cohort 计算，缺失月份不会被当成用户流失。</p>${renderCohort(allCohort)}</section>
+    <section><h2>4. 月度数据动态流转表</h2><div class="table-wrap"><table><thead><tr><th>月份</th><th>直播</th><th>去重客户</th><th>新增客户</th><th>留存客户</th><th>流失客户</th></tr></thead><tbody>${months.map(r=>`<tr><td>${esc(r.m)}</td><td>${fmt(r.liveCount)}</td><td>${fmt(r.active)}</td><td class="warn">+${fmt(r.added)}</td><td class="active">${fmt(r.retained)}</td><td class="lost">-${fmt(r.lost)}</td></tr>`).join("")}</tbody></table></div></section>
+  `;
+}
+function renderCohort(rows){
+  if (!rows.length) return `<div class="empty">暂无足够月份数据。</div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>Cohort</th><th>用户数</th>${Array.from({length:7},(_,i)=>`<th>T+${i}M</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.cohort)}</td><td style="font-weight:700;color:var(--primary-light)">${fmt(r.total)}</td>${r.cells.map(cell=>cell.hasData ? `<td class="heat" title="${esc(cell.month)}" style="${heat(cell.value)}">${cell.value.toFixed(2)}%</td>` : `<td class="heat" title="${esc(cell.month)}" style="color:var(--dim);background:rgba(255,255,255,.02)">无数据</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+
+function renderSummary(group){
+  const stats = group.stats || {};
+  const segs = Array.isArray(group.segmentRows) ? group.segmentRows : [];
+  const coreCohort = Array.isArray(group.coreCohortRows) ? group.coreCohortRows : [];
+  const allCohort = Array.isArray(group.allCohortRows) ? group.allCohortRows : [];
+  const months = Array.isArray(group.monthlyRows) ? group.monthlyRows : [];
+  $("pageTitle").textContent = `${group.anchorName} · 核心用户运营趋势看板`;
+  $("pageSub").textContent = `${fmt(stats.customerCount)} 位客户 · ${fmt(stats.watchRecordCount)} 条观看记录 · 基准日期 ${esc(stats.refDate || "未识别")}`;
+  $("app").innerHTML = `
+    <div class="dashboard">
+      <div class="stat"><div class="stat-label">核心追随粉 Active</div><div class="stat-value active">${fmt(stats.activeCore)}</div></div>
+      <div class="stat"><div class="stat-label">核心流失粉 Churned</div><div class="stat-value lost">${fmt(stats.churnedCore)}</div></div>
+      <div class="stat"><div class="stat-label">新晋活跃粉 New</div><div class="stat-value warn">${fmt(stats.newActive)}</div></div>
+      <div class="stat"><div class="stat-label">核心粉丝总量 ≥4场</div><div class="stat-value">${fmt(stats.coreCount)}</div></div>
+    </div>
+    <section><h2>1. 粉丝层级留存透视</h2><div class="table-wrap"><table><thead><tr><th>粉丝层级与定义</th><th>总基数</th><th>近30天活跃数</th><th>层级活跃率</th></tr></thead><tbody>
+      ${segs.map(row=>`<tr><td><strong>${esc(row.name)}</strong><br><small style="color:var(--dim)">${esc(row.desc)}</small></td><td>${fmt(row.total)}</td><td class="active">${fmt(row.active)}</td><td>${Number(row.rate || 0).toFixed(2)}%<div class="progress"><div class="fill ${Number(row.rate || 0)>=60?'good':''}" style="width:${Math.min(100, Number(row.rate || 0))}%"></div></div></td></tr>`).join("")}
+    </tbody></table></div></section>
+    <section><h2>2. 核心粉丝留存矩阵</h2><p class="note">仅看稳定及以上粉丝（出现 ≥4 场）。T+1M 表示自然月后一月；若该月没有主播数据，显示“无数据”，不计为 0 留存。</p>${renderCohort(coreCohort)}</section>
+    <section><h2>3. 全量用户同期群留存矩阵</h2><p class="note">按自然月 cohort 计算，缺失月份不会被当成用户流失。</p>${renderCohort(allCohort)}</section>
+    <section><h2>4. 月度数据动态流转表</h2><div class="table-wrap"><table><thead><tr><th>月份</th><th>直播</th><th>去重客户</th><th>新增客户</th><th>留存客户</th><th>流失客户</th></tr></thead><tbody>${months.map(r=>`<tr><td>${esc(r.m)}</td><td>${fmt(r.liveCount)}</td><td>${fmt(r.active)}</td><td class="warn">+${fmt(r.added)}</td><td class="active">${fmt(r.retained)}</td><td class="lost">-${fmt(r.lost)}</td></tr>`).join("")}</tbody></table></div></section>
+  `;
+}
+
+async function main(){
+  const params = new URLSearchParams(location.search);
+  const selected = params.get("anchor") || "";
+  try {
+    const res = await fetch("/api/customer-trends-summary", { credentials:"include" });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok) throw new Error(data.error || data.detail || "读取客户趋势摘要失败，请先登录主系统");
+    const groups = Array.isArray(data.anchorGroups) ? data.anchorGroups : [];
+    $("status").textContent = `已读取 ${fmt(data.stats?.customerCount || 0)} 位客户 · ${fmt(data.stats?.anchorCount || groups.length)} 位主播`;
+    $("anchorControls").innerHTML = `<select class="select" onchange="location.href='/customer-trends.html?anchor='+encodeURIComponent(this.value)">${groups.map(g=>`<option value="${esc(g.anchorName)}" ${g.anchorName===selected?'selected':''}>${esc(g.anchorName)} · ${fmt(g.stats?.customerCount || 0)}客户</option>`).join("")}</select>`;
+    const group = groups.find(g=>g.anchorName===selected) || groups[0];
+    if (!group) { $("app").innerHTML = `<div class="empty">客户库暂无数据。</div>`; return; }
+    renderSummary(group);
+  } catch (err) {
+    $("status").textContent = "读取失败";
+    $("app").innerHTML = `<div class="empty">${esc(err.message)}</div>`;
+  }
+}
+main();
+</script>
+</body>
+</html>

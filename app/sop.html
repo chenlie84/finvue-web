@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>主播带新计划执行台 · SOP执行台</title>
+  <link rel="stylesheet" href="/static/sop.css">
+</head>
+<body>
+  <div class="shell">
+    <header class="sidebar">
+      <div class="sidebar-head">
+        <div>
+          <div class="tag">FinVue · Anchor Onboarding</div>
+          <h1>主播带新 SOP 执行台</h1>
+        </div>
+        <p>把带新 SOP 从文档变成可执行的周任务、卡点跟踪和主播推进看板。</p>
+      </div>
+
+      <div class="sidebar-nav">
+        <button class="nav-item" data-page="overview">
+          <span class="nav-num">00</span> 总览
+        </button>
+        <button class="nav-item active" data-page="plan">
+          <span class="nav-num">01</span> 执行地图
+        </button>
+        <button class="nav-item" data-page="summary">
+          <span class="nav-num">02</span> 主播汇总
+        </button>
+      </div>
+
+      <div class="sidebar-foot">
+        <strong id="sidebarCount">0 个主播在跟进</strong>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="page" id="page-overview">
+        <div class="page-eyebrow">SOP · 00</div>
+        <h2>主播带新计划执行总览</h2>
+        <p class="page-intro">围绕主播带新进度做运营跟踪：看当前有多少主播在推进、谁已经超期、谁完成训练，以及整体培训周期是否健康。</p>
+
+        <div class="overview-grid" id="overviewGrid"></div>
+
+        <div class="info-banner">
+          每个主播默认标准培训周期为 <strong>4 周 / 28 天</strong>。超过 28 天仍未完成，会自动进入时间预警，并在"主播汇总"里高亮显示。
+        </div>
+      </section>
+
+      <section class="page" id="page-workflow">
+        <div class="page-eyebrow">SOP · 01</div>
+        <h2>主播带新每周动作</h2>
+        <p class="page-intro">左侧按四周展示标准动作，但默认突出当前周；右侧填写运营、主播和关键备注。动作完成后自动沉淀到主播 SOP 记录。</p>
+
+        <div class="pill-row">
+          <div class="pill">⏱ 标准周期 28 天</div>
+          <div class="pill">👤 责任人：运营</div>
+          <div class="pill">📝 保存时自动记录当天日期</div>
+        </div>
+
+        <div class="warn-banner" id="legacyTrainingWarn">
+          先输入主播姓名后，系统会显示该主播当前进度与是否超出 4 周标准周期。
+        </div>
+
+        <div class="board">
+          <div class="left-stack" id="phaseList"></div>
+        </div>
+      </section>
+
+      <section class="page" id="page-summary">
+        <div class="page-eyebrow">SOP · 02</div>
+        <h2>按主播汇总</h2>
+        <p class="page-intro">按主播沉淀带新状态，优先展示超期、卡点、当前周和完成进度。点击卡片可展开完整周动作。</p>
+
+        <div class="summary-filter">
+          <div class="field">
+            <label for="summaryKeyword">关键词</label>
+            <input id="summaryKeyword" type="text" placeholder="搜主播 / 运营 / 卡点">
+          </div>
+          <div class="field">
+            <label for="summaryStatus">进度状态</label>
+            <input id="summaryStatus" type="text" placeholder="例如：第 2 周 / 已超期">
+          </div>
+          <div class="field">
+            <label for="summaryOperator">运营筛选</label>
+            <input id="summaryOperator" type="text" placeholder="例如：阿杰">
+          </div>
+          <div class="inline-actions" style="align-items:end;">
+            <button class="btn btn-secondary" id="clearSummaryFilterBtn">清空筛选</button>
+          </div>
+        </div>
+
+        <div class="summary-grid" id="summaryGrid"></div>
+      </section>
+
+      <section class="page active" id="page-plan">
+        <div class="page-eyebrow">SOP · 01</div>
+        <h2>主播带新执行地图</h2>
+        <p class="page-intro">先选主播，再直接在四周计划地图里勾选完成项。每个动作右侧都能记录运营备注，信息会自动沉淀到主播 SOP 记录。</p>
+
+        <div class="warn-banner" id="trainingWarn">
+          先输入主播姓名后，系统会显示该主播当前进度与是否超出 4 周标准周期。
+        </div>
+
+        <div class="workflow-hub">
+          <aside class="right-panel">
+            <div class="right-head">
+              <div class="tag">Current Anchor</div>
+              <h3>当前主播推进卡</h3>
+              <p>选定主播后，地图会展示四周计划完成度。勾选动作自动保存，备注会延迟写入。</p>
+              <div class="panel-alert info show" id="panelAlert">先选择主播，再在计划地图中勾选动作。</div>
+            </div>
+            <div class="panel-body">
+              <div class="status-text" id="saveText">勾选动作后会自动保存；备注只在需要时补充。</div>
+
+              <div class="panel-actions">
+                <button class="btn btn-primary" id="saveBtn">保存主播</button>
+                <button class="btn btn-warning" id="advanceBtn">本周达标，进入下一周</button>
+                <button class="btn btn-secondary" id="exportBtn">导出 CSV</button>
+              </div>
+
+              <div class="field">
+                <label for="operatorName">运营名字</label>
+                <input id="operatorName" type="text" list="operatorSuggestions" placeholder="例如：阿杰">
+                <datalist id="operatorSuggestions"></datalist>
+                <div class="quick-picks" id="operatorQuickPicks"></div>
+              </div>
+
+              <div class="field">
+                <label for="anchorName">主播名字</label>
+                <input id="anchorName" type="text" list="anchorSuggestions" placeholder="例如：王老师">
+                <datalist id="anchorSuggestions"></datalist>
+                <div class="quick-picks" id="anchorQuickPicks"></div>
+              </div>
+
+              <div class="date-box" id="autoDateBox">保存日期：未保存</div>
+
+              <div class="anchor-state-box" id="anchorStateBox">
+                <div>当前周次：<strong>第 1 周</strong></div>
+                <div>培训天数：<strong>0 天</strong></div>
+                <div>当前卡点：<strong>待识别</strong></div>
+              </div>
+
+              <div class="field">
+                <label for="noteText">总备注（可选）</label>
+                <textarea id="noteText" placeholder="可不填。只有需要补充卡点、延迟原因或特殊反馈时再写。"></textarea>
+              </div>
+            </div>
+          </aside>
+
+          <div class="week-switcher" id="weekSwitcher"></div>
+        </div>
+
+        <div class="plan-grid" id="planGrid"></div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/sop.js"></script>
+</body>
+</html>

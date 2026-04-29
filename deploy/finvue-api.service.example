@@ -1,0 +1,15 @@
+[Unit]
+Description=FinVue API
+After=network.target mysql.service
+
+[Service]
+WorkingDirectory=/srv/finvue/finvue-web
+EnvironmentFile=/srv/finvue/finvue-web/.env.production
+ExecStart=/srv/finvue/finvue-web/.venv/bin/python /srv/finvue/finvue-web/main.py
+Restart=always
+RestartSec=3
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target
