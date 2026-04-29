@@ -56,7 +56,7 @@ def create_session(user: Dict[str, Any]) -> str:
     expires_at = _now_ms() + config.SESSION_TTL_SECONDS * 1000
     db.execute(
         """
-        INSERT INTO sessions (token_hash, username, role, expires_at)
+        INSERT INTO finvue_sessions (token_hash, username, role, expires_at)
         VALUES (%s, %s, %s, %s)
         """,
         (_token_hash(token), user["username"], user.get("role", "user"), _mysql_datetime_from_ms(expires_at)),
@@ -80,7 +80,7 @@ def set_session_cookie(request: Request, response: Response, user: Dict[str, Any
 def clear_session_cookie(request: Request, response: Response) -> None:
     token = request.cookies.get(config.SESSION_COOKIE_NAME, "")
     if token:
-        db.execute("DELETE FROM sessions WHERE token_hash = %s", (_token_hash(token),))
+        db.execute("DELETE FROM finvue_sessions WHERE token_hash = %s", (_token_hash(token),))
     response.delete_cookie(config.SESSION_COOKIE_NAME, path="/")
 
 
@@ -91,7 +91,7 @@ def get_session(request: Request) -> Optional[Dict[str, Any]]:
     row = db.fetch_one(
         """
         SELECT token_hash, username, role, expires_at, created_at
-        FROM sessions
+        FROM finvue_sessions
         WHERE token_hash = %s AND expires_at > CURRENT_TIMESTAMP
         """,
         (_token_hash(token),),

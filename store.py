@@ -131,14 +131,14 @@ def paginate(page: int = 1, page_size: int = 20) -> tuple[int, int]:
 
 
 def get_kv(key: str, fallback: Any = None) -> Any:
-    row = db.fetch_one("SELECT value FROM app_kv WHERE `key` = %s", (key,))
+    row = db.fetch_one("SELECT value FROM finvue_app_kv WHERE `key` = %s", (key,))
     return parse_json(row.get("value") if row else None, fallback)
 
 
 def set_kv(key: str, value: Any) -> Any:
     db.execute(
         """
-        INSERT INTO app_kv (`key`, value, updated_at)
+        INSERT INTO finvue_app_kv (`key`, value, updated_at)
         VALUES (%s, %s, CURRENT_TIMESTAMP)
         ON DUPLICATE KEY UPDATE value = VALUES(value), updated_at = CURRENT_TIMESTAMP
         """,
@@ -187,7 +187,7 @@ def list_users() -> list[dict[str, Any]]:
     rows = db.fetch_all(
         """
         SELECT username, role, permissions, created_at, password_salt, password_hash
-        FROM users
+        FROM finvue_users
         ORDER BY username ASC
         """
     )
@@ -208,7 +208,7 @@ def get_user_by_username(username: str) -> dict[str, Any] | None:
     row = db.fetch_one(
         """
         SELECT username, role, permissions, created_at, password_salt, password_hash
-        FROM users
+        FROM finvue_users
         WHERE username = %s
         """,
         (str(username or "").strip().lower(),),
@@ -231,7 +231,7 @@ def save_user(user: dict[str, Any]) -> dict[str, Any]:
     permissions = normalize_user_permissions(role, user.get("permissions"))
     db.execute(
         """
-        INSERT INTO users (username, role, permissions, password_salt, password_hash, created_at, updated_at)
+        INSERT INTO finvue_users (username, role, permissions, password_salt, password_hash, created_at, updated_at)
         VALUES (%s, %s, %s, %s, %s, COALESCE(%s, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP)
         ON DUPLICATE KEY UPDATE
           role = VALUES(role),
@@ -257,7 +257,7 @@ def save_user(user: dict[str, Any]) -> dict[str, Any]:
 
 def update_user_role(username: str, role: str) -> dict[str, Any] | None:
     db.execute(
-        "UPDATE users SET role = %s, permissions = %s, updated_at = CURRENT_TIMESTAMP WHERE username = %s",
+        "UPDATE finvue_users SET role = %s, permissions = %s, updated_at = CURRENT_TIMESTAMP WHERE username = %s",
         (role, _json(normalize_user_permissions(role)), username),
     )
     return get_user_by_username(username)
@@ -268,7 +268,7 @@ def update_user_permissions(username: str, permissions: Any) -> dict[str, Any] |
     if not user:
         return None
     next_permissions = normalize_user_permissions(user.get("role", "user"), permissions)
-    db.execute("UPDATE users SET permissions = %s, updated_at = CURRENT_TIMESTAMP WHERE username = %s", (_json(next_permissions), username))
+    db.execute("UPDATE finvue_users SET permissions = %s, updated_at = CURRENT_TIMESTAMP WHERE username = %s", (_json(next_permissions), username))
     return get_user_by_username(username)
 
 
@@ -283,9 +283,9 @@ def get_anchor_profiles(page: int | None = None, page_size: int | None = None, q
     if q:
         where = "WHERE anchor_name LIKE %s"
         args = (f"%{q}%",)
-    total = db.fetch_one(f"SELECT COUNT(*) AS count FROM anchor_profiles {where}", args)["count"]
+    total = db.fetch_one(f"SELECT COUNT(*) AS count FROM finvue_anchor_profiles {where}", args)["count"]
     rows = db.fetch_all(
-        f"SELECT raw FROM anchor_profiles {where} ORDER BY updated_at DESC, created_at DESC LIMIT %s OFFSET %s",
+        f"SELECT raw FROM finvue_anchor_profiles {where} ORDER BY updated_at DESC, created_at DESC LIMIT %s OFFSET %s",
         (*args, page_size, (page - 1) * page_size),
     )
     return {"profiles": [parse_json(row["raw"], {}) for row in rows], "total": total, "page": page, "pageSize": page_size}
@@ -294,7 +294,7 @@ def get_anchor_profiles(page: int | None = None, page_size: int | None = None, q
 def save_anchor_profiles(payload: dict[str, Any]) -> dict[str, Any]:
     profiles = safe_array(payload.get("profiles"))
     with db.cursor() as cur:
-        cur.execute("DELETE FROM anchor_profiles")
+        cur.execute("DELETE FROM finvue_anchor_profiles")
         for profile in profiles:
             if not isinstance(profile, dict):
                 continue
@@ -303,7 +303,7 @@ def save_anchor_profiles(payload: dict[str, Any]) -> dict[str, Any]:
             raw = {**profile, "id": anchor_id, "anchorName": anchor_name}
             cur.execute(
                 """
-                INSERT INTO anchor_profiles (id, anchor_name, raw, updated_at)
+                INSERT INTO finvue_anchor_profiles (id, anchor_name, raw, updated_at)
                 VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
                 ON DUPLICATE KEY UPDATE anchor_name = VALUES(anchor_name), raw = VALUES(raw), updated_at = CURRENT_TIMESTAMP
                 """,
@@ -336,7 +336,7 @@ def _library_get(key: str, table: str, item_key: str, page: int | None = None, p
 
 
 def get_compliance_library(page: int | None = None, page_size: int | None = None, q: str = "") -> dict[str, Any]:
-    return _library_get("compliance-library", "compliance_entries", "entries", page, page_size, q)
+    return _library_get("compliance-library", "finvue_compliance_entries", "entries", page, page_size, q)
 
 
 def save_compliance_library(payload: dict[str, Any]) -> dict[str, Any]:
@@ -347,7 +347,7 @@ def save_compliance_library(payload: dict[str, Any]) -> dict[str, Any]:
 
     entries = safe_array(payload.get("entries"))
     with db.cursor() as cur:
-        cur.execute("DELETE FROM compliance_entries")
+        cur.execute("DELETE FROM finvue_compliance_entries")
         for entry in entries:
             if not isinstance(entry, dict):
                 continue
@@ -355,7 +355,7 @@ def save_compliance_library(payload: dict[str, Any]) -> dict[str, Any]:
             raw = {**entry, "id": entry_id}
             cur.execute(
                 """
-                INSERT INTO compliance_entries (id, level, title, phrase, context, suggestion, raw, updated_at)
+                INSERT INTO finvue_compliance_entries (id, level, title, phrase, context, suggestion, raw, updated_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                 ON DUPLICATE KEY UPDATE level = VALUES(level), title = VALUES(title), phrase = VALUES(phrase),
                   context = VALUES(context), suggestion = VALUES(suggestion), raw = VALUES(raw), updated_at = CURRENT_TIMESTAMP
@@ -383,7 +383,7 @@ def append_compliance_entries(entries: list[Any]) -> list[dict[str, Any]]:
             raw = {**entry, "id": entry_id}
             cur.execute(
                 """
-                INSERT INTO compliance_entries (id, level, title, phrase, context, suggestion, raw, updated_at)
+                INSERT INTO finvue_compliance_entries (id, level, title, phrase, context, suggestion, raw, updated_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                 ON DUPLICATE KEY UPDATE level = VALUES(level), title = VALUES(title), phrase = VALUES(phrase),
                   context = VALUES(context), suggestion = VALUES(suggestion), raw = VALUES(raw), updated_at = CURRENT_TIMESTAMP
@@ -403,7 +403,7 @@ def append_compliance_entries(entries: list[Any]) -> list[dict[str, Any]]:
 
 
 def get_case_library(page: int | None = None, page_size: int | None = None, q: str = "") -> dict[str, Any]:
-    return _library_get("case-library", "case_entries", "entries", page, page_size, q)
+    return _library_get("case-library", "finvue_case_entries", "entries", page, page_size, q)
 
 
 def save_case_library(payload: dict[str, Any]) -> dict[str, Any]:
@@ -414,7 +414,7 @@ def save_case_library(payload: dict[str, Any]) -> dict[str, Any]:
 
     entries = safe_array(payload.get("entries"))
     with db.cursor() as cur:
-        cur.execute("DELETE FROM case_entries")
+        cur.execute("DELETE FROM finvue_case_entries")
         for entry in entries:
             if not isinstance(entry, dict):
                 continue
@@ -422,7 +422,7 @@ def save_case_library(payload: dict[str, Any]) -> dict[str, Any]:
             raw = {**entry, "id": entry_id}
             cur.execute(
                 """
-                INSERT INTO case_entries (id, category, title, phrase, context, raw, updated_at)
+                INSERT INTO finvue_case_entries (id, category, title, phrase, context, raw, updated_at)
                 VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                 ON DUPLICATE KEY UPDATE category = VALUES(category), title = VALUES(title), phrase = VALUES(phrase),
                   context = VALUES(context), raw = VALUES(raw), updated_at = CURRENT_TIMESTAMP
@@ -442,7 +442,7 @@ def append_case_entries(entries: list[Any]) -> list[dict[str, Any]]:
             raw = {**entry, "id": entry_id}
             cur.execute(
                 """
-                INSERT INTO case_entries (id, category, title, phrase, context, raw, updated_at)
+                INSERT INTO finvue_case_entries (id, category, title, phrase, context, raw, updated_at)
                 VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                 ON DUPLICATE KEY UPDATE category = VALUES(category), title = VALUES(title), phrase = VALUES(phrase),
                   context = VALUES(context), raw = VALUES(raw), updated_at = CURRENT_TIMESTAMP
@@ -467,9 +467,9 @@ def get_transcript_library(page: int | None = None, page_size: int | None = None
     if q:
         where = "WHERE anchor_name LIKE %s OR title LIKE %s OR content LIKE %s OR raw LIKE %s"
         args = (f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%")
-    total = db.fetch_one(f"SELECT COUNT(*) AS count FROM transcripts {where}", args)["count"]
+    total = db.fetch_one(f"SELECT COUNT(*) AS count FROM finvue_transcripts {where}", args)["count"]
     rows = db.fetch_all(
-        f"SELECT raw FROM transcripts {where} ORDER BY updated_at DESC, created_at DESC LIMIT %s OFFSET %s",
+        f"SELECT raw FROM finvue_transcripts {where} ORDER BY updated_at DESC, created_at DESC LIMIT %s OFFSET %s",
         (*args, page_size, (page - 1) * page_size),
     )
     entries = [parse_json(row["raw"], {}) for row in rows]
@@ -484,7 +484,7 @@ def save_transcript_library(payload: dict[str, Any]) -> dict[str, Any]:
 
     items = safe_array(payload.get("entries") or payload.get("items") or payload.get("transcripts"))
     with db.cursor() as cur:
-        cur.execute("DELETE FROM transcripts")
+        cur.execute("DELETE FROM finvue_transcripts")
         for item in items:
             if not isinstance(item, dict):
                 continue
@@ -495,7 +495,7 @@ def save_transcript_library(payload: dict[str, Any]) -> dict[str, Any]:
             raw = {**item, "id": item_id}
             cur.execute(
                 """
-                INSERT INTO transcripts (id, anchor_name, title, content, raw, updated_at)
+                INSERT INTO finvue_transcripts (id, anchor_name, title, content, raw, updated_at)
                 VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                 ON DUPLICATE KEY UPDATE anchor_name = VALUES(anchor_name), title = VALUES(title),
                   content = VALUES(content), raw = VALUES(raw), updated_at = CURRENT_TIMESTAMP
@@ -515,7 +515,7 @@ def append_transcript_entry(item: dict[str, Any]) -> dict[str, Any]:
     raw = {**item, "id": item_id, "anchorName": anchor_name, "title": title, "content": content}
     db.execute(
         """
-        INSERT INTO transcripts (id, anchor_name, title, content, raw, updated_at)
+        INSERT INTO finvue_transcripts (id, anchor_name, title, content, raw, updated_at)
         VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
         ON DUPLICATE KEY UPDATE anchor_name = VALUES(anchor_name), title = VALUES(title),
           content = VALUES(content), raw = VALUES(raw), updated_at = CURRENT_TIMESTAMP
@@ -526,14 +526,14 @@ def append_transcript_entry(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def delete_transcript(item_id: str) -> dict[str, Any]:
-    db.execute("DELETE FROM transcripts WHERE id = %s", (item_id,))
+    db.execute("DELETE FROM finvue_transcripts WHERE id = %s", (item_id,))
     current = get_transcript_library()
     set_kv("transcript-library", {"entries": current["entries"], "items": current["entries"], "updatedAt": datetime.now(timezone.utc).isoformat()})
     return current
 
 
 def delete_transcripts_by_anchor(anchor_name: str) -> dict[str, Any]:
-    db.execute("DELETE FROM transcripts WHERE anchor_name = %s", (anchor_name,))
+    db.execute("DELETE FROM finvue_transcripts WHERE anchor_name = %s", (anchor_name,))
     current = get_transcript_library()
     set_kv("transcript-library", {"entries": current["entries"], "items": current["entries"], "updatedAt": datetime.now(timezone.utc).isoformat()})
     return current
@@ -550,9 +550,9 @@ def get_reports(page: int = 1, page_size: int = 20, q: str = "", anchor_name: st
         clauses.append("anchor_name = %s")
         args.append(anchor_name)
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-    total = db.fetch_one(f"SELECT COUNT(*) AS count FROM analysis_reports {where}", tuple(args))["count"]
+    total = db.fetch_one(f"SELECT COUNT(*) AS count FROM finvue_analysis_reports {where}", tuple(args))["count"]
     rows = db.fetch_all(
-        f"SELECT raw FROM analysis_reports {where} ORDER BY created_at DESC LIMIT %s OFFSET %s",
+        f"SELECT raw FROM finvue_analysis_reports {where} ORDER BY created_at DESC LIMIT %s OFFSET %s",
         (*args, page_size, (page - 1) * page_size),
     )
     return {"reports": [parse_json(row["raw"], {}) for row in rows], "total": total, "page": page, "pageSize": page_size}
@@ -568,7 +568,7 @@ def save_report(payload: dict[str, Any]) -> dict[str, Any]:
     raw = {**payload, "id": report_id, "anchorName": anchor_name, "title": title}
     db.execute(
         """
-        INSERT INTO analysis_reports (id, anchor_name, report_type, title, markdown, html, summary, raw, updated_at)
+        INSERT INTO finvue_analysis_reports (id, anchor_name, report_type, title, markdown, html, summary, raw, updated_at)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
         ON DUPLICATE KEY UPDATE anchor_name = VALUES(anchor_name), report_type = VALUES(report_type),
           title = VALUES(title), markdown = VALUES(markdown), html = VALUES(html), summary = VALUES(summary),
@@ -588,7 +588,7 @@ def upsert_anchor_profiles(profiles: list[Any]) -> int:
             anchor_id = text(profile.get("id") or profile.get("anchorId") or profile.get("anchorName") or profile.get("name")) or _id("anchor")
             anchor_name = text(profile.get("anchorName") or profile.get("name") or anchor_id) or "未命名主播"
             existing = None
-            cur.execute("SELECT raw FROM anchor_profiles WHERE id = %s OR anchor_name = %s ORDER BY updated_at DESC LIMIT 1", (anchor_id, anchor_name))
+            cur.execute("SELECT raw FROM finvue_anchor_profiles WHERE id = %s OR anchor_name = %s ORDER BY updated_at DESC LIMIT 1", (anchor_id, anchor_name))
             row = cur.fetchone()
             if row:
                 existing = parse_json(row.get("raw"), {})
@@ -605,7 +605,7 @@ def upsert_anchor_profiles(profiles: list[Any]) -> int:
                 raw["snapshots"] = sorted(by_id.values(), key=lambda item: str(item.get("analyzedAt") or item.get("createdAt") or ""), reverse=True)
             cur.execute(
                 """
-                INSERT INTO anchor_profiles (id, anchor_name, raw, updated_at)
+                INSERT INTO finvue_anchor_profiles (id, anchor_name, raw, updated_at)
                 VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
                 ON DUPLICATE KEY UPDATE anchor_name = VALUES(anchor_name), raw = VALUES(raw), updated_at = CURRENT_TIMESTAMP
                 """,
@@ -625,8 +625,8 @@ def get_customer_library(page: int | None = None, page_size: int | None = None, 
                    MAX(latest_analyzed_at) AS latestAt
             FROM (
               SELECT p.customer_id, p.latest_anchor_name, p.latest_analyzed_at, COUNT(s.session_id) AS session_count
-              FROM customer_profiles p
-              LEFT JOIN customer_sessions s ON s.customer_id = p.customer_id
+              FROM finvue_customer_profiles p
+              LEFT JOIN finvue_customer_sessions s ON s.customer_id = p.customer_id
               GROUP BY p.customer_id, p.latest_anchor_name, p.latest_analyzed_at
             ) t
             GROUP BY COALESCE(latest_anchor_name, '未命名主播')
@@ -640,7 +640,7 @@ def get_customer_library(page: int | None = None, page_size: int | None = None, 
                 """
                 SELECT customer_id, customer_name, latest_anchor_name, latest_analyzed_at, latest_live_theme,
                        latest_rank, best_rank, avg_watch_seconds, labels, tags
-                FROM customer_profiles
+                FROM finvue_customer_profiles
                 WHERE COALESCE(latest_anchor_name, '未命名主播') = %s
                 ORDER BY COALESCE(best_rank, 999999) ASC, latest_analyzed_at DESC, updated_at DESC
                 LIMIT 12
@@ -697,7 +697,7 @@ def get_customer_library(page: int | None = None, page_size: int | None = None, 
     if mode == "compact":
         rows = db.fetch_all(
             """
-            SELECT raw FROM customer_profiles
+            SELECT raw FROM finvue_customer_profiles
             ORDER BY latest_analyzed_at DESC, updated_at DESC
             LIMIT 10000
             """
@@ -711,9 +711,9 @@ def get_customer_library(page: int | None = None, page_size: int | None = None, 
     if q:
         where = "WHERE customer_name LIKE %s OR latest_anchor_name LIKE %s OR raw LIKE %s"
         args = (f"%{q}%", f"%{q}%", f"%{q}%")
-    total = db.fetch_one(f"SELECT COUNT(*) AS count FROM customer_profiles {where}", args)["count"]
+    total = db.fetch_one(f"SELECT COUNT(*) AS count FROM finvue_customer_profiles {where}", args)["count"]
     rows = db.fetch_all(
-        f"SELECT raw FROM customer_profiles {where} ORDER BY latest_analyzed_at DESC, updated_at DESC LIMIT %s OFFSET %s",
+        f"SELECT raw FROM finvue_customer_profiles {where} ORDER BY latest_analyzed_at DESC, updated_at DESC LIMIT %s OFFSET %s",
         (*args, page_size, (page - 1) * page_size),
     )
     return {"customers": [parse_json(row["raw"], {}) for row in rows], "total": total, "page": page, "pageSize": page_size}
@@ -736,7 +736,7 @@ def upsert_customer_entries(customers: list[Any]) -> dict[str, int]:
             sessions = [item for item in safe_array(customer.get("sessions") or customer.get("records") or customer.get("history")) if isinstance(item, dict)]
             latest_session = _customer_latest_session({**customer, "sessions": sessions})
             existing = None
-            cur.execute("SELECT raw FROM customer_profiles WHERE customer_id = %s", (customer_id,))
+            cur.execute("SELECT raw FROM finvue_customer_profiles WHERE customer_id = %s", (customer_id,))
             row = cur.fetchone()
             if row:
                 existing = parse_json(row.get("raw"), {})
@@ -755,7 +755,7 @@ def upsert_customer_entries(customers: list[Any]) -> dict[str, int]:
             best_rank = raw.get("bestRank") or min([to_int(s.get("watchRank")) for s in merged_sessions if to_int(s.get("watchRank"))] or [0])
             cur.execute(
                 """
-                INSERT INTO customer_profiles
+                INSERT INTO finvue_customer_profiles
                   (customer_id, customer_name, latest_anchor_name, latest_analyzed_at, latest_live_theme,
                    latest_rank, best_rank, avg_watch_seconds, labels, tags, raw, updated_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
@@ -783,7 +783,7 @@ def upsert_customer_entries(customers: list[Any]) -> dict[str, int]:
                 session_id = text(session.get("id") or session.get("sessionId")) or f"{customer_id}-{idx}"
                 cur.execute(
                     """
-                    INSERT INTO customer_sessions
+                    INSERT INTO finvue_customer_sessions
                       (session_id, customer_id, anchor_name, room_id, live_theme, report_type, metric_type,
                        metric_value, watch_rank, watch_duration_seconds, analyzed_at, source_file, raw, updated_at)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
@@ -842,8 +842,8 @@ def save_customer_library(payload: dict[str, Any]) -> dict[str, Any]:
 
     customers = safe_array(payload.get("customers"))
     with db.cursor() as cur:
-        cur.execute("DELETE FROM customer_sessions")
-        cur.execute("DELETE FROM customer_profiles")
+        cur.execute("DELETE FROM finvue_customer_sessions")
+        cur.execute("DELETE FROM finvue_customer_profiles")
         for customer in customers:
             if not isinstance(customer, dict):
                 continue
@@ -854,7 +854,7 @@ def save_customer_library(payload: dict[str, Any]) -> dict[str, Any]:
             raw = {**customer, "id": customer_id, "name": customer_name}
             cur.execute(
                 """
-                INSERT INTO customer_profiles
+                INSERT INTO finvue_customer_profiles
                   (customer_id, customer_name, latest_anchor_name, latest_analyzed_at, latest_live_theme,
                    latest_rank, best_rank, avg_watch_seconds, labels, tags, raw, updated_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
@@ -883,7 +883,7 @@ def save_customer_library(payload: dict[str, Any]) -> dict[str, Any]:
                 session_id = text(session.get("id") or session.get("sessionId")) or f"{customer_id}-{idx}"
                 cur.execute(
                     """
-                    INSERT INTO customer_sessions
+                    INSERT INTO finvue_customer_sessions
                       (session_id, customer_id, anchor_name, room_id, live_theme, report_type, metric_type,
                        metric_value, watch_rank, watch_duration_seconds, analyzed_at, source_file, raw, updated_at)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
@@ -979,7 +979,7 @@ def get_customer_trends_summary(anchor_name: str = "") -> dict[str, Any]:
                COUNT(DISTINCT customer_id) AS customers,
                COUNT(*) AS sessions,
                AVG(watch_duration_seconds) AS avgWatchSeconds
-        FROM customer_sessions
+        FROM finvue_customer_sessions
         {where}
         GROUP BY DATE_FORMAT(analyzed_at, '%%Y-%%m')
         ORDER BY month ASC
@@ -992,14 +992,14 @@ def get_customer_trends_summary(anchor_name: str = "") -> dict[str, Any]:
 def enqueue_job(job_type: str, payload: dict[str, Any]) -> dict[str, Any]:
     job_id = _id("job")
     db.execute(
-        "INSERT INTO jobs (id, type, status, progress, payload) VALUES (%s, %s, 'queued', 0, %s)",
+        "INSERT INTO finvue_jobs (id, type, status, progress, payload) VALUES (%s, %s, 'queued', 0, %s)",
         (job_id, job_type, _json(payload or {})),
     )
     return get_job(job_id) or {"id": job_id, "type": job_type, "status": "queued", "progress": 0}
 
 
 def get_job(job_id: str) -> dict[str, Any] | None:
-    row = db.fetch_one("SELECT * FROM jobs WHERE id = %s", (job_id,))
+    row = db.fetch_one("SELECT * FROM finvue_jobs WHERE id = %s", (job_id,))
     if not row:
         return None
     result = parse_json(row.get("result"), None)
@@ -1033,9 +1033,9 @@ def list_jobs(page: int = 1, page_size: int = 20, status: str = "") -> dict[str,
     if status:
         where = "WHERE status = %s"
         args = (status,)
-    total = db.fetch_one(f"SELECT COUNT(*) AS count FROM jobs {where}", args)["count"]
+    total = db.fetch_one(f"SELECT COUNT(*) AS count FROM finvue_jobs {where}", args)["count"]
     rows = db.fetch_all(
-        f"SELECT id FROM jobs {where} ORDER BY created_at DESC LIMIT %s OFFSET %s",
+        f"SELECT id FROM finvue_jobs {where} ORDER BY created_at DESC LIMIT %s OFFSET %s",
         (*args, page_size, (page - 1) * page_size),
     )
     return {"jobs": [get_job(row["id"]) for row in rows], "total": total, "page": page, "pageSize": page_size}
@@ -1053,12 +1053,12 @@ def update_job(job_id: str, **fields: Any) -> None:
     if not parts:
         return
     args.append(job_id)
-    db.execute(f"UPDATE jobs SET {', '.join(parts)}, updated_at = CURRENT_TIMESTAMP WHERE id = %s", tuple(args))
+    db.execute(f"UPDATE finvue_jobs SET {', '.join(parts)}, updated_at = CURRENT_TIMESTAMP WHERE id = %s", tuple(args))
 
 
 def retry_job(job_id: str) -> dict[str, Any] | None:
     db.execute(
-        "UPDATE jobs SET status = 'queued', progress = 0, error = NULL, started_at = NULL, finished_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+        "UPDATE finvue_jobs SET status = 'queued', progress = 0, error = NULL, started_at = NULL, finished_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
         (job_id,),
     )
     return get_job(job_id)
@@ -1067,13 +1067,13 @@ def retry_job(job_id: str) -> dict[str, Any] | None:
 def claim_next_job() -> dict[str, Any] | None:
     job_id = ""
     with db.cursor() as cur:
-        cur.execute("SELECT id FROM jobs WHERE status = 'queued' ORDER BY created_at ASC LIMIT 1 FOR UPDATE")
+        cur.execute("SELECT id FROM finvue_jobs WHERE status = 'queued' ORDER BY created_at ASC LIMIT 1 FOR UPDATE")
         row = cur.fetchone()
         if not row:
             return None
         job_id = row["id"]
         cur.execute(
-            "UPDATE jobs SET status = 'running', attempts = attempts + 1, started_at = CURRENT_TIMESTAMP, progress = 5, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+            "UPDATE finvue_jobs SET status = 'running', attempts = attempts + 1, started_at = CURRENT_TIMESTAMP, progress = 5, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
             (job_id,),
         )
     return get_job(job_id)

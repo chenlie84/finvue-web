@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS sop_anchors (
+CREATE TABLE IF NOT EXISTS finvue_sop_anchors (
   anchor_name VARCHAR(64) NOT NULL COMMENT '主播名，天然主键',
   operator_name VARCHAR(64) NOT NULL COMMENT '当前负责的运营',
   start_date DATE NOT NULL COMMENT '开始带新日期',
@@ -10,11 +10,11 @@ CREATE TABLE IF NOT EXISTS sop_anchors (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (anchor_name),
-  KEY idx_sop_operator (operator_name),
-  KEY idx_sop_status (status)
+  KEY idx_finvue_sop_operator (operator_name),
+  KEY idx_finvue_sop_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS sop_action_progress (
+CREATE TABLE IF NOT EXISTS finvue_sop_action_progress (
   id BIGINT NOT NULL AUTO_INCREMENT,
   anchor_name VARCHAR(64) NOT NULL,
   week TINYINT NOT NULL COMMENT '1-4',
@@ -25,22 +25,22 @@ CREATE TABLE IF NOT EXISTS sop_action_progress (
   note TEXT DEFAULT NULL,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uk_sop_item (anchor_name, week, action_index, sub_index, child_index),
-  CONSTRAINT fk_sop_progress_anchor FOREIGN KEY (anchor_name)
-    REFERENCES sop_anchors(anchor_name) ON DELETE CASCADE
+  UNIQUE KEY uk_finvue_sop_item (anchor_name, week, action_index, sub_index, child_index),
+  CONSTRAINT fk_finvue_sop_progress_anchor FOREIGN KEY (anchor_name)
+    REFERENCES finvue_sop_anchors(anchor_name) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS sop_week_completion (
+CREATE TABLE IF NOT EXISTS finvue_sop_week_completion (
   anchor_name VARCHAR(64) NOT NULL,
   week TINYINT NOT NULL,
   completed_at DATE NOT NULL COMMENT '手动标记本周达标的日期',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (anchor_name, week),
-  CONSTRAINT fk_sop_completion_anchor FOREIGN KEY (anchor_name)
-    REFERENCES sop_anchors(anchor_name) ON DELETE CASCADE
+  CONSTRAINT fk_finvue_sop_completion_anchor FOREIGN KEY (anchor_name)
+    REFERENCES finvue_sop_anchors(anchor_name) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS sop_custom_options (
+CREATE TABLE IF NOT EXISTS finvue_sop_custom_options (
   id BIGINT NOT NULL AUTO_INCREMENT,
   week TINYINT NOT NULL COMMENT '1-4',
   action_index TINYINT NOT NULL COMMENT '周内第几个动作',
@@ -50,6 +50,6 @@ CREATE TABLE IF NOT EXISTS sop_custom_options (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uk_sop_custom_option_path_label (week, action_index, sub_index, label),
-  KEY idx_sop_custom_option_path (week, action_index, sub_index, sort_order)
+  UNIQUE KEY uk_finvue_sop_custom_option_path_label (week, action_index, sub_index, label),
+  KEY idx_finvue_sop_custom_option_path (week, action_index, sub_index, sort_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

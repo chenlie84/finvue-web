@@ -78,14 +78,14 @@ def _custom_option_to_response(row: dict) -> dict:
 
 
 def _get_anchor_row(anchor_name: str) -> dict | None:
-    return db.fetch_one("SELECT * FROM sop_anchors WHERE anchor_name = %s", (anchor_name,))
+    return db.fetch_one("SELECT * FROM finvue_sop_anchors WHERE anchor_name = %s", (anchor_name,))
 
 
 def _list_progress(anchor_name: str) -> list[dict]:
     return db.fetch_all(
         """
         SELECT week, action_index, sub_index, child_index, checked, note, updated_at
-        FROM sop_action_progress
+        FROM finvue_sop_action_progress
         WHERE anchor_name = %s
         ORDER BY week, action_index, sub_index, child_index
         """,
@@ -95,7 +95,7 @@ def _list_progress(anchor_name: str) -> list[dict]:
 
 def _list_week_completions(anchor_name: str) -> dict[str, str]:
     rows = db.fetch_all(
-        "SELECT week, completed_at FROM sop_week_completion WHERE anchor_name = %s",
+        "SELECT week, completed_at FROM finvue_sop_week_completion WHERE anchor_name = %s",
         (anchor_name,),
     )
     return {str(row["week"]): _iso(row["completed_at"]) for row in rows}
@@ -111,7 +111,7 @@ def _build_full_anchor(row: dict) -> dict:
 
 @router.get("/api/sop/anchors")
 def list_anchors(_: dict = Depends(security.require_permission("sop"))) -> dict:
-    rows = db.fetch_all("SELECT * FROM sop_anchors ORDER BY created_at DESC")
+    rows = db.fetch_all("SELECT * FROM finvue_sop_anchors ORDER BY created_at DESC")
     return {"anchors": [_build_full_anchor(row) for row in rows]}
 
 
@@ -120,7 +120,7 @@ def list_options(_: dict = Depends(security.require_permission("sop"))) -> dict:
     rows = db.fetch_all(
         """
         SELECT id, week, action_index, sub_index, label, sort_order, created_at
-        FROM sop_custom_options
+        FROM finvue_sop_custom_options
         ORDER BY week, action_index, sub_index, sort_order, id
         """
     )
@@ -134,7 +134,7 @@ def add_option(payload: CustomOptionCreateRequest, _: dict = Depends(security.re
         cur.execute(
             """
             SELECT id, week, action_index, sub_index, label, sort_order, created_at
-            FROM sop_custom_options
+            FROM finvue_sop_custom_options
             WHERE week = %s AND action_index = %s AND sub_index = %s AND label = %s
             """,
             (payload.week, payload.actionIndex, payload.subIndex, label),
@@ -145,7 +145,7 @@ def add_option(payload: CustomOptionCreateRequest, _: dict = Depends(security.re
         cur.execute(
             """
             SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort
-            FROM sop_custom_options
+            FROM finvue_sop_custom_options
             WHERE week = %s AND action_index = %s AND sub_index = %s
             """,
             (payload.week, payload.actionIndex, payload.subIndex),
@@ -153,7 +153,7 @@ def add_option(payload: CustomOptionCreateRequest, _: dict = Depends(security.re
         next_sort = cur.fetchone()["next_sort"]
         cur.execute(
             """
-            INSERT INTO sop_custom_options (week, action_index, sub_index, label, sort_order)
+            INSERT INTO finvue_sop_custom_options (week, action_index, sub_index, label, sort_order)
             VALUES (%s, %s, %s, %s, %s)
             """,
             (payload.week, payload.actionIndex, payload.subIndex, label, next_sort),
@@ -161,7 +161,7 @@ def add_option(payload: CustomOptionCreateRequest, _: dict = Depends(security.re
         cur.execute(
             """
             SELECT id, week, action_index, sub_index, label, sort_order, created_at
-            FROM sop_custom_options
+            FROM finvue_sop_custom_options
             WHERE id = LAST_INSERT_ID()
             """
         )
@@ -180,7 +180,7 @@ def get_anchor(anchor_name: str, _: dict = Depends(security.require_permission("
 def upsert_anchor(anchor_name: str, payload: AnchorUpsertRequest, _: dict = Depends(security.require_permission("sop"))) -> dict:
     db.execute(
         """
-        INSERT INTO sop_anchors (anchor_name, operator_name, start_date, last_saved_date, note, current_blocker)
+        INSERT INTO finvue_sop_anchors (anchor_name, operator_name, start_date, last_saved_date, note, current_blocker)
         VALUES (%s, %s, CURDATE(), CURDATE(), %s, %s)
         ON DUPLICATE KEY UPDATE
           operator_name = VALUES(operator_name),
@@ -197,7 +197,7 @@ def upsert_anchor(anchor_name: str, payload: AnchorUpsertRequest, _: dict = Depe
 def delete_anchor(anchor_name: str, _: dict = Depends(security.require_permission("sop"))) -> Response:
     if not _get_anchor_row(anchor_name):
         raise HTTPException(status_code=404, detail=f"anchor not found: {anchor_name}")
-    db.execute("DELETE FROM sop_anchors WHERE anchor_name = %s", (anchor_name,))
+    db.execute("DELETE FROM finvue_sop_anchors WHERE anchor_name = %s", (anchor_name,))
     return Response(status_code=204)
 
 
@@ -209,7 +209,7 @@ def upsert_progress(anchor_name: str, payload: ProgressUpsertRequest, _: dict = 
     checked_insert = 0 if checked_int is None else checked_int
     db.execute(
         """
-        INSERT INTO sop_action_progress
+        INSERT INTO finvue_sop_action_progress
           (anchor_name, week, action_index, sub_index, child_index, checked, note)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE
@@ -239,7 +239,7 @@ def advance_week(anchor_name: str, _: dict = Depends(security.require_permission
     with db.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO sop_week_completion (anchor_name, week, completed_at)
+            INSERT INTO finvue_sop_week_completion (anchor_name, week, completed_at)
             VALUES (%s, %s, CURDATE())
             ON DUPLICATE KEY UPDATE completed_at = VALUES(completed_at)
             """,
@@ -247,12 +247,12 @@ def advance_week(anchor_name: str, _: dict = Depends(security.require_permission
         )
         if current_week >= 4:
             cur.execute(
-                "UPDATE sop_anchors SET current_week = LEAST(current_week + 1, 4), status = '已完成' WHERE anchor_name = %s",
+                "UPDATE finvue_sop_anchors SET current_week = LEAST(current_week + 1, 4), status = '已完成' WHERE anchor_name = %s",
                 (anchor_name,),
             )
         else:
             cur.execute(
-                "UPDATE sop_anchors SET current_week = LEAST(current_week + 1, 4) WHERE anchor_name = %s",
+                "UPDATE finvue_sop_anchors SET current_week = LEAST(current_week + 1, 4) WHERE anchor_name = %s",
                 (anchor_name,),
             )
     return _build_full_anchor(_get_anchor_row(anchor_name))

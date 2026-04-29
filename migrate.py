@@ -15,7 +15,7 @@ MIGRATIONS_DIR = Path(__file__).resolve().parent / "sql" / "migrations"
 def _ensure_tracking_table(cursor) -> None:
     cursor.execute(
         """
-        CREATE TABLE IF NOT EXISTS schema_migrations (
+        CREATE TABLE IF NOT EXISTS finvue_schema_migrations (
             filename   VARCHAR(128) NOT NULL PRIMARY KEY,
             applied_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
@@ -24,7 +24,7 @@ def _ensure_tracking_table(cursor) -> None:
 
 
 def _applied_filenames(cursor) -> set[str]:
-    cursor.execute("SELECT filename FROM schema_migrations")
+    cursor.execute("SELECT filename FROM finvue_schema_migrations")
     return {row["filename"] for row in cursor.fetchall()}
 
 
@@ -53,7 +53,7 @@ def run_migrations() -> list[str]:
                 cursor.execute(path.read_text(encoding="utf-8"))
                 while cursor.nextset():
                     pass
-                cursor.execute("INSERT INTO schema_migrations (filename) VALUES (%s)", (path.name,))
+                cursor.execute("INSERT INTO finvue_schema_migrations (filename) VALUES (%s)", (path.name,))
                 ran.append(path.name)
                 print(f"[migrate] ✓ {path.name}")
             print(f"[migrate] 完成，共应用 {len(ran)} 个迁移")

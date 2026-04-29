@@ -87,10 +87,10 @@ async def patch_identity(request: Request, _: dict = Depends(security.require_an
     new_name = store.text(body.get("newName") or body.get("to"))
     if not old_name or not new_name:
         raise HTTPException(status_code=400, detail="缺少原名称或新名称")
-    # 线上版先同步规范化表，app_kv 中的历史原始 JSON 由后续迁移脚本统一清理。
-    store.db.execute("UPDATE anchor_profiles SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
-    store.db.execute("UPDATE transcripts SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
-    store.db.execute("UPDATE analysis_reports SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
-    store.db.execute("UPDATE customer_profiles SET latest_anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE latest_anchor_name = %s", (new_name, old_name))
-    store.db.execute("UPDATE customer_sessions SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
+    # 线上版先同步规范化表，finvue_app_kv 中的历史原始 JSON 由后续迁移脚本统一清理。
+    store.db.execute("UPDATE finvue_anchor_profiles SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
+    store.db.execute("UPDATE finvue_transcripts SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
+    store.db.execute("UPDATE finvue_analysis_reports SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
+    store.db.execute("UPDATE finvue_customer_profiles SET latest_anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE latest_anchor_name = %s", (new_name, old_name))
+    store.db.execute("UPDATE finvue_customer_sessions SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
     return {"ok": True, "oldName": old_name, "newName": new_name}

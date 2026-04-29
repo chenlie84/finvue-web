@@ -1,10 +1,10 @@
-CREATE TABLE IF NOT EXISTS app_kv (
+CREATE TABLE IF NOT EXISTS finvue_app_kv (
   `key` VARCHAR(191) NOT NULL PRIMARY KEY,
   value JSON NOT NULL,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS finvue_users (
   username VARCHAR(191) NOT NULL PRIMARY KEY,
   password_salt VARCHAR(255) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
@@ -13,32 +13,32 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS auth_rate_limits (
+CREATE TABLE IF NOT EXISTS finvue_auth_rate_limits (
   `key` VARCHAR(191) NOT NULL PRIMARY KEY,
   value JSON NOT NULL,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS sessions (
+CREATE TABLE IF NOT EXISTS finvue_sessions (
   token_hash VARCHAR(191) NOT NULL PRIMARY KEY,
   username VARCHAR(191) NOT NULL,
   role VARCHAR(32) NOT NULL DEFAULT 'user',
   expires_at DATETIME NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_sessions_user FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE,
-  INDEX idx_sessions_expires_at (expires_at)
+  CONSTRAINT fk_finvue_sessions_user FOREIGN KEY (username) REFERENCES finvue_users(username) ON DELETE CASCADE,
+  INDEX idx_finvue_sessions_expires_at (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS anchor_profiles (
+CREATE TABLE IF NOT EXISTS finvue_anchor_profiles (
   id VARCHAR(191) NOT NULL PRIMARY KEY,
   anchor_name VARCHAR(255) NOT NULL,
   raw JSON NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_anchor_profiles_name (anchor_name)
+  INDEX idx_finvue_anchor_profiles_name (anchor_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS transcripts (
+CREATE TABLE IF NOT EXISTS finvue_transcripts (
   id VARCHAR(191) NOT NULL PRIMARY KEY,
   anchor_name VARCHAR(255),
   title VARCHAR(512),
@@ -46,10 +46,10 @@ CREATE TABLE IF NOT EXISTS transcripts (
   raw JSON NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_transcripts_anchor_time (anchor_name, created_at)
+  INDEX idx_finvue_transcripts_anchor_time (anchor_name, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS analysis_reports (
+CREATE TABLE IF NOT EXISTS finvue_analysis_reports (
   id VARCHAR(191) NOT NULL PRIMARY KEY,
   anchor_name VARCHAR(255),
   report_type VARCHAR(128),
@@ -60,10 +60,10 @@ CREATE TABLE IF NOT EXISTS analysis_reports (
   raw JSON NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_reports_anchor_time (anchor_name, created_at)
+  INDEX idx_finvue_reports_anchor_time (anchor_name, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS customer_profiles (
+CREATE TABLE IF NOT EXISTS finvue_customer_profiles (
   customer_id VARCHAR(191) NOT NULL PRIMARY KEY,
   customer_name VARCHAR(255) NOT NULL,
   latest_anchor_name VARCHAR(255),
@@ -77,10 +77,10 @@ CREATE TABLE IF NOT EXISTS customer_profiles (
   raw JSON NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_customer_profiles_anchor_time (latest_anchor_name, latest_analyzed_at)
+  INDEX idx_finvue_customer_profiles_anchor_time (latest_anchor_name, latest_analyzed_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS customer_sessions (
+CREATE TABLE IF NOT EXISTS finvue_customer_sessions (
   session_id VARCHAR(191) NOT NULL PRIMARY KEY,
   customer_id VARCHAR(191) NOT NULL,
   anchor_name VARCHAR(255),
@@ -96,13 +96,13 @@ CREATE TABLE IF NOT EXISTS customer_sessions (
   raw JSON NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_customer_sessions_profile FOREIGN KEY (customer_id) REFERENCES customer_profiles(customer_id) ON DELETE CASCADE,
-  INDEX idx_customer_sessions_anchor_time (anchor_name, analyzed_at),
-  INDEX idx_customer_sessions_customer (customer_id),
-  INDEX idx_customer_sessions_metric (metric_type)
+  CONSTRAINT fk_finvue_customer_sessions_profile FOREIGN KEY (customer_id) REFERENCES finvue_customer_profiles(customer_id) ON DELETE CASCADE,
+  INDEX idx_finvue_customer_sessions_anchor_time (anchor_name, analyzed_at),
+  INDEX idx_finvue_customer_sessions_customer (customer_id),
+  INDEX idx_finvue_customer_sessions_metric (metric_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS compliance_entries (
+CREATE TABLE IF NOT EXISTS finvue_compliance_entries (
   id VARCHAR(191) NOT NULL PRIMARY KEY,
   level VARCHAR(64),
   title VARCHAR(512),
@@ -112,10 +112,10 @@ CREATE TABLE IF NOT EXISTS compliance_entries (
   raw JSON NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_compliance_entries_level_time (level, created_at)
+  INDEX idx_finvue_compliance_entries_level_time (level, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS case_entries (
+CREATE TABLE IF NOT EXISTS finvue_case_entries (
   id VARCHAR(191) NOT NULL PRIMARY KEY,
   category VARCHAR(128),
   title VARCHAR(512),
@@ -124,10 +124,10 @@ CREATE TABLE IF NOT EXISTS case_entries (
   raw JSON NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_case_entries_category_time (category, created_at)
+  INDEX idx_finvue_case_entries_category_time (category, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS jobs (
+CREATE TABLE IF NOT EXISTS finvue_jobs (
   id VARCHAR(191) NOT NULL PRIMARY KEY,
   type VARCHAR(128) NOT NULL,
   status VARCHAR(32) NOT NULL DEFAULT 'queued',
@@ -140,5 +140,5 @@ CREATE TABLE IF NOT EXISTS jobs (
   started_at DATETIME,
   finished_at DATETIME,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_jobs_status_created (status, created_at)
+  INDEX idx_finvue_jobs_status_created (status, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

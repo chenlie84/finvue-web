@@ -22,7 +22,7 @@ def _python_executable() -> str:
 
 
 def _latest_sync_cursor() -> str:
-    row = store.db.fetch_one("SELECT MAX(analyzed_at) AS latest_at FROM customer_sessions WHERE report_type = 'dbLiveAnalytics'")
+    row = store.db.fetch_one("SELECT MAX(analyzed_at) AS latest_at FROM finvue_customer_sessions WHERE report_type = 'dbLiveAnalytics'")
     return store.iso(row.get("latest_at")) if row and row.get("latest_at") else ""
 
 
