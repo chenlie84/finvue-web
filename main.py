@@ -56,7 +56,7 @@ def _page(request: Request, name: str) -> HTMLResponse:
     path = config.APP_DIR / name
     if not path.exists():
         raise HTTPException(status_code=404, detail="页面不存在")
-    return templates.TemplateResponse(request, name, {"request": request})
+    return templates.TemplateResponse(name, {"request": request})
 
 
 @app.get("/")

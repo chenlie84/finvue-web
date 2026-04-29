@@ -40,11 +40,11 @@ SESSION_TTL_SECONDS = 7 * 24 * 60 * 60
 AUTO_MIGRATE = os.environ.get("AUTO_MIGRATE", "true").lower() != "false"
 
 MYSQL_URL = os.environ.get("MYSQL_URL", "")
-MYSQL_HOST = os.environ.get("MYSQL_HOST", "127.0.0.1")
-MYSQL_PORT = int(os.environ.get("MYSQL_PORT", "3306"))
-MYSQL_DATABASE = os.environ.get("MYSQL_DATABASE", "")
-MYSQL_USER = os.environ.get("MYSQL_USER", "")
-MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "")
+MYSQL_HOST = os.environ.get("MYSQL_HOST", "mysql0200.3337-wm.db.idc")
+MYSQL_PORT = int(os.environ.get("MYSQL_PORT", "3337"))
+MYSQL_DATABASE = os.environ.get("MYSQL_DATABASE", "process_analysis")
+MYSQL_USER = os.environ.get("MYSQL_USER", "process_analysis")
+MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "ns7ubvy96ncHncOTOeHS")
 
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", str(50 * 1024 * 1024)))
 OBJECT_STORAGE_DIR = Path(os.environ.get("OBJECT_STORAGE_DIR", str(BASE_DIR / ".objects")))
