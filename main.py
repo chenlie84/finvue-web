@@ -12,14 +12,15 @@ import uvicorn
 
 import config
 import migrate
-from api import admin, ai, auth, customers, jobs, libraries, reports, settings, sop, system
+from api import admin, ai, auth, customers, files, jobs, libraries, reports, settings, sop, system
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     if config.AUTO_MIGRATE and config.has_mysql_config() and config.ENV.lower() != "test":
         migrate.run_migrations()
-    config.OBJECT_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    if not config.has_ceph_config():
+        config.OBJECT_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
     yield
 
 
@@ -38,6 +39,7 @@ app.include_router(customers.router)
 app.include_router(reports.router)
 app.include_router(admin.router)
 app.include_router(ai.router)
+app.include_router(files.router)
 app.include_router(sop.router)
 
 

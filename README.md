@@ -61,6 +61,32 @@ python scripts/seed_admin.py
 
 脚本会先执行迁移，再创建或更新管理员账号。
 
+本次预置管理员建议：
+
+```bash
+ADMIN_USERNAME=finvue_admin ADMIN_PASSWORD='v@GCXP62XHUabc!vG%' python scripts/seed_admin.py
+```
+
+如果数据库不可达，脚本会失败，不会写入任何本地文件；修正 `.env.production` 里的 MySQL 配置后重新执行即可。若账号已存在且需要重置密码：
+
+```bash
+ADMIN_USERNAME=finvue_admin ADMIN_PASSWORD='新密码' ADMIN_RESET_PASSWORD=true python scripts/seed_admin.py
+```
+
+## CEPH S3 文件存储
+
+上传原始文件、导出 PDF 等产物默认写入 CEPH S3，不再依赖代码目录。相关配置在 `config.py` 和 `.env.production.example` 中：
+
+- 报告/导出文件前缀：`CEPH_KEY_PREFIX=finvue/`
+- 原始上传文件前缀：`SOURCE_CEPH_KEY_PREFIX=finvue_source/`
+- 报告插图前缀：`IMAGE_CEPH_KEY_PREFIX=finvue_images/`
+
+如果本地离线调试不想连接 CEPH，可以在 `.env` 中设置：
+
+```bash
+USE_CEPH_S3=false
+```
+
 ## PDF 导出
 
-PDF 导出不再依赖 Playwright/Chromium。当前使用 Python `reportlab` 将报告 HTML 转成轻量文本 PDF，优先保证部署简单和中文可读。
+PDF 导出不再依赖 Playwright/Chromium。当前使用 Python `reportlab` 将报告 HTML 转成轻量文本 PDF，优先保证部署简单和中文可读。在线环境会同时把 PDF 写入 CEPH，并返回下载文件。

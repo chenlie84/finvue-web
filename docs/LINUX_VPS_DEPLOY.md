@@ -45,6 +45,10 @@ MYSQL_USER=finvue
 MYSQL_PASSWORD=真实密码
 AUTH_SECRET=长随机字符串
 PUBLIC_BASE_URL=https://你的域名
+USE_CEPH_S3=true
+CEPH_KEY_PREFIX=finvue/
+SOURCE_CEPH_KEY_PREFIX=finvue_source/
+IMAGE_CEPH_KEY_PREFIX=finvue_images/
 ```
 
 ## 4. 一键启动
@@ -158,3 +162,22 @@ mysqldump -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD"
 ```
 
 不要把 `.env.production`、备份文件、上传原始文件提交到 Git。
+
+## 9. 管理员账号
+
+初始化管理员：
+
+```bash
+set -a
+source .env.production
+set +a
+source .venv/bin/activate
+python scripts/seed_admin.py
+```
+
+如果使用本次预置账号，`.env.production` 中设置：
+
+```bash
+ADMIN_USERNAME=finvue_admin
+ADMIN_PASSWORD='v@GCXP62XHUabc!vG%'
+```

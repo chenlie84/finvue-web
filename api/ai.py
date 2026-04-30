@@ -6,9 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
 import ai_router
+import config
 import security
 import store
 from services import pdf_export
+from services import object_storage
 
 
 router = APIRouter()
@@ -58,10 +60,18 @@ async def export_report_pdf(request: Request, _: dict = Depends(security.require
         data = pdf_export.render_pdf_bytes(str(body.get("html") or ""))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+    headers = {"Content-Disposition": f'attachment; filename="{file_name}.pdf"'}
+    if config.has_ceph_config():
+        try:
+            uploaded = object_storage.upload_bytes(data, file_name=f"{file_name}.pdf", prefix=config.CEPH_KEY_PREFIX, content_type="application/pdf")
+            headers["X-FinVue-S3-Key"] = uploaded.get("key", "")
+            headers["X-FinVue-S3-Url"] = uploaded.get("url", "")
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"PDF 已生成，但上传 S3 失败：{exc}") from exc
     return StreamingResponse(
         iter([data]),
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{file_name}.pdf"'},
+        headers=headers,
     )
 
 

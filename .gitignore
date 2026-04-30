@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+.env.*
+!.env.example
+!.env.production.example
+.local-store/
+.objects/
+backups/
+*.log
+app/.tmp-*
+app/.dev-server.log
+dist/
+coverage/

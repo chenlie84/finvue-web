@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import config
+from services import object_storage
 
 
 def safe_pdf_filename(value: str | None) -> str:
@@ -129,13 +130,19 @@ def render_pdf_bytes(html: str, options: dict[str, Any] | None = None) -> bytes:
 
 
 def render_pdf_file(html: str, file_name: str | None = None) -> dict[str, Any]:
-    config.OBJECT_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
     base = safe_pdf_filename(file_name)
-    target = config.OBJECT_STORAGE_DIR / f"{base}.pdf"
+    data = render_pdf_bytes(html)
+    file_name = f"{base}.pdf"
+    if config.has_ceph_config():
+        result = object_storage.upload_bytes(data, file_name=file_name, prefix=config.CEPH_KEY_PREFIX, content_type="application/pdf")
+        return {"fileName": file_name, "bytes": len(data), "storage": "ceph", **result}
+
+    # Local fallback is only for development or when Ceph is explicitly disabled.
+    config.OBJECT_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+    target = config.OBJECT_STORAGE_DIR / file_name
     counter = 1
     while target.exists():
         target = config.OBJECT_STORAGE_DIR / f"{base}-{counter}.pdf"
         counter += 1
-    data = render_pdf_bytes(html)
     target.write_bytes(data)
-    return {"fileName": target.name, "path": str(target), "bytes": len(data)}
+    return {"fileName": target.name, "path": str(target), "bytes": len(data), "storage": "local"}

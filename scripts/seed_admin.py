@@ -23,8 +23,9 @@ def main() -> None:
 
     migrate.run_migrations()
     existing = store.get_user_by_username(username)
-    if existing and existing.get("role") == "admin":
-        print(f"[seed-admin] 管理员已存在：{username}")
+    reset_password = os.environ.get("ADMIN_RESET_PASSWORD", "false").lower() == "true"
+    if existing and existing.get("role") == "admin" and not reset_password:
+        print(f"[seed-admin] 管理员已存在：{username}。如需重置密码，设置 ADMIN_RESET_PASSWORD=true 后重跑。")
         return
 
     salt, password_hash = security.hash_password(password)
@@ -36,7 +37,7 @@ def main() -> None:
             "passwordHash": password_hash,
         }
     )
-    action = "更新为管理员" if existing else "创建管理员"
+    action = "重置管理员密码" if existing and existing.get("role") == "admin" else ("更新为管理员" if existing else "创建管理员")
     print(f"[seed-admin] {action}：{username}")
 
 
