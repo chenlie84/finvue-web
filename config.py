@@ -50,6 +50,17 @@ MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", str(50 * 1024 * 1024))
 OBJECT_STORAGE_DIR = Path(os.environ.get("OBJECT_STORAGE_DIR", str(BASE_DIR / ".objects")))
 ANCHOR_DASHBOARD_PYTHON = os.environ.get("ANCHOR_DASHBOARD_PYTHON", "/usr/bin/python3")
 
+
+def _proxy_url(value: str) -> str:
+    raw = str(value or "").strip()
+    if raw and "://" not in raw:
+        return f"http://{raw}"
+    return raw
+
+
+HTTP_PROXY = _proxy_url(os.environ.get("http_proxy") or os.environ.get("HTTP_PROXY") or "nginx-proxy.jishu.idc:80")
+HTTPS_PROXY = _proxy_url(os.environ.get("https_proxy") or os.environ.get("HTTPS_PROXY") or "nginx-proxy.jishu.idc:80")
+
 # CEPH S3 object storage. Generated reports and uploaded source files should not
 # depend on local disk when deployed across multiple machines.
 CEPH_ACCESS_KEY = os.environ.get("CEPH_ACCESS_KEY", "A9GB4FCO9BJZOWY60OOV")

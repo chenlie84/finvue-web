@@ -4023,7 +4023,9 @@ function normalizeAiProviderDraft(item = {}, index = 0) {
     apiKey: String(item.apiKey || ""),
     model: String(item.model || ""),
     enabled: item.enabled !== false,
-    priority: Number.isFinite(Number(item.priority)) ? Number(item.priority) : index + 1
+    priority: Number.isFinite(Number(item.priority)) ? Number(item.priority) : index + 1,
+    apiKeyPlacement: String(item.apiKeyPlacement || "header"),
+    useProxy: item.useProxy === undefined ? true : Boolean(item.useProxy)
   };
 }
 
@@ -4068,7 +4070,17 @@ function renderAdminAiProviders() {
         <input class="inp" data-ai-provider-model="${item.id}" value="${escapeHtml(item.model)}" placeholder="模型名">
         <input class="inp" data-ai-provider-key="${item.id}" type="password" value="${escapeHtml(item.apiKey)}" placeholder="API Key">
       </div>
-      <input class="inp" data-ai-provider-base="${item.id}" value="${escapeHtml(item.baseUrl)}" placeholder="上游地址">
+      <input class="inp" data-ai-provider-base="${item.id}" value="${escapeHtml(item.baseUrl)}" placeholder="上游地址" style="margin-bottom:10px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <select class="sel" data-ai-provider-key-placement="${item.id}">
+          <option value="header" ${item.apiKeyPlacement !== "body" ? "selected" : ""}>Key 放 Header</option>
+          <option value="body" ${item.apiKeyPlacement === "body" ? "selected" : ""}>Key 放 Body(api_key)</option>
+        </select>
+        <label class="muted" style="font-size:12px;display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:var(--r);padding:0 12px;">
+          <input type="checkbox" data-ai-provider-proxy="${item.id}" ${item.useProxy ? "checked" : ""}/>
+          外部接口走代理
+        </label>
+      </div>
     </div>
   `).join("");
   renderAiRouteSummary();
@@ -4083,7 +4095,9 @@ function collectAiProvidersFromUi() {
     apiKey: String(document.querySelector(`[data-ai-provider-key="${CSS.escape(item.id)}"]`)?.value || item.apiKey).trim(),
     model: String(document.querySelector(`[data-ai-provider-model="${CSS.escape(item.id)}"]`)?.value || item.model).trim(),
     enabled: Boolean(document.querySelector(`[data-ai-provider-enabled="${CSS.escape(item.id)}"]`)?.checked),
-    priority: Number(document.querySelector(`[data-ai-provider-priority="${CSS.escape(item.id)}"]`)?.value || item.priority || index + 1)
+    priority: Number(document.querySelector(`[data-ai-provider-priority="${CSS.escape(item.id)}"]`)?.value || item.priority || index + 1),
+    apiKeyPlacement: String(document.querySelector(`[data-ai-provider-key-placement="${CSS.escape(item.id)}"]`)?.value || item.apiKeyPlacement || "header"),
+    useProxy: Boolean(document.querySelector(`[data-ai-provider-proxy="${CSS.escape(item.id)}"]`)?.checked)
   }));
 }
 

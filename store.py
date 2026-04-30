@@ -14,13 +14,26 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "liveType": "advisory",
     "aiProviders": [
         {
+            "id": "internal-qwen",
+            "label": "公司内网 Qwen",
+            "baseUrl": "http://data-viz.yxd-risk.paas.corp/v1/chat/completions",
+            "apiKey": "sk-proj-c82571a641563737409d61138993ea84243e7e444f12f7dd3b0f1650a19fec5b",
+            "model": "qwen3.5-max",
+            "enabled": True,
+            "priority": 1,
+            "apiKeyPlacement": "body",
+            "useProxy": False,
+        },
+        {
             "id": "primary-volcengine",
             "label": "火山主路由",
             "baseUrl": "https://ark.cn-beijing.volces.com/api/v3/responses",
             "apiKey": "",
             "model": "doubao-seed-2-0-pro-250415",
-            "enabled": True,
-            "priority": 1,
+            "enabled": False,
+            "priority": 20,
+            "apiKeyPlacement": "header",
+            "useProxy": True,
         }
     ],
     "anchorRolePrompt": "你是一位资深的抖音直播运营分析专家和合规顾问，重点从直播结构、互动效率、合规边界、用户理解度和转化动作五个方面评估主播表现，并给出可直接复用的优化建议。",
@@ -101,6 +114,22 @@ def safe_object(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def merge_ai_providers(providers: Any) -> list[dict[str, Any]]:
+    defaults = [item for item in safe_array(DEFAULT_SETTINGS.get("aiProviders")) if isinstance(item, dict)]
+    merged: dict[str, dict[str, Any]] = {str(item.get("id") or ""): dict(item) for item in defaults if item.get("id")}
+    ordered_ids = [str(item.get("id")) for item in defaults if item.get("id")]
+    for provider in safe_array(providers):
+        if not isinstance(provider, dict):
+            continue
+        provider_id = str(provider.get("id") or "").strip()
+        if not provider_id:
+            continue
+        if provider_id not in merged:
+            ordered_ids.append(provider_id)
+        merged[provider_id] = {**merged.get(provider_id, {}), **provider}
+    return sorted([merged[item_id] for item_id in ordered_ids if item_id in merged], key=lambda item: int(item.get("priority") or 999))
+
+
 def normalize_user_permissions(role: str = "user", permissions: Any = None) -> dict[str, bool]:
     if role == "admin":
         return {key: True for key in PERMISSION_KEYS}
@@ -149,11 +178,14 @@ def set_kv(key: str, value: Any) -> Any:
 
 def get_settings() -> dict[str, Any]:
     saved = get_kv("settings", {})
-    return {**DEFAULT_SETTINGS, **safe_object(saved)}
+    settings = {**DEFAULT_SETTINGS, **safe_object(saved)}
+    settings["aiProviders"] = merge_ai_providers(settings.get("aiProviders"))
+    return settings
 
 
 def save_settings(payload: dict[str, Any]) -> dict[str, Any]:
     value = {**DEFAULT_SETTINGS, **safe_object(payload), "updatedAt": datetime.now(timezone.utc).isoformat()}
+    value["aiProviders"] = merge_ai_providers(value.get("aiProviders"))
     return set_kv("settings", value)
 
 
@@ -179,7 +211,7 @@ def get_effective_settings(username: str | None = None) -> dict[str, Any]:
     user_settings = get_user_ai_settings(username)
     providers = safe_array(user_settings.get("aiProviders"))
     if providers:
-        return {**settings, "aiProviders": providers, "userAiSettings": user_settings}
+        return {**settings, "aiProviders": merge_ai_providers(providers), "userAiSettings": user_settings}
     return settings
 
 

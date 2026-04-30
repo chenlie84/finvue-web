@@ -49,6 +49,8 @@ USE_CEPH_S3=true
 CEPH_KEY_PREFIX=finvue/
 SOURCE_CEPH_KEY_PREFIX=finvue_source/
 IMAGE_CEPH_KEY_PREFIX=finvue_images/
+http_proxy=http://nginx-proxy.jishu.idc:80
+https_proxy=http://nginx-proxy.jishu.idc:80
 ```
 
 ## 4. 一键启动

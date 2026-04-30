@@ -5,6 +5,7 @@ from typing import Any
 
 import httpx
 
+import config
 import store
 
 
@@ -67,14 +68,25 @@ def _build_request(provider: dict[str, Any], system_prompt: str, user_prompt: st
     return base_url, payload
 
 
+def _should_use_proxy(provider: dict[str, Any], url: str) -> bool:
+    if "useProxy" in provider:
+        return bool(provider.get("useProxy"))
+    return url.startswith("https://") or "paas.corp" not in url
+
+
 def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: str) -> str:
     api_key = _text(provider.get("apiKey") or provider.get("key"))
     if not api_key:
         raise ValueError("AI 路由缺少 API Key")
     url, payload = _build_request(provider, system_prompt, user_prompt)
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
+    headers = {"Content-Type": "application/json"}
+    if _text(provider.get("apiKeyPlacement") or "header") == "body":
+        payload["api_key"] = api_key
+    else:
+        headers["Authorization"] = f"Bearer {api_key}"
     timeout = float(provider.get("timeoutSeconds") or 180)
-    with httpx.Client(timeout=timeout) as client:
+    proxy = (config.HTTPS_PROXY or config.HTTP_PROXY) if _should_use_proxy(provider, url) else None
+    with httpx.Client(timeout=timeout, proxy=proxy or None, trust_env=False) as client:
         response = client.post(url, headers=headers, json=payload)
     if response.status_code >= 400:
         raise RuntimeError(f"{response.status_code}: {response.text[:500]}")

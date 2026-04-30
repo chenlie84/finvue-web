@@ -10,15 +10,19 @@ router = APIRouter()
 
 
 def _mask_settings(settings: dict) -> dict:
+    def mask_provider(provider: dict) -> dict:
+        item = {**provider}
+        if item.get("apiKey"):
+            item["apiKey"] = "********"
+            item["hasApiKey"] = True
+        return item
+
     masked = []
     for provider in settings.get("aiProviders") or []:
         if isinstance(provider, dict):
-            item = {**provider}
-            if item.get("apiKey"):
-                item["apiKey"] = "********"
-                item["hasApiKey"] = True
-            masked.append(item)
-    return {**settings, "aiProviders": masked, "defaults": store.DEFAULT_SETTINGS}
+            masked.append(mask_provider(provider))
+    defaults = {**store.DEFAULT_SETTINGS, "aiProviders": [mask_provider(item) for item in store.DEFAULT_SETTINGS.get("aiProviders") or [] if isinstance(item, dict)]}
+    return {**settings, "aiProviders": masked, "defaults": defaults}
 
 
 @router.get("/api/settings")

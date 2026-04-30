@@ -30,13 +30,19 @@ def _client():
         raise RuntimeError("Ceph S3 未配置或已关闭")
     try:
         from boto3.session import Session
+        from botocore.config import Config
     except Exception as exc:  # pragma: no cover - depends on deployment package
         raise RuntimeError("S3 组件未安装，请先执行：pip install -r requirements.txt") from exc
     session = Session(
         aws_access_key_id=config.CEPH_ACCESS_KEY,
         aws_secret_access_key=config.CEPH_SECRET_KEY,
     )
-    return session.client("s3", endpoint_url=config.CEPH_URL, region_name=config.CEPH_REGION)
+    return session.client(
+        "s3",
+        endpoint_url=config.CEPH_URL,
+        region_name=config.CEPH_REGION,
+        config=Config(proxies={}),
+    )
 
 
 def _md5(value: str) -> str:
@@ -89,7 +95,7 @@ def share_url(key: str) -> Optional[str]:
         "public": True,
     }
     try:
-        response = requests.post(config.PAN_URL_BASE, params=query, json=body, timeout=8)
+        response = requests.post(config.PAN_URL_BASE, params=query, json=body, timeout=8, proxies={"http": None, "https": None})
         response.raise_for_status()
         data = response.json()
     except Exception:

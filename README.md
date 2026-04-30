@@ -90,3 +90,20 @@ USE_CEPH_S3=false
 ## PDF 导出
 
 PDF 导出不再依赖 Playwright/Chromium。当前使用 Python `reportlab` 将报告 HTML 转成轻量文本 PDF，优先保证部署简单和中文可读。在线环境会同时把 PDF 写入 CEPH，并返回下载文件。
+
+## AI 路由与代理
+
+系统默认内置公司内网 Qwen 路由：
+
+- 路由名：`公司内网 Qwen`
+- 模型：`qwen3.5-max`
+- 地址：`http://data-viz.yxd-risk.paas.corp/v1/chat/completions`
+- Key 传递方式：JSON body 中的 `api_key`
+- 是否走代理：否
+
+外部 AI 接口默认使用代理：
+
+```bash
+http_proxy=http://nginx-proxy.jishu.idc:80
+https_proxy=http://nginx-proxy.jishu.idc:80
+```
