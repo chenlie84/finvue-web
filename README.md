@@ -14,7 +14,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-默认端口是 `3031`。`python main.py` 会在启动时自动执行 `sql/migrations/*.sql` 中未执行过的迁移，然后启动服务。
+默认端口是 `8080`。`python main.py` 会在启动时自动执行 `sql/migrations/*.sql` 中未执行过的迁移，然后启动服务。
 
 ## 生产启动
 
@@ -28,7 +28,7 @@ vi .env.production
 python main.py
 ```
 
-生产环境建议用 `systemd` 托管 `python main.py` 和 `python worker.py`，再用 Nginx 反向代理到 `127.0.0.1:3031`。
+生产环境建议用 `systemd` 托管 `python main.py` 和 `python worker.py`，再用 Nginx 反向代理到 `127.0.0.1:8080`。
 
 ## 目录说明
 

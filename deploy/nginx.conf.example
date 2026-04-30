@@ -5,7 +5,7 @@ server {
   client_max_body_size 100m;
 
   location / {
-    proxy_pass http://127.0.0.1:3031;
+    proxy_pass http://127.0.0.1:8080;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -16,7 +16,7 @@ server {
   }
 
   location ~* \.(js|css|png|jpg|jpeg|svg|ico)$ {
-    proxy_pass http://127.0.0.1:3031;
+    proxy_pass http://127.0.0.1:8080;
     proxy_set_header Host $host;
     expires 7d;
     add_header Cache-Control "public";

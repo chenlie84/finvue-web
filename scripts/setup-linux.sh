@@ -135,7 +135,7 @@ fi
 if [[ ! -f "$ENV_FILE" ]]; then
   step "生成生产环境配置"
   PUBLIC_BASE_URL_VALUE="$(ask "线上域名" "https://finvue.example.com")"
-  PORT_VALUE="$(ask "FastAPI 服务端口" "3031")"
+  PORT_VALUE="$(ask "FastAPI 服务端口" "8080")"
   MYSQL_HOST_VALUE="$(ask "MySQL Host" "127.0.0.1")"
   MYSQL_PORT_VALUE="$(ask "MySQL Port" "3306")"
   MYSQL_DATABASE_VALUE="$(ask "MySQL Database" "finvue")"

@@ -30,7 +30,7 @@ _load_env_file(BASE_DIR / ".env")
 
 ENV = os.environ.get("ENV") or os.environ.get("NODE_ENV") or os.environ.get("environment", "DEV")
 HOST = os.environ.get("HOST", "0.0.0.0")
-PORT = int(os.environ.get("PORT", "3031"))
+PORT = int(os.environ.get("PORT", "8080"))
 RELOAD = os.environ.get("RELOAD", "false").lower() == "true"
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://localhost:8080")
 ALLOW_OPEN_REGISTRATION = os.environ.get("ALLOW_OPEN_REGISTRATION", "true").lower() == "true"
