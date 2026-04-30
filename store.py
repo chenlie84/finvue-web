@@ -304,11 +304,62 @@ def update_user_permissions(username: str, permissions: Any) -> dict[str, Any] |
     return get_user_by_username(username)
 
 
+def _report_snapshot_from_raw(raw: dict[str, Any]) -> dict[str, Any]:
+    report_id = text(raw.get("id")) or _id("report")
+    analyzed_at = text(raw.get("analyzedAt") or raw.get("createdAt") or raw.get("updatedAt")) or datetime.now(timezone.utc).isoformat()
+    return {
+        "id": report_id,
+        "reportId": report_id,
+        "reportType": text(raw.get("reportType") or raw.get("type")) or "anchorEvaluation",
+        "title": text(raw.get("title") or raw.get("reportTitle")) or "主播分析报告",
+        "liveTheme": text(raw.get("liveTheme")),
+        "summary": text(raw.get("summary") or raw.get("conclusion")),
+        "markdown": text(raw.get("markdown") or raw.get("content")),
+        "html": text(raw.get("html")),
+        "aiMeta": raw.get("aiMeta") if isinstance(raw.get("aiMeta"), dict) else None,
+        "analyzedAt": analyzed_at,
+        "createdAt": analyzed_at,
+    }
+
+
+def _merge_profile_report_snapshots(profile: dict[str, Any]) -> dict[str, Any]:
+    anchor_name = text(profile.get("anchorName") or profile.get("name"))
+    if not anchor_name:
+        return profile
+    rows = db.fetch_all(
+        """
+        SELECT raw
+        FROM finvue_analysis_reports
+        WHERE anchor_name = %s
+        ORDER BY created_at DESC
+        LIMIT 50
+        """,
+        (anchor_name,),
+    )
+    snapshots = safe_array(profile.get("snapshots"))
+    for row in rows:
+        raw = parse_json(row.get("raw"), {})
+        if not isinstance(raw, dict):
+            continue
+        snapshot = _report_snapshot_from_raw(raw)
+        if snapshot.get("markdown"):
+            snapshots.append(snapshot)
+    if not snapshots:
+        return profile
+    by_key: dict[str, Any] = {}
+    for item in snapshots:
+        if not isinstance(item, dict):
+            continue
+        key = text(item.get("id") or item.get("reportId") or f"{item.get('analyzedAt')}-{item.get('reportType')}")
+        if key:
+            by_key[key] = item
+    return {
+        **profile,
+        "snapshots": sorted(by_key.values(), key=lambda item: str(item.get("analyzedAt") or item.get("createdAt") or ""), reverse=True),
+    }
+
+
 def get_anchor_profiles(page: int | None = None, page_size: int | None = None, q: str = "") -> dict[str, Any]:
-    if not page:
-        saved = get_kv("anchor-profiles", None)
-        if saved is not None:
-            return saved
     page, page_size = paginate(page or 1, page_size or 100)
     where = ""
     args: tuple[Any, ...] = ()
@@ -320,11 +371,23 @@ def get_anchor_profiles(page: int | None = None, page_size: int | None = None, q
         f"SELECT raw FROM finvue_anchor_profiles {where} ORDER BY updated_at DESC, created_at DESC LIMIT %s OFFSET %s",
         (*args, page_size, (page - 1) * page_size),
     )
-    return {"profiles": [parse_json(row["raw"], {}) for row in rows], "total": total, "page": page, "pageSize": page_size}
+    profiles = []
+    for row in rows:
+        raw = parse_json(row["raw"], {})
+        if isinstance(raw, dict):
+            profiles.append(_merge_profile_report_snapshots(raw))
+    return {"profiles": profiles, "total": total, "page": page, "pageSize": page_size}
 
 
 def save_anchor_profiles(payload: dict[str, Any]) -> dict[str, Any]:
+    if isinstance(payload.get("profile"), dict):
+        upsert_anchor_profiles([payload["profile"]])
+        return get_anchor_profiles()
+
     profiles = safe_array(payload.get("profiles"))
+    if not profiles:
+        return get_anchor_profiles()
+
     with db.cursor() as cur:
         cur.execute("DELETE FROM finvue_anchor_profiles")
         for profile in profiles:
@@ -966,6 +1029,10 @@ def persist_analysis_bundle(payload: dict[str, Any], created_by: str = "") -> di
 
     anchor_profile = payload.get("anchorProfile")
     if isinstance(anchor_profile, dict) and text(anchor_profile.get("anchorName") or anchor_profile.get("name")):
+        if isinstance(result.get("report"), dict):
+            snapshots = safe_array(anchor_profile.get("snapshots"))
+            snapshots.append(_report_snapshot_from_raw(result["report"]))
+            anchor_profile = {**anchor_profile, "snapshots": snapshots}
         result["anchorProfiles"] = upsert_anchor_profiles([anchor_profile])
 
     customer_entries = safe_array(payload.get("customerEntries"))
