@@ -48,10 +48,14 @@ async def register(request: Request, response: Response) -> dict:
     if store.get_user_by_username(username):
         raise HTTPException(status_code=409, detail="账号已存在")
     salt, password_hash = security.hash_password(password)
-    role = "admin" if not users else "user"
-    payload = {"username": username, "role": role, "passwordSalt": salt, "passwordHash": password_hash}
-    if role == "user":
-        payload["permissions"] = DEFAULT_REGISTER_PERMISSIONS
+    role = "user"
+    payload = {
+        "username": username,
+        "role": role,
+        "permissions": DEFAULT_REGISTER_PERMISSIONS,
+        "passwordSalt": salt,
+        "passwordHash": password_hash,
+    }
     user = store.save_user(payload)
     sanitized = security.sanitize_user(user)
     security.set_session_cookie(request, response, sanitized)
