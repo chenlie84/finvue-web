@@ -150,6 +150,16 @@
   .textarea:focus{border-color:var(--gold);}
   .textarea::placeholder{color:var(--text2);}
   .lbl{font-size:12px;color:var(--text1);margin-bottom:6px;display:block;}
+  .prompt-detail{border:1px solid var(--border);border-radius:var(--r);background:var(--bg1);padding:10px 12px;}
+  .prompt-detail summary{cursor:pointer;color:var(--gold);font-size:12px;font-weight:500;list-style:none;}
+  .prompt-detail summary::-webkit-details-marker{display:none;}
+  .prompt-detail summary::before{content:"▸";display:inline-block;margin-right:6px;color:var(--text1);transition:transform .15s;}
+  .prompt-detail[open] summary{margin-bottom:10px;}
+  .prompt-detail[open] summary::before{transform:rotate(90deg);}
+  .library-extract-panel{background:linear-gradient(135deg,rgba(200,146,42,.10),rgba(24,27,36,.84));border:1px solid rgba(200,146,42,.32);border-radius:var(--r2);padding:16px;margin-bottom:20px;}
+  .library-extract-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;}
+  .library-extract-status{margin-top:10px;font-size:12px;color:var(--text1);line-height:1.7;}
+  @media(max-width:900px){.library-extract-grid{grid-template-columns:1fr;}}
 
   /* ── TAG ── */
   .tag{display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--text1);}
@@ -469,8 +479,17 @@
                   </div>
                   <div class="muted" style="font-size:12px;margin-bottom:10px;">角色项支持新建、删除和保存。当前文本就是该角色的实际内容。</div>
                   <div class="lbl">当前角色设定</div>
-                  <div id="rolePresetList" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;"></div>
-                  <textarea class="textarea" id="rolePrompt" rows="4" placeholder="你是一位资深投资顾问分析专家，拥有15年从业经验…">你是一位资深投资顾问评估专家，精通A股、基金、固收等资产，具备CFA等专业资质。请对投顾直播内容进行客观、专业的全维度评估。</textarea>
+                  <select class="sel" id="rolePresetSelect" style="width:100%;margin-bottom:8px;"></select>
+                  <div style="display:flex;gap:8px;margin-bottom:8px;">
+                    <label class="btn btn-outline" style="font-size:12px;padding:6px 12px;cursor:pointer;">
+                      上传 md/txt 导入角色提示词
+                      <input id="rolePromptFileInput" type="file" accept=".md,.markdown,.txt" style="display:none;" onchange="handlePromptFileUpload(this,'role')"/>
+                    </label>
+                  </div>
+                  <details class="prompt-detail">
+                    <summary>展开编辑角色提示词</summary>
+                    <textarea class="textarea" id="rolePrompt" rows="4" placeholder="你是一位资深投资顾问分析专家，拥有15年从业经验…">你是一位资深投资顾问评估专家，精通A股、基金、固收等资产，具备CFA等专业资质。请对投顾直播内容进行客观、专业的全维度评估。</textarea>
+                  </details>
                 </div>
                 <div class="panel" style="margin:0;padding:16px;">
                   <div class="panel-hd">
@@ -482,13 +501,31 @@
                     </div>
                   </div>
                   <div class="muted" style="font-size:12px;margin-bottom:10px;">任务项支持新建、删除和保存。当前文本就是该任务的实际内容。</div>
-                  <div id="taskPresetList" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;"></div>
-                  <textarea class="textarea" id="taskPrompt" rows="4" placeholder="分析任务描述…">请输出一份“主播评价体系分析报告”，并严格包含六维评分、主播画像标签、合规与转化归因三层结果。</textarea>
+                  <select class="sel" id="taskPresetSelect" style="width:100%;margin-bottom:8px;"></select>
+                  <div style="display:flex;gap:8px;margin-bottom:8px;">
+                    <label class="btn btn-outline" style="font-size:12px;padding:6px 12px;cursor:pointer;">
+                      上传 md/txt 提取提示词
+                      <input id="taskPromptFileInput" type="file" accept=".md,.markdown,.txt" style="display:none;" onchange="handlePromptFileUpload(this,'task')"/>
+                    </label>
+                  </div>
+                  <details class="prompt-detail">
+                    <summary>展开编辑任务提示词</summary>
+                    <textarea class="textarea" id="taskPrompt" rows="4" placeholder="分析任务描述…">请输出一份“主播评价体系分析报告”，并严格包含六维评分、主播画像标签、合规与转化归因三层结果。</textarea>
+                  </details>
                 </div>
                 <div class="panel" style="margin:0;padding:16px;">
                   <div class="panel-hd"><div class="panel-title">系统提示词</div></div>
                   <div class="muted" style="font-size:12px;margin-bottom:10px;">系统级约束继续保留为全局设置，不跟角色和任务拆分。</div>
-                  <textarea class="textarea" id="liveSystemPromptMirror" rows="6" placeholder="系统提示词"></textarea>
+                  <div style="display:flex;gap:8px;margin-bottom:8px;">
+                    <label class="btn btn-outline" style="font-size:12px;padding:6px 12px;cursor:pointer;">
+                      上传 md/txt 导入系统提示词
+                      <input id="systemPromptFileInput" type="file" accept=".md,.markdown,.txt" style="display:none;" onchange="handlePromptFileUpload(this,'system')"/>
+                    </label>
+                  </div>
+                  <details class="prompt-detail">
+                    <summary>展开编辑系统提示词</summary>
+                    <textarea class="textarea" id="liveSystemPromptMirror" rows="6" placeholder="系统提示词"></textarea>
+                  </details>
                   <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;">
                     <button class="btn btn-outline" id="optimizePromptLibraryBtn" style="font-size:12px;padding:6px 12px;">AI 优化提示词</button>
                   </div>
@@ -809,6 +846,34 @@
           </select>
           <button class="btn btn-outline" style="font-size:12px;padding:8px 14px;" onclick="loadComplianceLibrary()">刷新</button>
         </div>
+        <div class="library-extract-panel">
+          <div class="panel-hd" style="margin-bottom:10px;">
+            <div>
+              <div class="panel-title">AI 提取合规条目</div>
+              <div class="muted" style="font-size:12px;margin-top:4px;">上传 md / txt 合规资料，专门提取红区、灰区、绿区话术，避免从直播报告里误抽目录和废话。</div>
+            </div>
+            <span class="panel-act" onclick="toggleLibraryExtractPrompt('compliance')">展开提示词</span>
+          </div>
+          <div class="library-extract-grid">
+            <div>
+              <div class="lbl">提取方向</div>
+              <select class="sel" id="complianceExtractPromptSelect" style="width:100%;"></select>
+            </div>
+            <div>
+              <div class="lbl">资料文件</div>
+              <label class="btn btn-outline" style="width:100%;justify-content:center;cursor:pointer;">
+                上传合规 md/txt
+                <input id="complianceExtractFileInput" type="file" accept=".md,.markdown,.txt" style="display:none;" onchange="handleLibraryExtractFile(this,'compliance')"/>
+              </label>
+            </div>
+            <button class="btn btn-gold" id="complianceExtractRunBtn" onclick="runLibraryExtract('compliance')">AI 提取并入库</button>
+          </div>
+          <details class="prompt-detail" id="complianceExtractPromptDetail" style="margin-top:10px;">
+            <summary>编辑本次合规提取提示词</summary>
+            <textarea class="textarea" id="complianceExtractPrompt" rows="5"></textarea>
+          </details>
+          <div class="library-extract-status" id="complianceExtractStatus">尚未上传资料。</div>
+        </div>
         <div class="g4 mb">
           <div class="kpi" style="--accent:var(--gold)"><div class="kpi-lbl">合规条目数</div><div class="kpi-val gold" id="complianceLibraryCount">0</div><div class="kpi-delta muted">本地规则沉淀</div></div>
           <div class="kpi" style="--accent:var(--red)"><div class="kpi-lbl">红区话术</div><div class="kpi-val red" id="complianceRedCount">0</div><div class="kpi-delta muted">明确违规</div></div>
@@ -892,6 +957,34 @@
         <div style="display:flex;gap:10px;margin-bottom:20px;">
           <input class="inp" id="caseLibrarySearch" placeholder="搜索标题、案例原话、主播名称、标签…" style="flex:1;"/>
           <button class="btn btn-outline" style="font-size:12px;padding:8px 14px;" onclick="loadCaseLibrary()">刷新</button>
+        </div>
+        <div class="library-extract-panel">
+          <div class="panel-hd" style="margin-bottom:10px;">
+            <div>
+              <div class="panel-title">AI 提取优秀案例</div>
+              <div class="muted" style="font-size:12px;margin-top:4px;">上传 md / txt 案例资料，专门提取优秀话术、优秀逻辑、互动承接和收口模板。</div>
+            </div>
+            <span class="panel-act" onclick="toggleLibraryExtractPrompt('case')">展开提示词</span>
+          </div>
+          <div class="library-extract-grid">
+            <div>
+              <div class="lbl">提取方向</div>
+              <select class="sel" id="caseExtractPromptSelect" style="width:100%;"></select>
+            </div>
+            <div>
+              <div class="lbl">资料文件</div>
+              <label class="btn btn-outline" style="width:100%;justify-content:center;cursor:pointer;">
+                上传案例 md/txt
+                <input id="caseExtractFileInput" type="file" accept=".md,.markdown,.txt" style="display:none;" onchange="handleLibraryExtractFile(this,'case')"/>
+              </label>
+            </div>
+            <button class="btn btn-gold" id="caseExtractRunBtn" onclick="runLibraryExtract('case')">AI 提取并入库</button>
+          </div>
+          <details class="prompt-detail" id="caseExtractPromptDetail" style="margin-top:10px;">
+            <summary>编辑本次案例提取提示词</summary>
+            <textarea class="textarea" id="caseExtractPrompt" rows="5"></textarea>
+          </details>
+          <div class="library-extract-status" id="caseExtractStatus">尚未上传资料。</div>
         </div>
         <div class="g4 mb">
           <div class="kpi" style="--accent:var(--gold)"><div class="kpi-lbl">案例条目数</div><div class="kpi-val gold" id="caseLibraryCount">0</div><div class="kpi-delta muted">本地训练沉淀</div></div>
@@ -1719,6 +1812,63 @@ const TASK_LABELS = {
   newbie: "新人分析"
 };
 
+const LIBRARY_EXTRACT_PROMPTS = {
+  compliance: {
+    standard: {
+      label: "合规红灰绿话术",
+      prompt: `请从资料中提取可进入合规库的条目，严格区分红区、灰区、绿区。
+
+提取标准：
+- 红区：明确违规或高危，如承诺收益、荐股、明确买卖点、诱导跟单、非法私域导流。
+- 灰区：表达边界不清、容易被误解为交易建议、风险提示不足、情绪煽动过强。
+- 绿区：合规且值得复用的风险提示、边界表达、投资者教育话术。
+
+输出要求：
+- 宁缺毋滥，不要提取目录、标题、说明文字。
+- 每条必须包含话术原文、完整上下文、判断原因、规则依据、建议替代表达。
+- 只返回 JSON。`
+    },
+    rewrite: {
+      label: "违规话术改写",
+      prompt: `请从资料中提取需要改写的高风险或灰区话术，并给出可直接上播的合规替代表达。
+
+重点关注：
+- 具体标的、买卖点、仓位、收益、确定性走势相关表述。
+- 容易刺激跟单、制造焦虑、诱导私域的表达。
+- 缺少风险提示或适当性边界的表达。
+
+只返回 JSON，不要输出解释。`
+    }
+  },
+  case: {
+    standard: {
+      label: "优秀话术与逻辑",
+      prompt: `请从资料中提取可进入案例库的优秀案例。
+
+提取标准：
+- 优秀话术：表达克制、合规、容易被主播复用。
+- 优秀逻辑：结构清晰，能把复杂市场/产品/风险讲明白。
+- 优秀互动：能承接弹幕、安抚情绪、把问题拉回主线。
+- 优秀收口：能自然总结、引导下一步动作，但不过度销售。
+
+输出要求：
+- 宁缺毋滥，不要提取普通描述。
+- 每条必须包含案例原话、完整上下文、为什么值得借鉴、可复用模板、标签。
+- 只返回 JSON。`
+    },
+    opening: {
+      label: "开场留人案例",
+      prompt: `请从资料中专门提取优秀开场、留人钩子、风险声明前置、主题铺垫案例。
+每条说明为什么有效，并整理成可复用模板。只返回 JSON。`
+    },
+    interaction: {
+      label: "互动承接案例",
+      prompt: `请从资料中专门提取优秀互动承接案例，包括接弹幕、回应焦虑、引导评论、把用户问题拉回主线。
+每条说明为什么有效，并整理成可复用模板。只返回 JSON。`
+    }
+  }
+};
+
 const ANCHOR_EVALUATION_DIMENSIONS = [
   { key: "professional", label: "内容专业度", focus: "观点是否成体系、是否有数据和逻辑支撑、是否能把宏观/行业/产品讲清楚" },
   { key: "compliance", label: "合规安全", focus: "是否出现收益承诺、荐股、买卖点、仓位暗示、缺失风险提示、高危黑话" },
@@ -2114,6 +2264,10 @@ const state = {
   currentBatchResultId: "",
   fileData: {},
   fileMeta: {},
+  libraryExtractFiles: {
+    compliance: { name: "", text: "" },
+    case: { name: "", text: "" }
+  },
   fileLoading: { ts: false, rs: false, metrics: false, metricsSupplement: false },
   globalSettings: {},
   lastMarkdown: "",
@@ -3100,6 +3254,11 @@ const els = {
   optimizePromptLibraryBtn: document.getElementById("optimizePromptLibraryBtn"),
   rolePresetList: document.getElementById("rolePresetList"),
   taskPresetList: document.getElementById("taskPresetList"),
+  rolePresetSelect: document.getElementById("rolePresetSelect"),
+  taskPresetSelect: document.getElementById("taskPresetSelect"),
+  rolePromptFileInput: document.getElementById("rolePromptFileInput"),
+  taskPromptFileInput: document.getElementById("taskPromptFileInput"),
+  systemPromptFileInput: document.getElementById("systemPromptFileInput"),
   createRolePresetBtn: document.getElementById("createRolePresetBtn"),
   deleteRolePresetBtn: document.getElementById("deleteRolePresetBtn"),
   saveRolePresetBtn: document.getElementById("saveRolePresetBtn"),
@@ -3113,7 +3272,17 @@ const els = {
   transcriptNotesLabel: document.getElementById("transcriptNotesLabel"),
   resumePanel: document.getElementById("resumePanel"),
   resumePanelTitle: document.getElementById("resumePanelTitle"),
-  resumeUploadHint: document.getElementById("resumeUploadHint")
+  resumeUploadHint: document.getElementById("resumeUploadHint"),
+  complianceExtractPromptSelect: document.getElementById("complianceExtractPromptSelect"),
+  complianceExtractPrompt: document.getElementById("complianceExtractPrompt"),
+  complianceExtractPromptDetail: document.getElementById("complianceExtractPromptDetail"),
+  complianceExtractStatus: document.getElementById("complianceExtractStatus"),
+  complianceExtractRunBtn: document.getElementById("complianceExtractRunBtn"),
+  caseExtractPromptSelect: document.getElementById("caseExtractPromptSelect"),
+  caseExtractPrompt: document.getElementById("caseExtractPrompt"),
+  caseExtractPromptDetail: document.getElementById("caseExtractPromptDetail"),
+  caseExtractStatus: document.getElementById("caseExtractStatus"),
+  caseExtractRunBtn: document.getElementById("caseExtractRunBtn")
 };
 els.permissionModal = document.getElementById("permissionModal");
 els.permissionModalUser = document.getElementById("permissionModalUser");
@@ -3780,25 +3949,37 @@ function parseViewingDurationRows(text) {
 }
 
 function renderRolePresetButtons() {
-  if (!els.rolePresetList) return;
   const definitions = Object.values(getRoleDefinitions());
-  els.rolePresetList.innerHTML = definitions.map((item) => `
-    <button
-      class="bt-chip bt-chip-sm role-preset-btn${item.key === state.currentRoleKey ? " active" : ""}"
-      onclick="selectRolePresetByKey('${item.key}')"
-    >${escapeHtml(item.label)}</button>
-  `).join("");
+  if (els.rolePresetSelect) {
+    els.rolePresetSelect.innerHTML = definitions.map((item) => `
+      <option value="${escapeHtml(item.key)}" ${item.key === state.currentRoleKey ? "selected" : ""}>${escapeHtml(item.label)}${item.builtin ? "" : " · 自定义"}</option>
+    `).join("");
+  }
+  if (els.rolePresetList) {
+    els.rolePresetList.innerHTML = definitions.map((item) => `
+      <button
+        class="bt-chip bt-chip-sm role-preset-btn${item.key === state.currentRoleKey ? " active" : ""}"
+        onclick="selectRolePresetByKey('${item.key}')"
+      >${escapeHtml(item.label)}</button>
+    `).join("");
+  }
 }
 
 function renderTaskPresetButtons() {
-  if (!els.taskPresetList) return;
   const definitions = Object.values(getTaskDefinitions());
-  els.taskPresetList.innerHTML = definitions.map((item) => `
-    <button
-      class="bt-chip bt-chip-sm task-preset-btn${item.key === state.currentTaskKey ? " active" : ""}"
-      onclick="setTaskByKey('${item.key}')"
-    >${escapeHtml(item.label)}</button>
-  `).join("");
+  if (els.taskPresetSelect) {
+    els.taskPresetSelect.innerHTML = definitions.map((item) => `
+      <option value="${escapeHtml(item.key)}" ${item.key === state.currentTaskKey ? "selected" : ""}>${escapeHtml(item.label)}${item.builtin ? "" : " · 自定义"}</option>
+    `).join("");
+  }
+  if (els.taskPresetList) {
+    els.taskPresetList.innerHTML = definitions.map((item) => `
+      <button
+        class="bt-chip bt-chip-sm task-preset-btn${item.key === state.currentTaskKey ? " active" : ""}"
+        onclick="setTaskByKey('${item.key}')"
+      >${escapeHtml(item.label)}</button>
+    `).join("");
+  }
 }
 
 function setTask(key, button) {
@@ -3932,6 +4113,142 @@ function extractJsonObject(text) {
     } catch {}
   }
   return null;
+}
+
+function renderLibraryExtractPromptOptions(kind) {
+  const select = kind === "compliance" ? els.complianceExtractPromptSelect : els.caseExtractPromptSelect;
+  const textarea = kind === "compliance" ? els.complianceExtractPrompt : els.caseExtractPrompt;
+  if (!select || !textarea) return;
+  const presets = LIBRARY_EXTRACT_PROMPTS[kind] || {};
+  select.innerHTML = Object.entries(presets).map(([key, item]) => `
+    <option value="${escapeHtml(key)}">${escapeHtml(item.label)}</option>
+  `).join("");
+  const firstKey = Object.keys(presets)[0];
+  textarea.value = firstKey ? presets[firstKey].prompt : "";
+}
+
+function setLibraryExtractPrompt(kind, key) {
+  const textarea = kind === "compliance" ? els.complianceExtractPrompt : els.caseExtractPrompt;
+  const preset = LIBRARY_EXTRACT_PROMPTS[kind]?.[key];
+  if (textarea && preset) textarea.value = preset.prompt;
+}
+
+function toggleLibraryExtractPrompt(kind) {
+  const detail = kind === "compliance" ? els.complianceExtractPromptDetail : els.caseExtractPromptDetail;
+  if (!detail) return;
+  detail.open = !detail.open;
+}
+
+async function readTextUpload(file) {
+  if (!file) throw new Error("请选择文件");
+  const name = String(file.name || "");
+  if (!/\.(md|markdown|txt)$/i.test(name)) {
+    throw new Error("当前只支持 md / txt 文件");
+  }
+  const text = await file.text();
+  if (!String(text || "").trim()) {
+    throw new Error("文件内容为空");
+  }
+  return { name, text };
+}
+
+async function handlePromptFileUpload(input, target = "task") {
+  try {
+    const item = await readTextUpload(input.files?.[0]);
+    const text = item.text.trim();
+    if (target === "role" && els.rolePrompt) {
+      els.rolePrompt.value = text;
+      const detail = els.rolePrompt.closest("details");
+      if (detail) detail.open = true;
+      refreshPromptSourcePanels();
+      updateAdminDashboardSummary();
+      showToast(`已从 ${item.name} 读取角色提示词`);
+    } else if (target === "system" && els.systemPrompt && els.liveSystemPromptMirror) {
+      els.systemPrompt.value = text;
+      els.liveSystemPromptMirror.value = text;
+      const detail = els.liveSystemPromptMirror.closest("details");
+      if (detail) detail.open = true;
+      refreshPromptSourcePanels();
+      updateAdminDashboardSummary();
+      showToast(`已从 ${item.name} 读取系统提示词`);
+    } else if (target === "task" && els.taskPrompt) {
+      els.taskPrompt.value = text;
+      const detail = els.taskPrompt.closest("details");
+      if (detail) detail.open = true;
+      updateAdminDashboardSummary();
+      showToast(`已从 ${item.name} 读取任务提示词`);
+    }
+  } catch (error) {
+    showToast(error.message || "提示词文件读取失败");
+  } finally {
+    if (input) input.value = "";
+  }
+}
+
+async function handleLibraryExtractFile(input, kind) {
+  const status = kind === "compliance" ? els.complianceExtractStatus : els.caseExtractStatus;
+  try {
+    const item = await readTextUpload(input.files?.[0]);
+    state.libraryExtractFiles[kind] = item;
+    if (status) status.textContent = `已读取：${item.name}（${item.text.length} 字）`;
+    showToast("资料文件已读取");
+  } catch (error) {
+    if (status) status.textContent = error.message || "资料文件读取失败";
+    showToast(error.message || "资料文件读取失败");
+  } finally {
+    if (input) input.value = "";
+  }
+}
+
+function setLibraryExtractLoading(kind, loading) {
+  const button = kind === "compliance" ? els.complianceExtractRunBtn : els.caseExtractRunBtn;
+  const status = kind === "compliance" ? els.complianceExtractStatus : els.caseExtractStatus;
+  if (button) {
+    button.disabled = loading;
+    button.textContent = loading ? "AI 提取中..." : "AI 提取并入库";
+  }
+  if (status && loading) status.textContent = "AI 正在提取，请稍等。";
+}
+
+async function runLibraryExtract(kind) {
+  const file = state.libraryExtractFiles[kind] || {};
+  const prompt = kind === "compliance" ? els.complianceExtractPrompt?.value : els.caseExtractPrompt?.value;
+  const status = kind === "compliance" ? els.complianceExtractStatus : els.caseExtractStatus;
+  if (!file.text) {
+    showToast("请先上传 md / txt 资料文件");
+    return;
+  }
+  try {
+    setLibraryExtractLoading(kind, true);
+    const response = await apiFetch("/api/library-extract", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind,
+        fileName: file.name,
+        content: file.text,
+        prompt: String(prompt || "").trim()
+      })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.detail || payload.error || "AI 提取失败");
+    if (kind === "compliance") {
+      state.complianceEntries = [...(payload.entries || []), ...(state.complianceEntries || [])];
+      renderComplianceLibraryList();
+      if (status) status.textContent = `提取完成：已入库 ${payload.count || 0} 条合规条目。`;
+    } else {
+      state.caseEntries = [...(payload.entries || []), ...(state.caseEntries || [])];
+      renderCaseLibraryList();
+      if (status) status.textContent = `提取完成：已入库 ${payload.count || 0} 条案例。`;
+    }
+    updateAdminDashboardSummary();
+    showToast(`AI 提取完成，已入库 ${payload.count || 0} 条`);
+  } catch (error) {
+    if (status) status.textContent = error.message || "AI 提取失败";
+    showToast(error.message || "AI 提取失败");
+  } finally {
+    setLibraryExtractLoading(kind, false);
+  }
 }
 
 function setPromptOptimizeLoading(loading) {
@@ -9960,12 +10277,24 @@ els.metricsAnchorEnd?.addEventListener("change", () => {
   state.metricsAnchorRange.end = String(els.metricsAnchorEnd.value || "").trim();
 });
 els.optimizePromptLibraryBtn.addEventListener("click", optimizePromptLibraryWithAi);
+els.rolePresetSelect?.addEventListener("change", (event) => {
+  selectRolePresetByKey(event.target.value);
+});
+els.taskPresetSelect?.addEventListener("change", (event) => {
+  setTaskByKey(event.target.value);
+});
 els.createRolePresetBtn?.addEventListener("click", createRolePreset);
 els.deleteRolePresetBtn?.addEventListener("click", deleteCurrentRolePreset);
 els.saveRolePresetBtn?.addEventListener("click", saveCurrentRolePreset);
 els.createTaskPresetBtn?.addEventListener("click", createTaskPreset);
 els.deleteTaskPresetBtn?.addEventListener("click", deleteCurrentTaskPreset);
 els.saveTaskPresetBtn?.addEventListener("click", saveCurrentTaskPreset);
+els.complianceExtractPromptSelect?.addEventListener("change", (event) => {
+  setLibraryExtractPrompt("compliance", event.target.value);
+});
+els.caseExtractPromptSelect?.addEventListener("change", (event) => {
+  setLibraryExtractPrompt("case", event.target.value);
+});
 
 els.hotInp.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
@@ -10031,6 +10360,8 @@ window.addEventListener("load", async () => {
   toggleAdvancedPromptSettings(false);
   refreshPromptSourcePanels();
   syncLiveInputCopy();
+  renderLibraryExtractPromptOptions("compliance");
+  renderLibraryExtractPromptOptions("case");
   updateUploadedFileUi("ts");
   updateUploadedFileUi("metrics");
   updateUploadedFileUi("metricsSupplement");
