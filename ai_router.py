@@ -4,7 +4,7 @@ from __future__ import annotations
 from urllib.parse import urlparse
 from typing import Any
 
-import httpx
+import requests
 
 import config
 import store
@@ -87,8 +87,8 @@ def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: st
         headers["Authorization"] = f"Bearer {api_key}"
     timeout = float(provider.get("timeoutSeconds") or 180)
     proxy = (config.HTTPS_PROXY or config.HTTP_PROXY) if _should_use_proxy(provider, url) else None
-    with httpx.Client(timeout=timeout, proxy=proxy or None, trust_env=False) as client:
-        response = client.post(url, headers=headers, json=payload)
+    proxies = {"http": proxy, "https": proxy} if proxy else None
+    response = requests.post(url, headers=headers, json=payload, timeout=timeout, proxies=proxies)
     if response.status_code >= 400:
         content_type = response.headers.get("content-type", "")
         if "text/html" in content_type:
