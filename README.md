@@ -93,12 +93,13 @@ PDF 导出不再依赖 Playwright/Chromium。当前使用 Python `reportlab` 将
 
 ## AI 路由与代理
 
-系统默认内置公司内网 Qwen 路由：
+系统默认内置公司内网 AIGC 路由：
 
-- 路由名：`公司内网 Qwen`
-- 模型：`qwen3.5-max`
-- 地址：`http://data-viz.yxd-risk.paas.corp/v1/chat/completions`
-- Key 传递方式：JSON body 中的 `api_key`
+- 路由名：`公司内网 AIGC`
+- 模型：`gemini-3.1-flash-image-preview`
+- 地址：`http://aigc-api.aigc.paas.corp/v1/chat/completions`
+- Key 传递方式：Header 中的 `Authorization: Bearer ...`
+- 调用方式：非流式 `chat/completions`，请求体固定 `stream: false`
 - 是否走代理：否
 
 外部 AI 接口默认使用代理：

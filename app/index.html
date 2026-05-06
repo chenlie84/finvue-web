@@ -9776,15 +9776,8 @@ async function executeSingleLiveRun() {
     systemPrompt: buildLiveSystemPrompt() || "你是一位专业的投顾直播内容分析专家。",
     userPrompt: buildLivePrompt()
   };
-  try {
-    state.lastMarkdown = await runLiveStream(requestPayload);
-  } catch (streamError) {
-    if (!shouldFallbackToNonStream(streamError)) {
-      throw streamError;
-    }
-    setRunProgress(62, "已切换兼容模式", "流式返回较慢，正在改用普通生成接口继续处理。");
-    state.lastMarkdown = await runLiveOnce(requestPayload);
-  }
+  setRunProgress(18, "模型已受理请求", "当前路由为非流式生成，完成后会一次性返回报告。");
+  state.lastMarkdown = await runLiveOnce(requestPayload);
   showLiveResultReady();
   await persistCurrentAnalysisBundle(state.lastMarkdown);
 }

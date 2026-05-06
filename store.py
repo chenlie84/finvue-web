@@ -15,13 +15,13 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "aiProviders": [
         {
             "id": "internal-qwen",
-            "label": "公司内网 Qwen",
-            "baseUrl": "http://data-viz.yxd-risk.paas.corp/v1/chat/completions",
-            "apiKey": "sk-proj-c82571a641563737409d61138993ea84243e7e444f12f7dd3b0f1650a19fec5b",
-            "model": "qwen3.5-max",
+            "label": "公司内网 AIGC",
+            "baseUrl": "http://aigc-api.aigc.paas.corp/v1/chat/completions",
+            "apiKey": "sk-proj-4a110b5455131937bb39feabfc91a74b4809a6868663a54baf2f056cde5a54fb",
+            "model": "gemini-3.1-flash-image-preview",
             "enabled": True,
             "priority": 1,
-            "apiKeyPlacement": "body",
+            "apiKeyPlacement": "header",
             "useProxy": False,
         },
         {
@@ -124,6 +124,16 @@ def merge_ai_providers(providers: Any) -> list[dict[str, Any]]:
         provider_id = str(provider.get("id") or "").strip()
         if not provider_id:
             continue
+        if provider_id == "internal-qwen" and "data-viz.yxd-risk.paas.corp" in text(provider.get("baseUrl")):
+            provider = {
+                **provider,
+                "baseUrl": DEFAULT_SETTINGS["aiProviders"][0]["baseUrl"],
+                "apiKey": DEFAULT_SETTINGS["aiProviders"][0]["apiKey"],
+                "model": DEFAULT_SETTINGS["aiProviders"][0]["model"],
+                "label": DEFAULT_SETTINGS["aiProviders"][0]["label"],
+                "apiKeyPlacement": DEFAULT_SETTINGS["aiProviders"][0]["apiKeyPlacement"],
+                "useProxy": DEFAULT_SETTINGS["aiProviders"][0]["useProxy"],
+            }
         if provider_id not in merged:
             ordered_ids.append(provider_id)
         merged[provider_id] = {**merged.get(provider_id, {}), **provider}

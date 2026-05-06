@@ -1,6 +1,7 @@
 """Server-side AI route manager with fallback support."""
 from __future__ import annotations
 
+from urllib.parse import urlparse
 from typing import Any
 
 import httpx
@@ -89,6 +90,16 @@ def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: st
     with httpx.Client(timeout=timeout, proxy=proxy or None, trust_env=False) as client:
         response = client.post(url, headers=headers, json=payload)
     if response.status_code >= 400:
+        content_type = response.headers.get("content-type", "")
+        if "text/html" in content_type:
+            public_host = urlparse(config.PUBLIC_BASE_URL).netloc
+            route_host = urlparse(url).netloc
+            if public_host and route_host == public_host:
+                raise RuntimeError(
+                    f"{response.status_code}: AI 路由地址返回了 FinVue 站点 HTML 页面。"
+                    "当前模型 Base URL 可能配置成了本应用域名，请改为真实模型网关地址。"
+                )
+            raise RuntimeError(f"{response.status_code}: AI 路由地址返回 HTML 页面，可能不是有效的模型接口")
         raise RuntimeError(f"{response.status_code}: {response.text[:500]}")
     text = _extract_text(response.json())
     if not text:
