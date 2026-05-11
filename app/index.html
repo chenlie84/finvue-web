@@ -425,13 +425,20 @@
       <!-- ══ 工作台概览 ══ -->
       <div class="sec active" id="sec-home">
         <div class="page-title">工作台概览</div>
-        <div class="page-sub">正在加载主播大盘与客户库摘要…</div>
-        <div class="panel">
-          <div class="panel-hd">
-            <div class="panel-title">工作台数据加载中</div>
-            <span class="panel-act">anchor_dashboard</span>
-          </div>
-          <div class="muted" style="font-size:13px;line-height:1.8;">系统会直接渲染当前新版概览，不再展示旧版模拟首页数据。</div>
+        <div class="page-sub" id="homeSubtitle">正在加载运营数据...</div>
+        
+        <!-- 运营数据统计 -->
+        <div class="g4 mb" id="homeStatsGrid">
+          <div class="kpi" style="--accent:var(--gold)"><div class="kpi-lbl">主播总数</div><div class="kpi-val gold" id="homeAnchorCount">—</div><div class="kpi-delta muted">运营数据中心</div></div>
+          <div class="kpi" style="--accent:var(--green)"><div class="kpi-lbl">本月直播场次</div><div class="kpi-val" id="homeLiveCount">—</div><div class="kpi-delta green" id="homeLiveCountDelta">加载中...</div></div>
+          <div class="kpi" style="--accent:var(--blue)"><div class="kpi-lbl">本月总观看</div><div class="kpi-val" id="homeWatchCount">—</div><div class="kpi-delta muted">累计观看人数</div></div>
+          <div class="kpi" style="--accent:var(--purple)"><div class="kpi-lbl">本月总涨粉</div><div class="kpi-val" id="homeFollowCount">—</div><div class="kpi-delta muted">累计涨粉数</div></div>
+        </div>
+        
+        <!-- 主播列表 -->
+        <div class="panel mb">
+          <div class="panel-hd"><div class="panel-title">主播直播数据概览</div><span class="panel-act" id="homeAnchorMeta">从运营数据中心加载</span></div>
+          <div id="homeAnchorList" class="muted">正在加载主播数据...</div>
         </div>
       </div>
 
@@ -5629,6 +5636,8 @@ async function afterAuth() {
   }
   await loadHealth();
   await loadSettings();
+  // 加载工作台概览数据
+  loadHomeOverview();
   if (hasDashboardPermission("anchor-library")) await loadAnchorProfiles();
   if (hasDashboardPermission("customer-library")) await loadCustomerLibrary();
   if (hasDashboardPermission("transcript-library")) await loadTranscriptLibrary();
@@ -5641,6 +5650,97 @@ async function afterAuth() {
     els.adminStatus.textContent = "当前账号不是管理员。";
   }
   updateAdminDashboardSummary();
+}
+
+async function loadHomeOverview() {
+  try {
+    // 获取主播列表和统计数据
+    const accountsRes = await fetch('/api/operation/accounts', { credentials: 'include' });
+    const accountsData = await accountsRes.json();
+    
+    if (!accountsData.ok) {
+      document.getElementById('homeSubtitle').textContent = '运营数据加载失败';
+      document.getElementById('homeAnchorList').innerHTML = `<div class="muted">${accountsData.error || '请先在运营数据中心导入数据'}</div>`;
+      return;
+    }
+    
+    const accounts = accountsData.accounts || [];
+    const totalCount = accountsData.total_count || 0;
+    const range = accountsData.data_range || {};
+    
+    // 计算本月数据
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    
+    let monthLiveCount = 0;
+    let monthWatchCount = 0;
+    let monthFollowCount = 0;
+    
+    // 获取本月报表数据
+    const monthlyRes = await fetch(`/api/operation/monthly-report?month=${currentMonth}`, { credentials: 'include' });
+    const monthlyData = await monthlyRes.json();
+    
+    if (monthlyData.ok && monthlyData.live) {
+      for (const row of monthlyData.live) {
+        monthLiveCount++;
+        monthWatchCount += Number(row.watch_ucnt || 0);
+        monthFollowCount += Number(row.follow_ucnt || 0);
+      }
+    }
+    
+    // 更新统计卡片
+    document.getElementById('homeAnchorCount').textContent = accounts.length || 0;
+    document.getElementById('homeLiveCount').textContent = monthLiveCount || 0;
+    document.getElementById('homeWatchCount').textContent = fmt(monthWatchCount);
+    document.getElementById('homeFollowCount').textContent = fmt(monthFollowCount);
+    
+    // 更新副标题
+    if (totalCount > 0 && range.min && range.max) {
+      document.getElementById('homeSubtitle').textContent = `运营数据中心 · ${totalCount} 条直播数据 · ${range.min.split(' ')[0]} ~ ${range.max.split(' ')[0]}`;
+    } else {
+      document.getElementById('homeSubtitle').textContent = '运营数据中心 · 暂无数据，请先导入';
+    }
+    
+    document.getElementById('homeLiveCountDelta').textContent = currentMonth;
+    document.getElementById('homeAnchorMeta').textContent = `${accounts.length} 位主播`;
+    
+    // 渲染主播列表
+    if (accounts.length === 0) {
+      document.getElementById('homeAnchorList').innerHTML = '<div class="muted">暂无主播数据，请在运营数据中心导入</div>';
+      return;
+    }
+    
+    // 获取每个主播的汇总数据
+    const anchorHtml = await Promise.all(accounts.slice(0, 10).map(async (a) => {
+      try {
+        const summaryRes = await fetch(`/api/operation/anchor-summary?account=${encodeURIComponent(a.account)}`, { credentials: 'include' });
+        const summaryData = await summaryRes.json();
+        const summary = summaryData.summary || {};
+        
+        return `
+          <div style="display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);margin-bottom:8px;">
+            <div class="a-avatar" style="width:32px;height:32px;background:var(--gold-dim);color:var(--gold);font-size:14px;">${(a.account || '?')[0]}</div>
+            <div style="flex:1;">
+              <div style="font-weight:500;">${escapeHtml(a.account)}</div>
+              <div style="font-size:11px;color:var(--text1);">${summary.total_lives || 0}场 · ${Math.round((summary.total_duration || 0) / 60)}小时 · ${fmt(summary.total_watch || 0)}观看</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="mono green" style="font-size:14px;">${fmt(summary.total_follow || 0)}</div>
+              <div style="font-size:10px;color:var(--text2);">总涨粉</div>
+            </div>
+          </div>
+        `;
+      } catch (e) {
+        return `<div style="padding:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);margin-bottom:8px;"><span class="muted">${escapeHtml(a.account)}</span></div>`;
+      }
+    }));
+    
+    document.getElementById('homeAnchorList').innerHTML = anchorHtml.join('');
+    
+  } catch (e) {
+    document.getElementById('homeSubtitle').textContent = '数据加载失败';
+    document.getElementById('homeAnchorList').innerHTML = `<div class="muted">错误: ${escapeHtml(e.message)}</div>`;
+  }
 }
 
 async function bootstrap() {
