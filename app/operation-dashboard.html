@@ -104,6 +104,14 @@
   .history-bar{flex:1;background:var(--gold-dim);border-radius:2px 2px 0 0;min-height:4px;position:relative;transition:height .3s;}
   .history-bar:hover{background:var(--gold);}
   .history-bar-label{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--text2);white-space:nowrap;}
+  
+  .lbl{font-size:12px;color:var(--text1);margin-bottom:6px;display:block;}
+  .inp{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;color:var(--text0);font-size:13px;outline:none;transition:border-color .2s;width:100%;}
+  .inp:focus{border-color:var(--gold);}
+  .inp::placeholder{color:var(--text2);}
+  .textarea{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;color:var(--text0);font-size:13px;outline:none;resize:vertical;line-height:1.6;transition:border-color .2s;width:100%;}
+  .textarea:focus{border-color:var(--gold);}
+  .textarea::placeholder{color:var(--text2);}
 </style>
 </head>
 <body>
@@ -182,7 +190,48 @@
         </div>
         <div id="calendar-grid" class="calendar-grid"></div>
       </div>
-      <div id="calendar-detail" class="panel"></div>
+      <div id="calendar-detail" class="panel mb"></div>
+      
+      <!-- 手工添加直播记录 -->
+      <div class="panel">
+        <div class="panel-hd">
+          <div class="panel-title">📝 手工添加直播记录</div>
+        </div>
+        <div class="g2">
+          <div>
+            <label class="lbl">主播账号</label>
+            <select id="add-live-account" class="sel">
+              <option value="">选择主播</option>
+            </select>
+          </div>
+          <div>
+            <label class="lbl">直播日期</label>
+            <input type="date" id="add-live-date" class="inp" style="width:100%;">
+          </div>
+        </div>
+        <div class="g2">
+          <div>
+            <label class="lbl">开播时间</label>
+            <input type="time" id="add-live-time" class="inp" style="width:100%;">
+          </div>
+          <div>
+            <label class="lbl">直播时长(分钟)</label>
+            <input type="number" id="add-live-duration" class="inp" style="width:100%;" placeholder="如: 60">
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label class="lbl">直播标题(可选)</label>
+          <input type="text" id="add-live-title" class="inp" style="width:100%;" placeholder="直播标题">
+        </div>
+        <div style="margin-bottom:12px;">
+          <label class="lbl">备注(可选)</label>
+          <textarea id="add-live-notes" class="textarea" rows="2" placeholder="备注信息"></textarea>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <button class="btn btn-gold" onclick="addLiveRecord()">添加记录</button>
+          <span id="add-live-result" class="muted"></span>
+        </div>
+      </div>
     </div>
   </main>
 </div>
@@ -212,14 +261,15 @@ async function loadAccounts() {
     const res = await fetch('/api/operation/accounts', { credentials: 'include' });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || '获取主播列表失败');
-    
+
     const accounts = data.accounts || [];
     const options = accounts.map(a => `<option value="${esc(a.account)}">${esc(a.account)} (${a.live_count || 0}场)</option>`).join('');
-    
+
     $('weekly-account-filter').innerHTML = '<option value="">全部主播</option>' + options;
     $('monthly-account-filter').innerHTML = '<option value="">全部主播</option>' + options;
     $('calendar-account-filter').innerHTML = '<option value="">全部主播</option>' + options;
-    
+    $('add-live-account').innerHTML = '<option value="">选择主播</option>' + options;
+
     const total = data.total_count || 0;
     const range = data.data_range || {};
     if (total > 0 && range.min && range.max) {
@@ -229,6 +279,57 @@ async function loadAccounts() {
     }
   } catch (e) {
     $('dataStatus').textContent = '加载失败: ' + e.message;
+  }
+}
+
+// 手工添加直播记录
+async function addLiveRecord() {
+  const account = $('add-live-account').value;
+  const liveDate = $('add-live-date').value;
+  const liveTime = $('add-live-time').value;
+  const duration = $('add-live-duration').value;
+  const title = $('add-live-title').value;
+  const notes = $('add-live-notes').value;
+
+  if (!account || !liveDate) {
+    $('add-live-result').innerHTML = '<span style="color:var(--red);">请选择主播和日期</span>';
+    return;
+  }
+
+  $('add-live-result').textContent = '正在添加...';
+
+  try {
+    const res = await fetch('/api/operation/add-live', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        account,
+        live_date: liveDate,
+        live_time: liveTime,
+        duration: parseInt(duration) || 0,
+        title,
+        notes
+      })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      $('add-live-result').innerHTML = '<span style="color:var(--green);">✓ 添加成功</span>';
+      // 清空表单
+      $('add-live-date').value = '';
+      $('add-live-time').value = '';
+      $('add-live-duration').value = '';
+      $('add-live-title').value = '';
+      $('add-live-notes').value = '';
+      // 刷新数据
+      loadAccounts();
+      loadCalendar();
+    } else {
+      $('add-live-result').innerHTML = `<span style="color:var(--red);">${esc(data.error)}</span>`;
+    }
+  } catch (e) {
+    $('add-live-result').innerHTML = `<span style="color:var(--red);">${esc(e.message)}</span>`;
   }
 }
 

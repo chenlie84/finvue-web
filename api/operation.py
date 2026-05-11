@@ -655,8 +655,14 @@ def get_calendar(
     # 按日期分组
     days = {}
     for row in rows or []:
-        date_str = (row.get("start_time") or "").split(" ")[0]
-        if not date_str:
+        start_time = row.get("start_time")
+        if start_time:
+            # 处理 datetime 对象或字符串
+            if isinstance(start_time, datetime):
+                date_str = start_time.strftime("%Y-%m-%d")
+            else:
+                date_str = str(start_time).split(" ")[0]
+        else:
             continue
         if date_str not in days:
             days[date_str] = {"count": 0, "lives": []}
@@ -664,6 +670,47 @@ def get_calendar(
         days[date_str]["lives"].append(row)
 
     return {"ok": True, "year": year, "month": month, "days": days}
+
+
+@router.post("/api/operation/add-live")
+async def add_live_record(
+    request: Request,
+    _: dict = Depends(security.require_permission("admin-api"))
+) -> dict:
+    """手工添加直播记录."""
+    body = await request.json()
+    account = str(body.get("account") or "").strip()
+    live_date = str(body.get("live_date") or "").strip()
+    live_time = str(body.get("live_time") or "").strip()
+    duration = int(body.get("duration") or 0)
+    title = str(body.get("title") or "").strip()
+    notes = str(body.get("notes") or "").strip()
+
+    if not account or not live_date:
+        return {"ok": False, "error": "主播和直播日期必填"}
+
+    # 组合开始时间
+    if live_time:
+        start_time = f"{live_date} {live_time}:00"
+    else:
+        start_time = f"{live_date} 00:00:00"
+
+    # 生成一个唯一的 room_id (用于手工录入的记录)
+    import hashlib
+    room_id = hashlib.md5(f"{account}{live_date}{live_time}".encode()).hexdigest()[:19]
+
+    try:
+        db.execute(
+            """
+            INSERT INTO finvue_operation_live_stats
+            (account, room_id, title, start_time, duration, notes)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (account, room_id, title, start_time, duration, notes)
+        )
+        return {"ok": True, "message": "添加成功"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 @router.get("/api/operation/import-logs")
