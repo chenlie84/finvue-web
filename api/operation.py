@@ -637,7 +637,10 @@ def get_monthly_report(
         SELECT account, DATE(start_time) as day,
                AVG(acu) as avg_acu,
                MAX(pcu) as max_pcu,
-               COUNT(*) as live_count
+               COUNT(*) as live_count,
+               AVG(avg_watch_duration) as avg_duration,
+               AVG(fans_avg_watch_duration) as fans_avg_duration,
+               AVG(non_fans_avg_watch_duration) as non_fans_avg_duration
         FROM finvue_operation_live_stats
         WHERE {where_clause}
         GROUP BY account, DATE(start_time)
@@ -646,7 +649,7 @@ def get_monthly_report(
         tuple(params)
     )
 
-    # 按主播组织每日数据
+    # 按主播组织每日数据（包含在线人数和停留时长）
     daily_by_anchor = {}
     for row in daily_rows_by_anchor or []:
         acc = row["account"] or "未知主播"
@@ -656,31 +659,11 @@ def get_monthly_report(
             "day": str(row["day"]),
             "avg_acu": float(row["avg_acu"] or 0),
             "max_pcu": int(row["max_pcu"] or 0),
-            "live_count": int(row["live_count"] or 0)
-        })
-
-    # 按主播计算停留时长均值（用于柱状图）
-    watch_duration_by_anchor = db.fetch_all(
-        f"""
-        SELECT account,
-               AVG(avg_watch_duration) as avg_duration,
-               AVG(fans_avg_watch_duration) as fans_avg_duration,
-               AVG(non_fans_avg_watch_duration) as non_fans_avg_duration
-        FROM finvue_operation_live_stats
-        WHERE {where_clause}
-        GROUP BY account
-        """,
-        tuple(params)
-    )
-
-    watch_duration = {}
-    for row in watch_duration_by_anchor or []:
-        acc = row["account"] or "未知主播"
-        watch_duration[acc] = {
+            "live_count": int(row["live_count"] or 0),
             "avg_duration": round(float(row["avg_duration"] or 0), 1),
             "fans_avg_duration": round(float(row["fans_avg_duration"] or 0), 1),
             "non_fans_avg_duration": round(float(row["non_fans_avg_duration"] or 0), 1)
-        }
+        })
 
     return {
         "ok": True,
@@ -689,8 +672,7 @@ def get_monthly_report(
         "video": video_rows or [],
         "history": history_rows or [],
         "totals": total_rows or [],
-        "daily_by_anchor": daily_by_anchor,
-        "watch_duration": watch_duration
+        "daily_by_anchor": daily_by_anchor
     }
 
 
