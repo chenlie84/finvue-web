@@ -1077,25 +1077,276 @@ def persist_analysis_bundle(payload: dict[str, Any], created_by: str = "") -> di
 
 
 def get_customer_trends_summary(anchor_name: str = "") -> dict[str, Any]:
-    where = ""
-    args: tuple[Any, ...] = ()
-    if anchor_name:
-        where = "WHERE anchor_name = %s"
-        args = (anchor_name,)
-    rows = db.fetch_all(
-        f"""
-        SELECT DATE_FORMAT(analyzed_at, '%%Y-%%m') AS month,
-               COUNT(DISTINCT customer_id) AS customers,
-               COUNT(*) AS sessions,
-               AVG(watch_duration_seconds) AS avgWatchSeconds
-        FROM finvue_customer_sessions
-        {where}
-        GROUP BY DATE_FORMAT(analyzed_at, '%%Y-%%m')
-        ORDER BY month ASC
-        """,
-        args,
-    )
-    return {"months": [{"month": r["month"], "customers": int(r["customers"] or 0), "sessions": int(r["sessions"] or 0), "avgWatchSeconds": int(r["avgWatchSeconds"] or 0)} for r in rows]}
+    """获取客户运营趋势分析数据."""
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+    
+    # 获取客户档案数据
+    profile_rows = db.fetch_all("SELECT customer_id, customer_name, latest_anchor_name, latest_analyzed_at, best_rank, avg_watch_seconds FROM finvue_customer_profiles", ())
+    
+    # 获取客户会话数据
+    session_rows = db.fetch_all("SELECT session_id, customer_id, anchor_name, room_id, analyzed_at, watch_rank, watch_duration_seconds FROM finvue_customer_sessions WHERE metric_type = '观看榜' OR metric_type IS NULL OR metric_type = ''", ())
+    
+    # 构建客户数据结构
+    customers_map = {}
+    for row in profile_rows:
+        cid = row["customer_id"]
+        customers_map[cid] = {
+            "customerId": cid,
+            "customerName": row["customer_name"] or "",
+            "latestAnchorName": row["latest_anchor_name"] or "",
+            "sessions": []
+        }
+    
+    # 添加会话数据到客户
+    for row in session_rows:
+        cid = row["customer_id"]
+        if cid not in customers_map:
+            customers_map[cid] = {
+                "customerId": cid,
+                "customerName": "",
+                "latestAnchorName": row["anchor_name"] or "",
+                "sessions": []
+            }
+        customers_map[cid]["sessions"].append({
+            "sessionId": row["session_id"],
+            "anchorName": row["anchor_name"] or "",
+            "roomId": row["room_id"] or "",
+            "analyzedAt": row["analyzed_at"],
+            "watchRank": int(row["watch_rank"] or 0),
+            "watchDurationSeconds": int(row["watch_duration_seconds"] or 0)
+        })
+    
+    customers = list(customers_map.values())
+    
+    # 按主播分组
+    anchor_groups_map = defaultdict(list)
+    for c in customers:
+        # 根据会话确定主播
+        anchor_names = set()
+        for s in c.get("sessions", []):
+            if s.get("anchorName"):
+                anchor_names.add(s["anchorName"])
+        if not anchor_names:
+            if c.get("latestAnchorName"):
+                anchor_names.add(c["latestAnchorName"])
+            else:
+                anchor_names.add("未识别主播")
+        
+        for anchor in anchor_names:
+            anchor_groups_map[anchor].append(c)
+    
+    # 计算每个主播的统计数据
+    anchor_groups = []
+    total_customers = len(customers)
+    
+    for anchor, group_customers in anchor_groups_map.items():
+        if anchor_name and anchor != anchor_name:
+            continue
+        
+        group_data = _compute_anchor_group_stats(anchor, group_customers)
+        anchor_groups.append(group_data)
+    
+    # 按客户数排序
+    anchor_groups.sort(key=lambda x: x.get("stats", {}).get("customerCount", 0), reverse=True)
+    
+    return {
+        "anchorGroups": anchor_groups,
+        "stats": {
+            "customerCount": total_customers,
+            "anchorCount": len(anchor_groups)
+        }
+    }
+
+
+def _compute_anchor_group_stats(anchor_name: str, customers: list) -> dict[str, Any]:
+    """计算单个主播的客户群统计数据."""
+    from datetime import datetime, timedelta
+    
+    ref_date = datetime.now()
+    ref_date_str = ref_date.strftime("%Y-%m-%d")
+    
+    # 统计所有会话
+    all_sessions = []
+    for c in customers:
+        for s in c.get("sessions", []):
+            if s.get("anchorName") == anchor_name or not s.get("anchorName"):
+                all_sessions.append(s)
+    
+    # 计算每个客户的统计
+    customer_stats = []
+    for c in customers:
+        sessions = [s for s in c.get("sessions", []) if s.get("anchorName") == anchor_name or not s.get("anchorName")]
+        if not sessions:
+            sessions = c.get("sessions", [])
+        
+        # 按直播间去重计算场次
+        room_ids = set(s.get("roomId") or s.get("sessionId") or s.get("analyzedAt") for s in sessions if s.get("roomId") or s.get("sessionId") or s.get("analyzedAt"))
+        count = len(room_ids)
+        
+        # 月份集合
+        months = set()
+        for s in sessions:
+            if s.get("analyzedAt"):
+                try:
+                    dt = datetime.strptime(str(s["analyzedAt"]).split()[0], "%Y-%m-%d")
+                    months.add(dt.strftime("%Y-%m"))
+                except:
+                    pass
+        
+        # 最近活跃时间
+        latest_date = None
+        for s in sessions:
+            if s.get("analyzedAt"):
+                try:
+                    dt = datetime.strptime(str(s["analyzedAt"]), "%Y-%m-%d %H:%M:%S") if " " in str(s["analyzedAt"]) else datetime.strptime(str(s["analyzedAt"]).split()[0], "%Y-%m-%d")
+                    if latest_date is None or dt > latest_date:
+                        latest_date = dt
+                except:
+                    pass
+        
+        # 是否近30天活跃
+        active = latest_date and (ref_date - latest_date).days <= 30
+        
+        # 首次出现的月份
+        first_month = min(months) if months else ""
+        
+        # 最佳排名和平均观看时长
+        ranks = [s.get("watchRank", 0) for s in sessions if s.get("watchRank")]
+        best_rank = min(ranks) if ranks else 0
+        avg_watch = sum(s.get("watchDurationSeconds", 0) for s in sessions) / len(sessions) if sessions else 0
+        
+        customer_stats.append({
+            "count": count,
+            "months": list(months),
+            "firstMonth": first_month,
+            "active": active,
+            "latestDate": latest_date,
+            "bestRank": best_rank,
+            "avgWatch": int(avg_watch)
+        })
+    
+    # 粉丝层级留存透视
+    segment_defs = [
+        ("死忠铁粉", "出现 ≥ 20 场", lambda x: x["count"] >= 20),
+        ("高粘性粉", "出现 10-19 场", lambda x: x["count"] >= 10 and x["count"] <= 19),
+        ("中频稳定粉", "出现 4-9 场", lambda x: x["count"] >= 4 and x["count"] <= 9),
+        ("偶发高价值粉", "出现 1-3 场", lambda x: x["count"] >= 1 and x["count"] <= 3),
+        ("待观察", "出现 0 场", lambda x: x["count"] == 0),
+    ]
+    
+    segment_rows = []
+    for name, desc, fn in segment_defs:
+        arr = [s for s in customer_stats if fn(s)]
+        active_count = sum(1 for s in arr if s["active"])
+        rate = len(arr) * 100 / len(arr) if arr else 0
+        segment_rows.append({
+            "name": name,
+            "desc": desc,
+            "total": len(arr),
+            "active": active_count,
+            "rate": rate
+        })
+    
+    # 核心粉丝统计（>=4场）
+    core_stats = [s for s in customer_stats if s["count"] >= 4]
+    active_core = sum(1 for s in core_stats if s["active"])
+    churned_core = len(core_stats) - active_core
+    new_active = sum(1 for s in customer_stats if s["active"] and s["count"] <= 3)
+    
+    # 留存矩阵计算
+    all_months = sorted(set(m for s in customer_stats for m in s["months"]))
+    
+    def compute_cohort_rows(stats_list, core_only=False):
+        filtered = [s for s in stats_list if s["firstMonth"]] if not core_only else [s for s in stats_list if s["firstMonth"] and s["count"] >= 4]
+        cohorts = sorted(set(s["firstMonth"] for s in filtered))
+        
+        rows = []
+        for cohort in cohorts:
+            base = [s for s in filtered if s["firstMonth"] == cohort]
+            cells = []
+            for i in range(7):
+                target_month = _add_months(cohort, i)
+                has_data = target_month in all_months
+                active_in_month = sum(1 for s in base if target_month in s["months"])
+                value = active_in_month * 100 / len(base) if base else 0
+                cells.append({
+                    "month": target_month,
+                    "hasData": has_data,
+                    "value": value
+                })
+            rows.append({
+                "cohort": cohort,
+                "total": len(base),
+                "cells": cells
+            })
+        return rows
+    
+    core_cohort_rows = compute_cohort_rows(customer_stats, True)
+    all_cohort_rows = compute_cohort_rows(customer_stats, False)
+    
+    # 月度数据动态流转表
+    monthly_rows = []
+    for i, month in enumerate(all_months):
+        prev_month = all_months[i - 1] if i > 0 else ""
+        
+        current_customers = set(idx for idx, s in enumerate(customer_stats) if month in s["months"])
+        prev_customers = set(idx for idx, s in enumerate(customer_stats) if prev_month in s["months"]) if prev_month else set()
+        
+        added = sum(1 for s in customer_stats if s["firstMonth"] == month)
+        retained = len(current_customers & prev_customers) if prev_month else 0
+        lost = len(prev_customers - current_customers) if prev_month else 0
+        active = len(current_customers)
+        
+        # 直播场次（按直播间去重）
+        live_count = len(set(s.get("roomId") or s.get("sessionId") for s in all_sessions if s.get("analyzedAt") and _month_of_date(s["analyzedAt"]) == month))
+        
+        monthly_rows.append({
+            "m": month,
+            "liveCount": live_count,
+            "active": active,
+            "added": added,
+            "retained": retained,
+            "lost": lost
+        })
+    
+    return {
+        "anchorName": anchor_name,
+        "stats": {
+            "customerCount": len(customers),
+            "watchRecordCount": len(all_sessions),
+            "refDate": ref_date_str,
+            "activeCore": active_core,
+            "churnedCore": churned_core,
+            "newActive": new_active,
+            "coreCount": len(core_stats)
+        },
+        "segmentRows": segment_rows,
+        "coreCohortRows": core_cohort_rows,
+        "allCohortRows": all_cohort_rows,
+        "monthlyRows": monthly_rows
+    }
+
+
+def _add_months(month_key: str, offset: int) -> str:
+    """月份加减."""
+    y, m = map(int, month_key.split("-"))
+    new_m = m + offset
+    new_y = y + (new_m - 1) // 12
+    new_m = ((new_m - 1) % 12) + 1
+    return f"{new_y}-{new_m:02d}"
+
+
+def _month_of_date(dt_str: str) -> str:
+    """从日期字符串提取月份."""
+    try:
+        if " " in str(dt_str):
+            dt = datetime.strptime(str(dt_str), "%Y-%m-%d %H:%M:%S")
+        else:
+            dt = datetime.strptime(str(dt_str), "%Y-%m-%d")
+        return dt.strftime("%Y-%m")
+    except:
+        return ""
 
 
 def enqueue_job(job_type: str, payload: dict[str, Any]) -> dict[str, Any]:
