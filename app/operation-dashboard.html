@@ -102,10 +102,20 @@
   .month-stat-label{font-size:11px;color:var(--text2);margin-bottom:4px;}
   .month-stat-value{font-family:var(--font-mono);font-size:16px;font-weight:500;}
   
-  .history-chart{height:120px;display:flex;align-items:end;gap:4px;padding:12px;background:var(--bg2);border-radius:var(--r);}
+  .history-chart{height:180px;display:flex;align-items:end;gap:4px;padding:12px;background:var(--bg2);border-radius:var(--r);position:relative;}
   .history-bar{flex:1;background:var(--gold-dim);border-radius:2px 2px 0 0;min-height:4px;position:relative;transition:height .3s;}
   .history-bar:hover{background:var(--gold);}
   .history-bar-label{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--text2);white-space:nowrap;}
+  /* 折线图样式 */
+  .line-chart-container{position:relative;height:180px;padding:16px;background:var(--bg2);border-radius:var(--r);}
+  .line-chart-svg{width:100%;height:100%;}
+  .line-chart-point{fill:var(--gold);stroke:var(--gold);stroke-width:2;cursor:pointer;}
+  .line-chart-point:hover{fill:var(--gold2);stroke:var(--gold2);r:6;}
+  .line-chart-line{fill:none;stroke:var(--gold);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .line-chart-area{fill:url(#goldGradient);opacity:0.3;}
+  .line-chart-label{font-size:10px;fill:var(--text2);text-anchor:middle;}
+  .line-chart-title{font-size:12px;fill:var(--text1);font-weight:500;}
+  .line-chart-tooltip{position:absolute;background:var(--bg0);border:1px solid var(--border);padding:4px 8px;border-radius:var(--r);font-size:11px;color:var(--text1);pointer-events:none;z-index:10;white-space:nowrap;}
   
   .lbl{font-size:12px;color:var(--text1);margin-bottom:6px;display:block;}
   .inp{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;color:var(--text0);font-size:13px;outline:none;transition:border-color .2s;width:100%;}
@@ -580,21 +590,70 @@ function renderMonthlyReport(data) {
     </div>
   `;
   
-  // 历史趋势
-  if (history.length > 1) {
-    const maxCount = Math.max(...history.map(h => h.live_count || 0));
+  // 当月每日在线人数折线图
+  const daily = data.daily || [];
+  if (daily.length > 0) {
+    const maxAcu = Math.max(...daily.map(d => Number(d.avg_acu) || 0));
+    const chartWidth = 100; // 百分比宽度
+    const chartHeight = 140; // SVG高度
+    const padding = { top: 20, right: 10, bottom: 30, left: 10 };
+    const innerWidth = chartWidth - padding.left - padding.right;
+    const innerHeight = chartHeight - padding.top - padding.bottom;
+    
+    // 计算点的位置
+    const points = daily.map((d, i) => {
+      const x = padding.left + (i / (daily.length - 1 || 1)) * innerWidth;
+      const acu = Number(d.avg_acu) || 0;
+      const y = padding.top + innerHeight - (acu / (maxAcu || 1)) * innerHeight;
+      return { x, y, acu, day: d.day, liveCount: d.live_count };
+    });
+    
+    // 生成折线路径
+    const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+    // 生成填充区域路径
+    const areaPath = linePath + ` L ${points[points.length - 1].x} ${padding.top + innerHeight} L ${padding.left} ${padding.top + innerHeight} Z`;
+    
+    // 选择显示的日期标签（每隔几个显示一个）
+    const labelIndices = [];
+    const labelCount = Math.min(7, daily.length);
+    for (let i = 0; i < labelCount; i++) {
+      labelIndices.push(Math.floor(i * (daily.length - 1) / (labelCount - 1 || 1)));
+    }
+    
     html += `
       <div class="panel mb">
         <div class="panel-hd">
-          <div class="panel-title">历史趋势</div>
+          <div class="panel-title">📈 当月在线人数趋势（日均在线人数）</div>
+          <span class="muted" style="font-size:12px;">峰值: ${fmt(Math.round(maxAcu))} 人</span>
         </div>
-        <div class="history-chart">
-          ${history.slice(0, 12).map(h => `
-            <div class="history-bar" style="height:${Math.max(4, (h.live_count / maxCount) * 100)}px;">
-              <div class="history-bar-label">${h.month?.slice(5) || ''}</div>
-            </div>
-          `).join('')}
+        <div class="line-chart-container">
+          <svg class="line-chart-svg" viewBox="0 0 ${chartWidth} ${chartHeight}" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <linearGradient id="goldGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:var(--gold);stop-opacity:0.5"/>
+                <stop offset="100%" style="stop-color:var(--gold);stop-opacity:0"/>
+              </linearGradient>
+            </defs>
+            <!-- 网格线 -->
+            <line x1="${padding.left}" y1="${padding.top}" x2="${chartWidth - padding.right}" y2="${padding.top}" stroke="var(--border)" stroke-width="0.5"/>
+            <line x1="${padding.left}" y1="${padding.top + innerHeight/2}" x2="${chartWidth - padding.right}" y2="${padding.top + innerHeight/2}" stroke="var(--border)" stroke-width="0.5"/>
+            <line x1="${padding.left}" y1="${padding.top + innerHeight}" x2="${chartWidth - padding.right}" y2="${padding.top + innerHeight}" stroke="var(--border)" stroke-width="0.5"/>
+            <!-- Y轴标签 -->
+            <text x="${padding.left - 2}" y="${padding.top + 4}" class="line-chart-label" text-anchor="end">${fmt(Math.round(maxAcu))}</text>
+            <text x="${padding.left - 2}" y="${padding.top + innerHeight/2 + 4}" class="line-chart-label" text-anchor="end">${fmt(Math.round(maxAcu/2))}</text>
+            <text x="${padding.left - 2}" y="${padding.top + innerHeight + 4}" class="line-chart-label" text-anchor="end">0</text>
+            <!-- 填充区域 -->
+            <path d="${areaPath}" class="line-chart-area"/>
+            <!-- 折线 -->
+            <path d="${linePath}" class="line-chart-line"/>
+            <!-- 数据点 -->
+            ${points.map((p, i) => `<circle cx="${p.x}" cy="${p.y}" r="4" class="line-chart-point" data-day="${p.day}" data-acu="${Math.round(p.acu)}" data-count="${p.liveCount}"/>`).join('')}
+            <!-- X轴日期标签 -->
+            ${labelIndices.map(i => `<text x="${points[i].x}" y="${padding.top + innerHeight + 12}" class="line-chart-label">${daily[i].day?.slice(8) || ''}</text>`).join('')}
+          </svg>
+          <div id="line-tooltip" class="line-chart-tooltip" style="display:none;"></div>
         </div>
+        <div class="muted" style="font-size:11px;margin-top:8px;">鼠标悬停数据点查看详情 · ${daily.length} 天有直播记录</div>
       </div>
     `;
   }
@@ -647,6 +706,25 @@ function renderMonthlyReport(data) {
   }
   
   $('monthly-content').innerHTML = html;
+  
+  // 添加折线图tooltip交互
+  const tooltip = document.getElementById('line-tooltip');
+  const points = document.querySelectorAll('.line-chart-point');
+  points.forEach(point => {
+    point.addEventListener('mouseenter', (e) => {
+      if (!tooltip) return;
+      const day = point.getAttribute('data-day');
+      const acu = point.getAttribute('data-acu');
+      const count = point.getAttribute('data-count');
+      tooltip.innerHTML = `${day?.slice(5) || ''}日: ${fmt(acu)} 人 · ${count}场直播`;
+      tooltip.style.display = 'block';
+      tooltip.style.left = e.offsetX + 'px';
+      tooltip.style.top = (e.offsetY - 30) + 'px';
+    });
+    point.addEventListener('mouseleave', () => {
+      if (tooltip) tooltip.style.display = 'none';
+    });
+  });
 }
 
 // 日历相关

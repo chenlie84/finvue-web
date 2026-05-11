@@ -631,13 +631,29 @@ def get_monthly_report(
         tuple([account] if account else [])
     )
 
+    # 当月每日在线人数统计（用于折线图）
+    daily_rows = db.fetch_all(
+        f"""
+        SELECT DATE(start_time) as day,
+               AVG(acu) as avg_acu,
+               MAX(pcu) as max_pcu,
+               COUNT(*) as live_count
+        FROM finvue_operation_live_stats
+        WHERE {where_clause}
+        GROUP BY DATE(start_time)
+        ORDER BY day
+        """,
+        tuple(params)
+    )
+
     return {
         "ok": True,
         "month": month,
         "live": live_rows or [],
         "video": video_rows or [],
         "history": history_rows or [],
-        "totals": total_rows or []
+        "totals": total_rows or [],
+        "daily": daily_rows or []
     }
 
 
