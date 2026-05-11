@@ -581,7 +581,7 @@ def get_monthly_report(
     # 历史分月统计
     history_rows = db.fetch_all(
         f"""
-        SELECT account, DATE_FORMAT(start_time, '%Y-%m') as month,
+        SELECT account, DATE_FORMAT(start_time, '%%Y-%%m') as month,
                COUNT(*) as live_count,
                AVG(acu) as avg_acu,
                AVG(watch_ucnt) as avg_watch,
@@ -593,7 +593,7 @@ def get_monthly_report(
                SUM(follow_ucnt) as total_follow
         FROM finvue_operation_live_stats
         {f"WHERE account = %s" if account else ""}
-        GROUP BY account, DATE_FORMAT(start_time, '%Y-%m')
+        GROUP BY account, DATE_FORMAT(start_time, '%%Y-%%m')
         ORDER BY account, month DESC
         """,
         tuple([account] if account else [])
