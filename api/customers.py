@@ -80,7 +80,7 @@ async def import_customer_profiles(
                     cname = b[1].replace("'", "''")
                     aname = b[2].replace("'", "''")
                     theme = b[4].replace("'", "''")
-                    atime = b[3].strftime('%Y-%m-%d %H:%M:%S') if b[3] else 'NULL'
+                    atime = f"'{b[3].strftime('%Y-%m-%d %H:%M:%S')}'" if b[3] else 'NULL'
                     values_list.append(f"('{cid}', '{cname}', '{aname}', {atime}, '{theme}', {b[5]}, {b[6]}, {b[7]}, '[]', '[]', '{{}}')")
                 
                 db.execute(f"""
@@ -108,7 +108,7 @@ async def import_customer_profiles(
                 cname = b[1].replace("'", "''")
                 aname = b[2].replace("'", "''")
                 theme = b[4].replace("'", "''")
-                atime = b[3].strftime('%Y-%m-%d %H:%M:%S') if b[3] else 'NULL'
+                atime = f"'{b[3].strftime('%Y-%m-%d %H:%M:%S')}'" if b[3] else 'NULL'
                 values_list.append(f"('{cid}', '{cname}', '{aname}', {atime}, '{theme}', {b[5]}, {b[6]}, {b[7]}, '[]', '[]', '{{}}')")
             
             db.execute(f"""
@@ -193,7 +193,7 @@ async def import_customer_sessions(
                     rtype = b[5].replace("'", "''")
                     mtype = b[6].replace("'", "''")
                     mval = b[7].replace("'", "''")
-                    atime = b[10].strftime('%Y-%m-%d %H:%M:%S') if b[10] else 'NULL'
+                    atime = f"'{b[10].strftime('%Y-%m-%d %H:%M:%S')}'" if b[10] else 'NULL'
                     src = b[11].replace("'", "''")
                     vals = f"('{sid}', '{cid}', '{aname}', '{rid}', '{theme}', '{rtype}', '{mtype}', '{mval}', {b[8]}, {b[9]}, {atime}, '{src}', '{{}}')"
                     values_list.append(vals)
@@ -231,7 +231,7 @@ async def import_customer_sessions(
                 rtype = b[5].replace("'", "''")
                 mtype = b[6].replace("'", "''")
                 mval = b[7].replace("'", "''")
-                atime = b[10].strftime('%Y-%m-%d %H:%M:%S') if b[10] else 'NULL'
+                atime = f"'{b[10].strftime('%Y-%m-%d %H:%M:%S')}'" if b[10] else 'NULL'
                 src = b[11].replace("'", "''")
                 vals = f"('{sid}', '{cid}', '{aname}', '{rid}', '{theme}', '{rtype}', '{mtype}', '{mval}', {b[8]}, {b[9]}, {atime}, '{src}', '{{}}')"
                 values_list.append(vals)
