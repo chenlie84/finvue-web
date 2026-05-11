@@ -1522,7 +1522,7 @@
 
       <div class="asec" id="asec-operation-import">
         <div class="page-title">运营数据导入</div>
-        <div class="page-sub">上传 CSV 文件导入直播和短视频数据</div>
+        <div class="page-sub">上传 CSV 文件导入直播、短视频和客户数据</div>
         <div class="g2 mb">
           <div class="panel">
             <div class="panel-hd"><div class="panel-title">直播数据导入</div></div>
@@ -1537,6 +1537,22 @@
             <input type="file" id="op-video-csv-input" accept=".csv" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);color:var(--text0);margin-bottom:12px;">
             <button class="btn btn-gold" style="width:100%;" onclick="uploadOperationVideoCSV()">上传短视频数据 CSV</button>
             <div id="op-video-result" style="margin-top:12px;font-size:13px;"></div>
+          </div>
+        </div>
+        <div class="g2 mb">
+          <div class="panel">
+            <div class="panel-hd"><div class="panel-title">客户档案导入</div></div>
+            <div class="muted" style="font-size:12px;margin-bottom:12px;">支持字段：客户ID、客户名称、主播名称、最近分析时间、最佳排名、平均观看时长等。</div>
+            <input type="file" id="customer-profile-csv-input" accept=".csv" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);color:var(--text0);margin-bottom:12px;">
+            <button class="btn btn-gold" style="width:100%;" onclick="uploadCustomerProfileCSV()">上传客户档案 CSV</button>
+            <div id="customer-profile-result" style="margin-top:12px;font-size:13px;"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-hd"><div class="panel-title">客户会话导入</div></div>
+            <div class="muted" style="font-size:12px;margin-bottom:12px;">支持字段：场次ID、客户ID、主播名称、直播间ID、观看排名、观看时长秒等。</div>
+            <input type="file" id="customer-session-csv-input" accept=".csv" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);color:var(--text0);margin-bottom:12px;">
+            <button class="btn btn-gold" style="width:100%;" onclick="uploadCustomerSessionCSV()">上传客户会话 CSV</button>
+            <div id="customer-session-result" style="margin-top:12px;font-size:13px;"></div>
           </div>
         </div>
         <div class="panel">
@@ -3315,6 +3331,56 @@ function uploadOperationVideoCSV() {
         resultEl.innerHTML = `<span style="color:var(--green);">✓ 导入成功: ${data.imported} 条记录, ${data.accounts || 0} 个账号</span>`;
         input.value = "";
         loadOperationImportLogs();
+      } else {
+        resultEl.innerHTML = `<span style="color:var(--red);">导入失败: ${escapeHtml(data.error)}</span>`;
+      }
+    })
+    .catch((e) => {
+      resultEl.innerHTML = `<span style="color:var(--red);">上传失败: ${escapeHtml(e.message)}</span>`;
+    });
+}
+
+function uploadCustomerProfileCSV() {
+  const input = document.getElementById("customer-profile-csv-input");
+  const resultEl = document.getElementById("customer-profile-result");
+  if (!input.files.length) {
+    resultEl.innerHTML = '<span style="color:var(--red);">请先选择文件</span>';
+    return;
+  }
+  const formData = new FormData();
+  formData.append("file", input.files[0]);
+  resultEl.innerHTML = '<span class="spinner"></span> 上传中...';
+  fetch("/api/customer-library/import-profiles", { method: "POST", body: formData, credentials: "include" })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.ok) {
+        resultEl.innerHTML = `<span style="color:var(--green);">✓ 导入成功: ${data.count} 条客户档案</span>`;
+        input.value = "";
+      } else {
+        resultEl.innerHTML = `<span style="color:var(--red);">导入失败: ${escapeHtml(data.error)}</span>`;
+      }
+    })
+    .catch((e) => {
+      resultEl.innerHTML = `<span style="color:var(--red);">上传失败: ${escapeHtml(e.message)}</span>`;
+    });
+}
+
+function uploadCustomerSessionCSV() {
+  const input = document.getElementById("customer-session-csv-input");
+  const resultEl = document.getElementById("customer-session-result");
+  if (!input.files.length) {
+    resultEl.innerHTML = '<span style="color:var(--red);">请先选择文件</span>';
+    return;
+  }
+  const formData = new FormData();
+  formData.append("file", input.files[0]);
+  resultEl.innerHTML = '<span class="spinner"></span> 上传中...';
+  fetch("/api/customer-library/import-sessions", { method: "POST", body: formData, credentials: "include" })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.ok) {
+        resultEl.innerHTML = `<span style="color:var(--green);">✓ 导入成功: ${data.count} 条客户会话</span>`;
+        input.value = "";
       } else {
         resultEl.innerHTML = `<span style="color:var(--red);">导入失败: ${escapeHtml(data.error)}</span>`;
       }
