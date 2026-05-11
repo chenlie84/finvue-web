@@ -41,9 +41,12 @@ async def import_customer_profiles(
         return {"ok": False, "error": "请上传 CSV 文件"}
 
     try:
-        # 覆盖模式：先清空表
+        # 覆盖模式：先清空表（需要禁用外键检查）
         if mode == "overwrite":
+            db.execute("SET FOREIGN_KEY_CHECKS = 0")
             db.execute("TRUNCATE TABLE finvue_customer_profiles")
+            db.execute("TRUNCATE TABLE finvue_customer_sessions")  # 同时清空关联的会话表
+            db.execute("SET FOREIGN_KEY_CHECKS = 1")
         
         content = await file.read()
         text = content.decode('utf-8')
@@ -141,9 +144,11 @@ async def import_customer_sessions(
         return {"ok": False, "error": "请上传 CSV 文件"}
 
     try:
-        # 覆盖模式：先清空表
+        # 覆盖模式：先清空表（需要禁用外键检查）
         if mode == "overwrite":
+            db.execute("SET FOREIGN_KEY_CHECKS = 0")
             db.execute("TRUNCATE TABLE finvue_customer_sessions")
+            db.execute("SET FOREIGN_KEY_CHECKS = 1")
         
         content = await file.read()
         text = content.decode('utf-8')
