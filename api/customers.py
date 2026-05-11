@@ -94,11 +94,15 @@ def _insert_profiles_batch(batch: list) -> None:
         cname = b[1].replace("'", "''")
         aname = b[2].replace("'", "''")
         theme = b[4].replace("'", "''")
-        atime = "'{}'".format(b[3]) if b[3] else 'NULL'
-        parts.append("('{}','{}','{}',{},'{}',{},{},{},'[]','[]','{{}}')".format(
-            cid, cname, aname, atime, theme, b[5], b[6], b[7]
-        ))
-    
+        # 直接拼接，避免 format
+        if b[3]:
+            atime = "'" + b[3] + "'"
+        else:
+            atime = "NULL"
+        # 使用 %s 风格避免问题
+        val = "('%s','%s','%s',%s,'%s',%d,%d,%d,'[]','[]','{}')" % (cid, cname, aname, atime, theme, b[5], b[6], b[7])
+        parts.append(val)
+
     sql = "INSERT INTO finvue_customer_profiles (customer_id,customer_name,latest_anchor_name,latest_analyzed_at,latest_live_theme,latest_rank,best_rank,avg_watch_seconds,labels,tags,raw) VALUES " + ','.join(parts) + " ON DUPLICATE KEY UPDATE customer_name=VALUES(customer_name),latest_anchor_name=VALUES(latest_anchor_name),latest_analyzed_at=VALUES(latest_analyzed_at),latest_live_theme=VALUES(latest_live_theme),latest_rank=VALUES(latest_rank),best_rank=VALUES(best_rank),avg_watch_seconds=VALUES(avg_watch_seconds),updated_at=NOW()"
     db.execute(sql)
 
@@ -176,11 +180,14 @@ def _insert_sessions_batch(batch: list) -> None:
         rtype = b[5].replace("'", "''")
         mtype = b[6].replace("'", "''")
         mval = b[7].replace("'", "''")
-        atime = "'{}'".format(b[10]) if b[10] else 'NULL'
+        # 直接拼接避免 format 问题
+        if b[10]:
+            atime = "'" + b[10] + "'"
+        else:
+            atime = "NULL"
         src = b[11].replace("'", "''")
-        parts.append("('{}','{}','{}','{}','{}','{}','{}','{}',{},{},'{}','{}','{{}}')".format(
-            sid, cid, aname, rid, theme, rtype, mtype, mval, b[8], b[9], atime, src
-        ))
+        val = "('%s','%s','%s','%s','%s','%s','%s','%s',%d,%d,%s,'%s','{}')" % (sid, cid, aname, rid, theme, rtype, mtype, mval, b[8], b[9], atime, src)
+        parts.append(val)
     
     sql = "INSERT INTO finvue_customer_sessions (session_id,customer_id,anchor_name,room_id,live_theme,report_type,metric_type,metric_value,watch_rank,watch_duration_seconds,analyzed_at,source_file,raw) VALUES " + ','.join(parts) + " ON DUPLICATE KEY UPDATE anchor_name=VALUES(anchor_name),room_id=VALUES(room_id),live_theme=VALUES(live_theme),report_type=VALUES(report_type),metric_type=VALUES(metric_type),metric_value=VALUES(metric_value),watch_rank=VALUES(watch_rank),watch_duration_seconds=VALUES(watch_duration_seconds),analyzed_at=VALUES(analyzed_at),source_file=VALUES(source_file),updated_at=NOW()"
     db.execute(sql)
