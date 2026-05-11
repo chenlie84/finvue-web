@@ -659,6 +659,29 @@ def get_monthly_report(
             "live_count": int(row["live_count"] or 0)
         })
 
+    # 按主播计算停留时长均值（用于柱状图）
+    watch_duration_by_anchor = db.fetch_all(
+        f"""
+        SELECT account,
+               AVG(avg_watch_duration) as avg_duration,
+               AVG(fans_avg_watch_duration) as fans_avg_duration,
+               AVG(non_fans_avg_watch_duration) as non_fans_avg_duration
+        FROM finvue_operation_live_stats
+        WHERE {where_clause}
+        GROUP BY account
+        """,
+        tuple(params)
+    )
+
+    watch_duration = {}
+    for row in watch_duration_by_anchor or []:
+        acc = row["account"] or "未知主播"
+        watch_duration[acc] = {
+            "avg_duration": round(float(row["avg_duration"] or 0), 1),
+            "fans_avg_duration": round(float(row["fans_avg_duration"] or 0), 1),
+            "non_fans_avg_duration": round(float(row["non_fans_avg_duration"] or 0), 1)
+        }
+
     return {
         "ok": True,
         "month": month,
@@ -666,7 +689,8 @@ def get_monthly_report(
         "video": video_rows or [],
         "history": history_rows or [],
         "totals": total_rows or [],
-        "daily_by_anchor": daily_by_anchor
+        "daily_by_anchor": daily_by_anchor,
+        "watch_duration": watch_duration
     }
 
 

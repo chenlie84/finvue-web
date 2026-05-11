@@ -581,6 +581,36 @@ function renderAnchorLineChart(daily, height, maxAcu) {
   `;
 }
 
+// 渲染粉丝/非粉停留时长柱状图
+function renderWatchDurationBar(fansDuration, nonFansDuration, maxDuration) {
+  if (!maxDuration) maxDuration = Math.max(fansDuration, nonFansDuration, 1);
+  const barHeight = 24;
+  const chartWidth = 300;
+  const padding = 10;
+  const barWidth = chartWidth - padding * 2;
+
+  const fansWidth = (fansDuration / maxDuration) * barWidth;
+  const nonFansWidth = (nonFansDuration / maxDuration) * barWidth;
+
+  return `
+    <div style="margin-top:12px;padding:12px;background:var(--bg2);border-radius:var(--r);">
+      <div style="font-size:12px;color:var(--text1);margin-bottom:8px;">⏱ 粉丝/非粉停留时长均值（秒）</div>
+      <svg width="100%" height="80" viewBox="0 0 ${chartWidth} 80" preserveAspectRatio="xMidYMid meet">
+        <!-- 粉丝柱 -->
+        <rect x="${padding}" y="10" width="${fansWidth}" height="${barHeight}" fill="var(--gold)" rx="4"/>
+        <text x="${padding + fansWidth + 5}" y="${10 + barHeight/2 + 4}" style="font-size:11px;fill:var(--text1);">${fansDuration}s</text>
+        <text x="${padding}" y="${10 + barHeight/2 + 4}" style="font-size:11px;fill:var(--bg0);font-weight:500;">粉丝</text>
+        
+        <!-- 非粉柱 -->
+        <rect x="${padding}" y="40" width="${nonFansWidth}" height="${barHeight}" fill="var(--blue)" rx="4"/>
+        <text x="${padding + nonFansWidth + 5}" y="${40 + barHeight/2 + 4}" style="font-size:11px;fill:var(--text1);">${nonFansDuration}s</text>
+        <text x="${padding}" y="${40 + barHeight/2 + 4}" style="font-size:11px;fill:var(--bg0);font-weight:500;">非粉</text>
+      </svg>
+      <div class="muted" style="font-size:10px;margin-top:4px;">粉丝停留 ${fansDuration > nonFansDuration ? '更长' : '较短'} · 差值 ${Math.abs(fansDuration - nonFansDuration).toFixed(1)}s</div>
+    </div>
+  `;
+}
+
 function renderMonthlyReport(data) {
   const live = data.live || [];
   const video = data.video || [];
@@ -640,10 +670,16 @@ function renderMonthlyReport(data) {
     </div>
   `;
   
-  // 各主播明细（每个主播单独展示折线图）
+  // 各主播明细（每个主播单独展示折线图和柱状图）
   const dailyByAnchor = data.daily_by_anchor || {};
+  const watchDuration = data.watch_duration || {};
+
+  // 计算所有主播的最大停留时长（用于统一柱状图比例）
+  const allDurations = Object.values(watchDuration).flatMap(d => [d.fans_avg_duration, d.non_fans_avg_duration]);
+  const maxWatchDuration = Math.max(...allDurations, 1);
   for (const [accName, accData] of accountList) {
     const anchorDaily = dailyByAnchor[accName] || [];
+    const anchorWatch = watchDuration[accName] || {};
     
     // 该主播的折线图
     let chartHtml = '';
@@ -662,6 +698,14 @@ function renderMonthlyReport(data) {
       `;
     }
     
+
+
+    // 该主播的停留时长柱状图
+    let barHtml = '';
+    if (anchorWatch.fans_avg_duration > 0 || anchorWatch.non_fans_avg_duration > 0) {
+      barHtml = renderWatchDurationBar(anchorWatch.fans_avg_duration, anchorWatch.non_fans_avg_duration, maxWatchDuration);
+    }
+
     html += `
       <div class="panel mb">
         <div class="panel-hd">
@@ -687,6 +731,7 @@ function renderMonthlyReport(data) {
           </div>
         </div>
         ${chartHtml}
+        ${barHtml}
         ${accData.live.length ? `
           <details class="prompt-detail">
             <summary>直播明细 (${accData.live.length} 场)</summary>
