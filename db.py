@@ -78,3 +78,9 @@ def fetch_all(sql: str, args: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
 def execute(sql: str, args: tuple[Any, ...] = ()) -> int:
     with cursor() as cur:
         return cur.execute(sql, args)
+
+
+def executemany(sql: str, args_list: list[tuple[Any, ...]]) -> int:
+    """批量执行SQL，用于批量插入."""
+    with cursor() as cur:
+        return cur.executemany(sql, args_list)

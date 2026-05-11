@@ -87,24 +87,27 @@ async def import_customer_profiles(
 
 
 def _insert_profiles_batch(batch: list) -> None:
-    """批量插入客户档案 - 使用参数化查询."""
+    """批量插入客户档案 - 使用 executemany."""
+    args_list = []
     for b in batch:
-        db.execute(
-            """INSERT INTO finvue_customer_profiles
-            (customer_id, customer_name, latest_anchor_name, latest_analyzed_at,
-             latest_live_theme, latest_rank, best_rank, avg_watch_seconds, labels, tags, raw)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-            customer_name = VALUES(customer_name),
-            latest_anchor_name = VALUES(latest_anchor_name),
-            latest_analyzed_at = VALUES(latest_analyzed_at),
-            latest_live_theme = VALUES(latest_live_theme),
-            latest_rank = VALUES(latest_rank),
-            best_rank = VALUES(best_rank),
-            avg_watch_seconds = VALUES(avg_watch_seconds),
-            updated_at = NOW()""",
-            (b[0], b[1], b[2], b[3] or None, b[4], b[5], b[6], b[7], '[]', '[]', '{}')
-        )
+        args_list.append((b[0], b[1], b[2], b[3] or None, b[4], b[5], b[6], b[7], '[]', '[]', '{}'))
+    
+    db.executemany(
+        """INSERT INTO finvue_customer_profiles
+        (customer_id, customer_name, latest_anchor_name, latest_analyzed_at,
+         latest_live_theme, latest_rank, best_rank, avg_watch_seconds, labels, tags, raw)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+        customer_name = VALUES(customer_name),
+        latest_anchor_name = VALUES(latest_anchor_name),
+        latest_analyzed_at = VALUES(latest_analyzed_at),
+        latest_live_theme = VALUES(latest_live_theme),
+        latest_rank = VALUES(latest_rank),
+        best_rank = VALUES(best_rank),
+        avg_watch_seconds = VALUES(avg_watch_seconds),
+        updated_at = NOW()""",
+        args_list
+    )
 
 
 @router.post("/api/customer-library/import-sessions")
@@ -169,25 +172,28 @@ async def import_customer_sessions(
 
 
 def _insert_sessions_batch(batch: list) -> None:
-    """批量插入客户会话 - 使用参数化查询."""
+    """批量插入客户会话 - 使用 executemany."""
+    args_list = []
     for b in batch:
-        db.execute(
-            """INSERT INTO finvue_customer_sessions
-            (session_id, customer_id, anchor_name, room_id, live_theme,
-             report_type, metric_type, metric_value, watch_rank,
-             watch_duration_seconds, analyzed_at, source_file, raw)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-            anchor_name = VALUES(anchor_name),
-            room_id = VALUES(room_id),
-            live_theme = VALUES(live_theme),
-            report_type = VALUES(report_type),
-            metric_type = VALUES(metric_type),
-            metric_value = VALUES(metric_value),
-            watch_rank = VALUES(watch_rank),
-            watch_duration_seconds = VALUES(watch_duration_seconds),
-            analyzed_at = VALUES(analyzed_at),
-            source_file = VALUES(source_file),
-            updated_at = NOW()""",
-            (b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8], b[9], b[10] or None, b[11], '{}')
-        )
+        args_list.append((b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8], b[9], b[10] or None, b[11], '{}'))
+    
+    db.executemany(
+        """INSERT INTO finvue_customer_sessions
+        (session_id, customer_id, anchor_name, room_id, live_theme,
+         report_type, metric_type, metric_value, watch_rank,
+         watch_duration_seconds, analyzed_at, source_file, raw)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+        anchor_name = VALUES(anchor_name),
+        room_id = VALUES(room_id),
+        live_theme = VALUES(live_theme),
+        report_type = VALUES(report_type),
+        metric_type = VALUES(metric_type),
+        metric_value = VALUES(metric_value),
+        watch_rank = VALUES(watch_rank),
+        watch_duration_seconds = VALUES(watch_duration_seconds),
+        analyzed_at = VALUES(analyzed_at),
+        source_file = VALUES(source_file),
+        updated_at = NOW()""",
+        args_list
+    )
