@@ -417,14 +417,19 @@ def delete_live_record(
     room_id: str,
     _: dict = Depends(security.require_permission("home"))
 ) -> dict:
-    """删除直播记录."""
-    # 检查记录是否存在
+    """删除直播记录（仅限手工录入的记录）."""
+    # 检查记录是否存在且为手工录入
     existing = db.fetch_one(
-        "SELECT id, account, start_time FROM finvue_operation_live_stats WHERE room_id = %s",
+        "SELECT id, account, start_time, notes FROM finvue_operation_live_stats WHERE room_id = %s",
         (room_id,)
     )
     if not existing:
         return {"ok": False, "error": "记录不存在"}
+
+    # 检查是否为手工录入（notes字段包含"[手工录入]"）
+    notes = existing.get("notes") or ""
+    if "[手工录入]" not in notes:
+        return {"ok": False, "error": "只能删除手工录入的记录，CSV导入的记录不可删除"}
 
     # 删除记录
     db.execute(
@@ -723,7 +728,7 @@ def get_calendar(
     rows = db.fetch_all(
         f"""
         SELECT account, room_id, title, start_time, duration, pcu, acu,
-               watch_ucnt, follow_ucnt, earn_score
+               watch_ucnt, follow_ucnt, earn_score, notes
         FROM finvue_operation_live_stats
         WHERE {where_clause}
         ORDER BY start_time
@@ -781,6 +786,12 @@ async def add_live_record(
     # 生成一个唯一的 room_id (用于手工录入的记录)
     import hashlib
     room_id = hashlib.md5(f"{account}{live_date}{live_time}".encode()).hexdigest()[:19]
+
+    # 给notes添加手工录入标识（用于区分可删除的记录）
+    if notes:
+        notes = f"[手工录入] {notes}"
+    else:
+        notes = "[手工录入]"
 
     try:
         db.execute(
