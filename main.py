@@ -13,6 +13,7 @@ import uvicorn
 import config
 import migrate
 from api import admin, ai, auth, customers, files, jobs, libraries, reports, settings, sop, system
+from api import operation as api_operation
 
 
 @asynccontextmanager
@@ -41,6 +42,7 @@ app.include_router(admin.router)
 app.include_router(ai.router)
 app.include_router(files.router)
 app.include_router(sop.router)
+app.include_router(api_operation.router)
 
 
 @app.exception_handler(HTTPException)
@@ -89,6 +91,11 @@ def customer_trends(request: Request) -> HTMLResponse:
 @app.get("/sop")
 def sop_page(request: Request) -> HTMLResponse:
     return _page(request, "sop.html")
+
+
+@app.get("/operation-dashboard.html")
+def operation_dashboard(request: Request) -> HTMLResponse:
+    return _page(request, "operation-dashboard.html")
 
 
 @app.get("/favicon.ico")

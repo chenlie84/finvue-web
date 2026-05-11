@@ -402,6 +402,7 @@
       <button class="nav-item" data-sec="live" data-permission="live" onclick="showSec('live',this)"><span class="ni">▶</span> 直播分析 <span class="nav-badge">3</span></button>
       <button class="nav-item" data-sec="anchor-library" data-permission="anchor-library" onclick="showSec('anchor-library',this)"><span class="ni">▣</span> 主播资料库</button>
       <button class="nav-item" data-sec="customer-library" data-permission="customer-library" onclick="showSec('customer-library',this)"><span class="ni">◉</span> 客户库</button>
+      <button class="nav-item" onclick="window.location.href='/operation-dashboard.html'"><span class="ni">📊</span> 运营数据中心</button>
       <button class="nav-item" data-sec="transcript-library" data-permission="transcript-library" onclick="showSec('transcript-library',this)"><span class="ni">☰</span> 逐字稿库</button>
       <button class="nav-item" data-sec="distill-library" data-permission="distill-library" onclick="showSec('distill-library',this)"><span class="ni">⌘</span> 主播蒸馏库</button>
       <button class="nav-item" data-sec="sop" data-permission="sop" onclick="showSec('sop',this)"><span class="ni">▤</span> 带新SOP</button>
@@ -1534,6 +1535,7 @@
       <button class="nav-item" onclick="showAdminSec('settings',this)"><span class="ni">⚙</span> 系统设置</button>
       <div class="s-section">数据与安全</div>
       <button class="nav-item" onclick="showAdminSec('logs',this)"><span class="ni">≡</span> 操作日志</button>
+      <button class="nav-item" onclick="showAdminSec('operation-import',this)"><span class="ni">📊</span> 运营数据导入</button>
       <button class="nav-item" onclick="showAdminSec('api',this)"><span class="ni">↯</span> API管理 <span class="nav-badge red-b">!</span></button>
       <button class="nav-item" onclick="showAdminSec('backup',this)"><span class="ni">☁</span> 备份管理</button>
       <div class="s-section">监控</div>
@@ -1665,6 +1667,33 @@
           <div class="panel-hd"><div class="panel-title">最近操作</div><span class="muted" style="font-size:12px;">本地记录</span></div>
           <div id="adminLogsList" class="admin-log-list">
             <div class="admin-log-item"><div class="admin-log-meta"><span>LOG</span><span>--</span></div><div class="admin-log-title">正在汇总最近活动</div><div class="admin-log-desc">将展示最近的人物快照、逐字稿沉淀、合规与案例新增。</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="asec" id="asec-operation-import">
+        <div class="page-title">运营数据导入</div>
+        <div class="page-sub">上传 CSV 文件导入直播和短视频数据</div>
+        <div class="g2 mb">
+          <div class="panel">
+            <div class="panel-hd"><div class="panel-title">直播数据导入</div></div>
+            <div class="muted" style="font-size:12px;margin-bottom:12px;">支持字段：账号名称、直播ID、开播时间、观看人数、涨粉数等。自动识别中英字段名。</div>
+            <input type="file" id="op-live-csv-input" accept=".csv" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);color:var(--text0);margin-bottom:12px;">
+            <button class="btn btn-gold" style="width:100%;" onclick="uploadOperationLiveCSV()">上传直播数据 CSV</button>
+            <div id="op-live-result" style="margin-top:12px;font-size:13px;"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-hd"><div class="panel-title">短视频数据导入</div></div>
+            <div class="muted" style="font-size:12px;margin-bottom:12px;">支持字段：账号名称、作品名称、发布时间、播放量、涨粉数等。</div>
+            <input type="file" id="op-video-csv-input" accept=".csv" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);color:var(--text0);margin-bottom:12px;">
+            <button class="btn btn-gold" style="width:100%;" onclick="uploadOperationVideoCSV()">上传短视频数据 CSV</button>
+            <div id="op-video-result" style="margin-top:12px;font-size:13px;"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-hd"><div class="panel-title">导入历史记录</div><button class="btn btn-outline-sm" onclick="loadOperationImportLogs()">刷新</button></div>
+          <div id="op-import-logs" class="admin-log-list">
+            <div class="muted" style="padding:12px;">正在加载导入记录...</div>
           </div>
         </div>
       </div>
@@ -3363,6 +3392,87 @@ function showAdminSec(id, btn) {
     const target = Array.from(navItems).find((item) => item.getAttribute("onclick")?.includes(`'${id}'`));
     target?.classList.add("active");
   }
+  if (id === "operation-import") loadOperationImportLogs();
+}
+
+function loadOperationImportLogs() {
+  const container = document.getElementById("op-import-logs");
+  container.innerHTML = '<div class="muted" style="padding:12px;">正在加载...</div>';
+  fetch("/api/operation/import-logs", { credentials: "include" })
+    .then((r) => r.json())
+    .then((data) => {
+      if (!data.ok) throw new Error(data.error || "加载失败");
+      const logs = data.logs || [];
+      if (!logs.length) {
+        container.innerHTML = '<div class="muted" style="padding:12px;">暂无导入记录</div>';
+        return;
+      }
+      container.innerHTML = logs.map((log) => `
+        <div class="admin-log-item">
+          <div class="admin-log-meta">
+            <span class="badge ${log.status === "success" ? "green" : "red"}">${log.import_type === "live" ? "直播" : "短视频"}</span>
+            <span>${log.imported_at || ""}</span>
+          </div>
+          <div class="admin-log-title">${escapeHtml(log.file_name || "")}</div>
+          <div class="admin-log-desc">导入 ${log.record_count || 0} 条记录 · ${log.account_count || 0} 个账号 · <span style="color:${log.status === "success" ? "var(--green)" : "var(--red)"}">${log.status === "success" ? "成功" : "失败"}</span></div>
+        </div>
+      `).join("");
+    })
+    .catch((e) => {
+      container.innerHTML = `<div class="muted" style="padding:12px;color:var(--red);">${escapeHtml(e.message)}</div>`;
+    });
+}
+
+function uploadOperationLiveCSV() {
+  const input = document.getElementById("op-live-csv-input");
+  const resultEl = document.getElementById("op-live-result");
+  if (!input.files.length) {
+    resultEl.innerHTML = '<span style="color:var(--red);">请先选择文件</span>';
+    return;
+  }
+  const formData = new FormData();
+  formData.append("file", input.files[0]);
+  resultEl.innerHTML = '<span class="spinner"></span> 上传中...';
+  fetch("/api/operation/import-live", { method: "POST", body: formData, credentials: "include" })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.ok) {
+        resultEl.innerHTML = `<span style="color:var(--green);">✓ 导入成功: ${data.imported} 条记录, ${data.accounts || 0} 个账号</span>`;
+        input.value = "";
+        loadOperationImportLogs();
+      } else {
+        resultEl.innerHTML = `<span style="color:var(--red);">导入失败: ${escapeHtml(data.error)}</span>`;
+      }
+    })
+    .catch((e) => {
+      resultEl.innerHTML = `<span style="color:var(--red);">上传失败: ${escapeHtml(e.message)}</span>`;
+    });
+}
+
+function uploadOperationVideoCSV() {
+  const input = document.getElementById("op-video-csv-input");
+  const resultEl = document.getElementById("op-video-result");
+  if (!input.files.length) {
+    resultEl.innerHTML = '<span style="color:var(--red);">请先选择文件</span>';
+    return;
+  }
+  const formData = new FormData();
+  formData.append("file", input.files[0]);
+  resultEl.innerHTML = '<span class="spinner"></span> 上传中...';
+  fetch("/api/operation/import-video", { method: "POST", body: formData, credentials: "include" })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.ok) {
+        resultEl.innerHTML = `<span style="color:var(--green);">✓ 导入成功: ${data.imported} 条记录, ${data.accounts || 0} 个账号</span>`;
+        input.value = "";
+        loadOperationImportLogs();
+      } else {
+        resultEl.innerHTML = `<span style="color:var(--red);">导入失败: ${escapeHtml(data.error)}</span>`;
+      }
+    })
+    .catch((e) => {
+      resultEl.innerHTML = `<span style="color:var(--red);">上传失败: ${escapeHtml(e.message)}</span>`;
+    });
 }
 
 function canAccessAdmin() {
