@@ -84,3 +84,21 @@ def executemany(sql: str, args_list: list[tuple[Any, ...]]) -> int:
     """批量执行SQL，用于批量插入."""
     with cursor() as cur:
         return cur.executemany(sql, args_list)
+
+
+def execute_multi(sqls: list[str]) -> None:
+    """在同一条连接中执行多条SQL语句."""
+    conn = get_connection(multi_statements=True)
+    try:
+        cur = conn.cursor()
+        try:
+            for sql in sqls:
+                cur.execute(sql)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cur.close()
+    finally:
+        conn.close()
