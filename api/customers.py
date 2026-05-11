@@ -35,7 +35,7 @@ async def import_customer_profiles(
     file: UploadFile = File(...),
     _: dict = Depends(security.require_permission("admin-api"))
 ) -> dict:
-    """导入客户档案 CSV（批量插入优化）."""
+    """导入客户档案 CSV."""
     if not file.filename.endswith('.csv'):
         return {"ok": False, "error": "请上传 CSV 文件"}
 
@@ -47,7 +47,7 @@ async def import_customer_profiles(
         count = 0
         batch = []
         batch_size = 500
-        
+
         for row in reader:
             customer_id = row.get('客户ID') or row.get('customer_id')
             if not customer_id:
@@ -61,71 +61,24 @@ async def import_customer_profiles(
             best_rank = int(row.get('最佳排名') or row.get('best_rank') or 0)
             avg_watch = int(row.get('平均观看时长') or row.get('avg_watch_seconds') or 0)
 
-            analyzed_at_dt = None
+            analyzed_at_str = ''
             if analyzed_at:
                 try:
-                    analyzed_at_dt = datetime.strptime(analyzed_at, '%Y-%m-%d %H:%M:%S')
+                    dt = datetime.strptime(analyzed_at, '%Y-%m-%d %H:%M:%S')
+                    analyzed_at_str = dt.strftime('%Y-%m-%d %H:%M:%S')
                 except:
                     pass
 
-            batch.append((customer_id, customer_name, anchor_name, analyzed_at_dt,
+            batch.append((customer_id, customer_name, anchor_name, analyzed_at_str,
                          live_theme, latest_rank, best_rank, avg_watch))
             count += 1
 
             if len(batch) >= batch_size:
-                # 批量插入
-                values_list = []
-                for b in batch:
-                    cid = b[0].replace("'", "''")
-                    cname = b[1].replace("'", "''")
-                    aname = b[2].replace("'", "''")
-                    theme = b[4].replace("'", "''")
-                    atime = f"'{b[3].strftime('%Y-%m-%d %H:%M:%S')}'" if b[3] else 'NULL'
-                    values_list.append(f"('{cid}', '{cname}', '{aname}', {atime}, '{theme}', {b[5]}, {b[6]}, {b[7]}, '[]', '[]', '{{}}')")
-                
-                db.execute(f"""
-                    INSERT INTO finvue_customer_profiles
-                    (customer_id, customer_name, latest_anchor_name, latest_analyzed_at,
-                     latest_live_theme, latest_rank, best_rank, avg_watch_seconds, labels, tags, raw)
-                    VALUES {','.join(values_list)}
-                    ON DUPLICATE KEY UPDATE
-                    customer_name = VALUES(customer_name),
-                    latest_anchor_name = VALUES(latest_anchor_name),
-                    latest_analyzed_at = VALUES(latest_analyzed_at),
-                    latest_live_theme = VALUES(latest_live_theme),
-                    latest_rank = VALUES(latest_rank),
-                    best_rank = VALUES(best_rank),
-                    avg_watch_seconds = VALUES(avg_watch_seconds),
-                    updated_at = NOW()
-                """)
+                _insert_profiles_batch(batch)
                 batch = []
 
-        # 处理剩余批次
         if batch:
-            values_list = []
-            for b in batch:
-                cid = b[0].replace("'", "''")
-                cname = b[1].replace("'", "''")
-                aname = b[2].replace("'", "''")
-                theme = b[4].replace("'", "''")
-                atime = f"'{b[3].strftime('%Y-%m-%d %H:%M:%S')}'" if b[3] else 'NULL'
-                values_list.append(f"('{cid}', '{cname}', '{aname}', {atime}, '{theme}', {b[5]}, {b[6]}, {b[7]}, '[]', '[]', '{{}}')")
-            
-            db.execute(f"""
-                INSERT INTO finvue_customer_profiles
-                (customer_id, customer_name, latest_anchor_name, latest_analyzed_at,
-                 latest_live_theme, latest_rank, best_rank, avg_watch_seconds, labels, tags, raw)
-                VALUES {','.join(values_list)}
-                ON DUPLICATE KEY UPDATE
-                customer_name = VALUES(customer_name),
-                latest_anchor_name = VALUES(latest_anchor_name),
-                latest_analyzed_at = VALUES(latest_analyzed_at),
-                latest_live_theme = VALUES(latest_live_theme),
-                latest_rank = VALUES(latest_rank),
-                best_rank = VALUES(best_rank),
-                avg_watch_seconds = VALUES(avg_watch_seconds),
-                updated_at = NOW()
-            """)
+            _insert_profiles_batch(batch)
 
         return {"ok": True, "message": f"成功导入 {count} 条客户档案", "count": count}
 
@@ -133,12 +86,29 @@ async def import_customer_profiles(
         return {"ok": False, "error": str(e)}
 
 
+def _insert_profiles_batch(batch: list) -> None:
+    """批量插入客户档案."""
+    parts = []
+    for b in batch:
+        cid = b[0].replace("'", "''")
+        cname = b[1].replace("'", "''")
+        aname = b[2].replace("'", "''")
+        theme = b[4].replace("'", "''")
+        atime = "'{}'".format(b[3]) if b[3] else 'NULL'
+        parts.append("('{}','{}','{}',{},'{}',{},{},{},'[]','[]','{}')".format(
+            cid, cname, aname, atime, theme, b[5], b[6], b[7]
+        ))
+    
+    sql = "INSERT INTO finvue_customer_profiles (customer_id,customer_name,latest_anchor_name,latest_analyzed_at,latest_live_theme,latest_rank,best_rank,avg_watch_seconds,labels,tags,raw) VALUES " + ','.join(parts) + " ON DUPLICATE KEY UPDATE customer_name=VALUES(customer_name),latest_anchor_name=VALUES(latest_anchor_name),latest_analyzed_at=VALUES(latest_analyzed_at),latest_live_theme=VALUES(latest_live_theme),latest_rank=VALUES(latest_rank),best_rank=VALUES(best_rank),avg_watch_seconds=VALUES(avg_watch_seconds),updated_at=NOW()"
+    db.execute(sql)
+
+
 @router.post("/api/customer-library/import-sessions")
 async def import_customer_sessions(
     file: UploadFile = File(...),
     _: dict = Depends(security.require_permission("admin-api"))
 ) -> dict:
-    """导入客户会话 CSV（批量插入优化）."""
+    """导入客户会话 CSV."""
     if not file.filename.endswith('.csv'):
         return {"ok": False, "error": "请上传 CSV 文件"}
 
@@ -168,95 +138,49 @@ async def import_customer_sessions(
             analyzed_at = row.get('分析时间') or row.get('analyzed_at')
             source_file = row.get('来源文件') or row.get('source_file') or ''
 
-            # 解析时间
-            analyzed_at_dt = None
+            analyzed_at_str = ''
             if analyzed_at:
                 try:
-                    analyzed_at_dt = datetime.strptime(analyzed_at, '%Y-%m-%d %H:%M:%S')
+                    dt = datetime.strptime(analyzed_at, '%Y-%m-%d %H:%M:%S')
+                    analyzed_at_str = dt.strftime('%Y-%m-%d %H:%M:%S')
                 except:
                     pass
 
             batch.append((session_id, customer_id, anchor_name, room_id, live_theme,
                          report_type, metric_type, metric_value, watch_rank,
-                         watch_seconds, analyzed_at_dt, source_file))
+                         watch_seconds, analyzed_at_str, source_file))
             count += 1
 
             if len(batch) >= batch_size:
-                # 批量插入
-                values_list = []
-                for b in batch:
-                    sid = b[0].replace("'", "''")
-                    cid = b[1].replace("'", "''")
-                    aname = b[2].replace("'", "''")
-                    rid = str(b[3]).replace("'", "''")
-                    theme = b[4].replace("'", "''")
-                    rtype = b[5].replace("'", "''")
-                    mtype = b[6].replace("'", "''")
-                    mval = b[7].replace("'", "''")
-                    atime = f"'{b[10].strftime('%Y-%m-%d %H:%M:%S')}'" if b[10] else 'NULL'
-                    src = b[11].replace("'", "''")
-                    vals = f"('{sid}', '{cid}', '{aname}', '{rid}', '{theme}', '{rtype}', '{mtype}', '{mval}', {b[8]}, {b[9]}, {atime}, '{src}', '{{}}')"
-                    values_list.append(vals)
-                
-                db.execute("""
-                    INSERT INTO finvue_customer_sessions
-                    (session_id, customer_id, anchor_name, room_id, live_theme,
-                     report_type, metric_type, metric_value, watch_rank,
-                     watch_duration_seconds, analyzed_at, source_file, raw)
-                    VALUES %s
-                    ON DUPLICATE KEY UPDATE
-                    anchor_name = VALUES(anchor_name),
-                    room_id = VALUES(room_id),
-                    live_theme = VALUES(live_theme),
-                    report_type = VALUES(report_type),
-                    metric_type = VALUES(metric_type),
-                    metric_value = VALUES(metric_value),
-                    watch_rank = VALUES(watch_rank),
-                    watch_duration_seconds = VALUES(watch_duration_seconds),
-                    analyzed_at = VALUES(analyzed_at),
-                    source_file = VALUES(source_file),
-                    updated_at = NOW()
-                """ % ','.join(values_list))
+                _insert_sessions_batch(batch)
                 batch = []
 
-        # 处理剩余批次
         if batch:
-            values_list = []
-            for b in batch:
-                sid = b[0].replace("'", "''")
-                cid = b[1].replace("'", "''")
-                aname = b[2].replace("'", "''")
-                rid = str(b[3]).replace("'", "''")
-                theme = b[4].replace("'", "''")
-                rtype = b[5].replace("'", "''")
-                mtype = b[6].replace("'", "''")
-                mval = b[7].replace("'", "''")
-                atime = f"'{b[10].strftime('%Y-%m-%d %H:%M:%S')}'" if b[10] else 'NULL'
-                src = b[11].replace("'", "''")
-                vals = f"('{sid}', '{cid}', '{aname}', '{rid}', '{theme}', '{rtype}', '{mtype}', '{mval}', {b[8]}, {b[9]}, {atime}, '{src}', '{{}}')"
-                values_list.append(vals)
-            
-            db.execute("""
-                INSERT INTO finvue_customer_sessions
-                (session_id, customer_id, anchor_name, room_id, live_theme,
-                 report_type, metric_type, metric_value, watch_rank,
-                 watch_duration_seconds, analyzed_at, source_file, raw)
-                VALUES %s
-                ON DUPLICATE KEY UPDATE
-                anchor_name = VALUES(anchor_name),
-                room_id = VALUES(room_id),
-                live_theme = VALUES(live_theme),
-                report_type = VALUES(report_type),
-                metric_type = VALUES(metric_type),
-                metric_value = VALUES(metric_value),
-                watch_rank = VALUES(watch_rank),
-                watch_duration_seconds = VALUES(watch_duration_seconds),
-                analyzed_at = VALUES(analyzed_at),
-                source_file = VALUES(source_file),
-                updated_at = NOW()
-            """ % ','.join(values_list))
+            _insert_sessions_batch(batch)
 
         return {"ok": True, "message": f"成功导入 {count} 条客户会话", "count": count}
 
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+def _insert_sessions_batch(batch: list) -> None:
+    """批量插入客户会话."""
+    parts = []
+    for b in batch:
+        sid = b[0].replace("'", "''")
+        cid = b[1].replace("'", "''")
+        aname = b[2].replace("'", "''")
+        rid = str(b[3]).replace("'", "''")
+        theme = b[4].replace("'", "''")
+        rtype = b[5].replace("'", "''")
+        mtype = b[6].replace("'", "''")
+        mval = b[7].replace("'", "''")
+        atime = "'{}'".format(b[10]) if b[10] else 'NULL'
+        src = b[11].replace("'", "''")
+        parts.append("('{}','{}','{}','{}','{}','{}','{}','{}',{},{}},'{}','{}')".format(
+            sid, cid, aname, rid, theme, rtype, mtype, mval, b[8], b[9], atime, src
+        ))
+    
+    sql = "INSERT INTO finvue_customer_sessions (session_id,customer_id,anchor_name,room_id,live_theme,report_type,metric_type,metric_value,watch_rank,watch_duration_seconds,analyzed_at,source_file,raw) VALUES " + ','.join(parts) + " ON DUPLICATE KEY UPDATE anchor_name=VALUES(anchor_name),room_id=VALUES(room_id),live_theme=VALUES(live_theme),report_type=VALUES(report_type),metric_type=VALUES(metric_type),metric_value=VALUES(metric_value),watch_rank=VALUES(watch_rank),watch_duration_seconds=VALUES(watch_duration_seconds),analyzed_at=VALUES(analyzed_at),source_file=VALUES(source_file),updated_at=NOW()"
+    db.execute(sql)
