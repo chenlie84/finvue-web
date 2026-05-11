@@ -14,3 +14,7 @@ app/.tmp-*
 app/.dev-server.log
 dist/
 coverage/
+
+# 数据导入脚本和CSV文件（本地使用，不推送）
+import_csv_to_production.py
+*.csv
