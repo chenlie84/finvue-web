@@ -138,7 +138,7 @@ async def import_customer_sessions(
     file: UploadFile = File(...),
     _: dict = Depends(security.require_permission("admin-api"))
 ) -> dict:
-    """导入客户会话 CSV."""
+    """导入客户会话 CSV（批量插入优化）."""
     if not file.filename.endswith('.csv'):
         return {"ok": False, "error": "请上传 CSV 文件"}
 
@@ -148,12 +148,15 @@ async def import_customer_sessions(
         reader = csv.DictReader(io.StringIO(text))
 
         count = 0
+        batch = []
+        batch_size = 500
+
         for row in reader:
             session_id = row.get('场次ID') or row.get('session_id')
             if not session_id:
                 continue
 
-            customer_id = row.get('客户ID') or row.get('customer_id')
+            customer_id = row.get('客户ID') or row.get('customer_id') or ''
             anchor_name = row.get('主播名称') or row.get('anchor_name') or ''
             room_id = row.get('直播间ID') or row.get('room_id') or ''
             live_theme = row.get('直播主题') or row.get('live_theme') or ''
@@ -166,21 +169,79 @@ async def import_customer_sessions(
             source_file = row.get('来源文件') or row.get('source_file') or ''
 
             # 解析时间
+            analyzed_at_dt = None
             if analyzed_at:
                 try:
                     analyzed_at_dt = datetime.strptime(analyzed_at, '%Y-%m-%d %H:%M:%S')
                 except:
-                    analyzed_at_dt = None
-            else:
-                analyzed_at_dt = None
+                    pass
 
-            db.execute(
-                """
+            batch.append((session_id, customer_id, anchor_name, room_id, live_theme,
+                         report_type, metric_type, metric_value, watch_rank,
+                         watch_seconds, analyzed_at_dt, source_file))
+            count += 1
+
+            if len(batch) >= batch_size:
+                # 批量插入
+                values_list = []
+                for b in batch:
+                    sid = b[0].replace("'", "''")
+                    cid = b[1].replace("'", "''")
+                    aname = b[2].replace("'", "''")
+                    rid = str(b[3]).replace("'", "''")
+                    theme = b[4].replace("'", "''")
+                    rtype = b[5].replace("'", "''")
+                    mtype = b[6].replace("'", "''")
+                    mval = b[7].replace("'", "''")
+                    atime = b[10].strftime('%Y-%m-%d %H:%M:%S') if b[10] else 'NULL'
+                    src = b[11].replace("'", "''")
+                    vals = f"('{sid}', '{cid}', '{aname}', '{rid}', '{theme}', '{rtype}', '{mtype}', '{mval}', {b[8]}, {b[9]}, {atime}, '{src}', '{{}}')"
+                    values_list.append(vals)
+                
+                db.execute("""
+                    INSERT INTO finvue_customer_sessions
+                    (session_id, customer_id, anchor_name, room_id, live_theme,
+                     report_type, metric_type, metric_value, watch_rank,
+                     watch_duration_seconds, analyzed_at, source_file, raw)
+                    VALUES %s
+                    ON DUPLICATE KEY UPDATE
+                    anchor_name = VALUES(anchor_name),
+                    room_id = VALUES(room_id),
+                    live_theme = VALUES(live_theme),
+                    report_type = VALUES(report_type),
+                    metric_type = VALUES(metric_type),
+                    metric_value = VALUES(metric_value),
+                    watch_rank = VALUES(watch_rank),
+                    watch_duration_seconds = VALUES(watch_duration_seconds),
+                    analyzed_at = VALUES(analyzed_at),
+                    source_file = VALUES(source_file),
+                    updated_at = NOW()
+                """ % ','.join(values_list))
+                batch = []
+
+        # 处理剩余批次
+        if batch:
+            values_list = []
+            for b in batch:
+                sid = b[0].replace("'", "''")
+                cid = b[1].replace("'", "''")
+                aname = b[2].replace("'", "''")
+                rid = str(b[3]).replace("'", "''")
+                theme = b[4].replace("'", "''")
+                rtype = b[5].replace("'", "''")
+                mtype = b[6].replace("'", "''")
+                mval = b[7].replace("'", "''")
+                atime = b[10].strftime('%Y-%m-%d %H:%M:%S') if b[10] else 'NULL'
+                src = b[11].replace("'", "''")
+                vals = f"('{sid}', '{cid}', '{aname}', '{rid}', '{theme}', '{rtype}', '{mtype}', '{mval}', {b[8]}, {b[9]}, {atime}, '{src}', '{{}}')"
+                values_list.append(vals)
+            
+            db.execute("""
                 INSERT INTO finvue_customer_sessions
                 (session_id, customer_id, anchor_name, room_id, live_theme,
                  report_type, metric_type, metric_value, watch_rank,
                  watch_duration_seconds, analyzed_at, source_file, raw)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES %s
                 ON DUPLICATE KEY UPDATE
                 anchor_name = VALUES(anchor_name),
                 room_id = VALUES(room_id),
@@ -193,12 +254,7 @@ async def import_customer_sessions(
                 analyzed_at = VALUES(analyzed_at),
                 source_file = VALUES(source_file),
                 updated_at = NOW()
-                """,
-                (session_id, customer_id, anchor_name, room_id, live_theme,
-                 report_type, metric_type, metric_value, watch_rank,
-                 watch_seconds, analyzed_at_dt, source_file, '{}')
-            )
-            count += 1
+            """ % ','.join(values_list))
 
         return {"ok": True, "message": f"成功导入 {count} 条客户会话", "count": count}
 
