@@ -107,7 +107,7 @@
   .history-bar:hover{background:var(--gold);}
   .history-bar-label{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--text2);white-space:nowrap;}
   /* 折线图样式 */
-  .line-chart-container{position:relative;height:180px;padding:16px;background:var(--bg2);border-radius:var(--r);}
+  .line-chart-container{position:relative;height:200px;padding:16px;background:var(--bg2);border-radius:var(--r);}
   .line-chart-svg{width:100%;height:100%;}
   .line-chart-point{fill:var(--gold);stroke:var(--gold);stroke-width:2;cursor:pointer;}
   .line-chart-point:hover{fill:var(--gold2);stroke:var(--gold2);r:6;}
@@ -594,9 +594,9 @@ function renderMonthlyReport(data) {
   const daily = data.daily || [];
   if (daily.length > 0) {
     const maxAcu = Math.max(...daily.map(d => Number(d.avg_acu) || 0));
-    const chartWidth = 100; // 百分比宽度
-    const chartHeight = 140; // SVG高度
-    const padding = { top: 20, right: 10, bottom: 30, left: 10 };
+    const chartWidth = 800; // 百分比宽度
+    const chartHeight = 200; // SVG高度
+    const padding = { top: 20, right: 40, bottom: 40, left: 60 };
     const innerWidth = chartWidth - padding.left - padding.right;
     const innerHeight = chartHeight - padding.top - padding.bottom;
     
@@ -639,17 +639,17 @@ function renderMonthlyReport(data) {
             <line x1="${padding.left}" y1="${padding.top + innerHeight/2}" x2="${chartWidth - padding.right}" y2="${padding.top + innerHeight/2}" stroke="var(--border)" stroke-width="0.5"/>
             <line x1="${padding.left}" y1="${padding.top + innerHeight}" x2="${chartWidth - padding.right}" y2="${padding.top + innerHeight}" stroke="var(--border)" stroke-width="0.5"/>
             <!-- Y轴标签 -->
-            <text x="${padding.left - 2}" y="${padding.top + 4}" class="line-chart-label" text-anchor="end">${fmt(Math.round(maxAcu))}</text>
-            <text x="${padding.left - 2}" y="${padding.top + innerHeight/2 + 4}" class="line-chart-label" text-anchor="end">${fmt(Math.round(maxAcu/2))}</text>
-            <text x="${padding.left - 2}" y="${padding.top + innerHeight + 4}" class="line-chart-label" text-anchor="end">0</text>
+            <text x="${padding.left - 10}" y="${padding.top + 4}" class="line-chart-label" text-anchor="end">${fmt(Math.round(maxAcu))}</text>
+            <text x="${padding.left - 10}" y="${padding.top + innerHeight/2 + 4}" class="line-chart-label" text-anchor="end">${fmt(Math.round(maxAcu/2))}</text>
+            <text x="${padding.left - 10}" y="${padding.top + innerHeight + 4}" class="line-chart-label" text-anchor="end">0</text>
             <!-- 填充区域 -->
             <path d="${areaPath}" class="line-chart-area"/>
             <!-- 折线 -->
             <path d="${linePath}" class="line-chart-line"/>
             <!-- 数据点 -->
-            ${points.map((p, i) => `<circle cx="${p.x}" cy="${p.y}" r="4" class="line-chart-point" data-day="${p.day}" data-acu="${Math.round(p.acu)}" data-count="${p.liveCount}"/>`).join('')}
+            ${points.map((p, i) => `<circle cx="${p.x}" cy="${p.y}" r="5" class="line-chart-point" data-day="${p.day}" data-acu="${Math.round(p.acu)}" data-count="${p.liveCount}"/>`).join('')}
             <!-- X轴日期标签 -->
-            ${labelIndices.map(i => `<text x="${points[i].x}" y="${padding.top + innerHeight + 12}" class="line-chart-label">${daily[i].day?.slice(8) || ''}</text>`).join('')}
+            ${labelIndices.map(i => `<text x="${points[i].x}" y="${chartHeight - 15}" text-anchor="middle" class="line-chart-label">${daily[i].day?.slice(5) || ''}</text>`).join('')}
           </svg>
           <div id="line-tooltip" class="line-chart-tooltip" style="display:none;"></div>
         </div>
