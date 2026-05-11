@@ -3288,7 +3288,13 @@ function uploadOperationLiveCSV() {
   formData.append("file", input.files[0]);
   resultEl.innerHTML = '<span class="spinner"></span> 上传中...';
   fetch("/api/operation/import-live", { method: "POST", body: formData, credentials: "include" })
-    .then((r) => r.json())
+    .then(async (r) => {
+      if (!r.ok) {
+        const text = await r.text();
+        throw new Error(`HTTP ${r.status}: ${text.slice(0,100)}`);
+      }
+      return r.json();
+    })
     .then((data) => {
       if (data.ok) {
         resultEl.innerHTML = `<span style="color:var(--green);">✓ 导入成功: ${data.imported} 条记录, ${data.accounts || 0} 个账号</span>`;
@@ -3314,7 +3320,13 @@ function uploadOperationVideoCSV() {
   formData.append("file", input.files[0]);
   resultEl.innerHTML = '<span class="spinner"></span> 上传中...';
   fetch("/api/operation/import-video", { method: "POST", body: formData, credentials: "include" })
-    .then((r) => r.json())
+    .then(async (r) => {
+      if (!r.ok) {
+        const text = await r.text();
+        throw new Error(`HTTP ${r.status}: ${text.slice(0,100)}`);
+      }
+      return r.json();
+    })
     .then((data) => {
       if (data.ok) {
         resultEl.innerHTML = `<span style="color:var(--green);">✓ 导入成功: ${data.imported} 条记录, ${data.accounts || 0} 个账号</span>`;
