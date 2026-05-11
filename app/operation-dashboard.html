@@ -709,24 +709,33 @@ function renderCalendar(data, year, month) {
     if (isToday) classes.push('today');
     if (hasLive) classes.push('has-live');
 
-    // 收集主播名字
-    let anchorNames = '';
+    // 收集主播名字和开播时间
+    let anchorInfo = '';
     if (hasLive && dayData.lives) {
-      const names = [...new Set(dayData.lives.map(l => l.account))];
-      if (names.length === 1) {
-        anchorNames = `<div class="calendar-anchor">${esc(names[0])}</div>`;
-      } else if (names.length <= 2) {
-        anchorNames = names.map(n => `<div class="calendar-anchor">${esc(n)}</div>`).join('');
-      } else {
-        anchorNames = names.slice(0, 2).map(n => `<div class="calendar-anchor">${esc(n)}</div>`).join('');
-        anchorNames += `<div class="calendar-anchor muted">+${names.length - 2}</div>`;
+      // 按开播时间排序
+      const sortedLives = dayData.lives.sort((a, b) => {
+        const timeA = a.start_time || '';
+        const timeB = b.start_time || '';
+        return timeA.localeCompare(timeB);
+      });
+      
+      // 显示前3场直播的信息
+      const displayLives = sortedLives.slice(0, 3);
+      anchorInfo = displayLives.map(l => {
+        const time = l.start_time ? l.start_time.split(' ')[1]?.slice(0, 5) || '' : '';
+        const timeStr = time ? ` ${time}` : '';
+        return `<div class="calendar-anchor">${esc(l.account)}${timeStr}</div>`;
+      }).join('');
+      
+      if (sortedLives.length > 3) {
+        anchorInfo += `<div class="calendar-anchor muted">+${sortedLives.length - 3}场</div>`;
       }
     }
 
     html += `
       <div class="${classes.join(' ')}" onclick="showDayDetail('${dateStr}', ${JSON.stringify(dayData).replace(/"/g, '&quot;')})">
         <div class="calendar-date">${day}</div>
-        ${anchorNames}
+        ${anchorInfo}
         ${hasLive ? `<div class="calendar-live-count">${dayData.count}场</div>` : ''}
       </div>
     `;

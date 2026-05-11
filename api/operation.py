@@ -657,11 +657,15 @@ def get_calendar(
     for row in rows or []:
         start_time = row.get("start_time")
         if start_time:
-            # 处理 datetime 对象或字符串
+            # 处理 datetime 对象或字符串，确保格式为 "YYYY-MM-DD HH:MM:SS"
             if isinstance(start_time, datetime):
+                start_time_str = start_time.strftime("%Y-%m-%d %H:%M:%S")
                 date_str = start_time.strftime("%Y-%m-%d")
             else:
-                date_str = str(start_time).split(" ")[0]
+                start_time_str = str(start_time)
+                date_str = start_time_str.split(" ")[0]
+            # 更新 row 中的 start_time 为字符串格式
+            row["start_time"] = start_time_str
         else:
             continue
         if date_str not in days:
