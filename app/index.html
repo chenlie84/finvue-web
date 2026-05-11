@@ -1523,6 +1523,20 @@
       <div class="asec" id="asec-operation-import">
         <div class="page-title">运营数据导入</div>
         <div class="page-sub">上传 CSV 文件导入直播、短视频和客户数据</div>
+        <div class="panel mb" style="padding:16px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-weight:500;">导入模式：</span>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="import-mode" value="increment" checked style="accent-color:var(--gold);">
+              <span>增量导入（追加数据）</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+              <input type="radio" name="import-mode" value="overwrite" style="accent-color:var(--gold);">
+              <span>覆盖导入（清空后重新导入）</span>
+            </label>
+          </div>
+          <div class="muted" style="font-size:12px;margin-top:8px;">增量导入会追加/更新数据，覆盖导入会先清空表再导入（谨慎使用）</div>
+        </div>
         <div class="g2 mb">
           <div class="panel">
             <div class="panel-hd"><div class="panel-title">直播数据导入</div></div>
@@ -3272,16 +3286,24 @@ function loadOperationImportLogs() {
         container.innerHTML = '<div class="muted" style="padding:12px;">暂无导入记录</div>';
         return;
       }
-      container.innerHTML = logs.map((log) => `
-        <div class="admin-log-item">
-          <div class="admin-log-meta">
-            <span class="badge ${log.status === "success" ? "green" : "red"}">${log.import_type === "live" ? "直播" : "短视频"}</span>
-            <span>${log.imported_at || ""}</span>
+      container.innerHTML = logs.map((log) => {
+        const typeLabel = log.import_type === "live" ? "直播" : 
+                          log.import_type === "video" ? "短视频" : 
+                          log.import_type === "customer_profiles" ? "客户档案" : 
+                          log.import_type === "customer_sessions" ? "客户会话" : log.import_type;
+        const modeLabel = log.mode === "overwrite" ? "覆盖" : "增量";
+        return `
+          <div class="admin-log-item">
+            <div class="admin-log-meta">
+              <span class="badge ${log.status === "success" ? "green" : "red"}">${typeLabel}</span>
+              <span class="badge" style="background:var(--gold-dim);color:var(--gold);">${modeLabel}</span>
+              <span>${log.imported_at || ""}</span>
+            </div>
+            <div class="admin-log-title">${escapeHtml(log.file_name || "")}</div>
+            <div class="admin-log-desc">导入 ${log.record_count || 0} 条记录 · <span style="color:${log.status === "success" ? "var(--green)" : "var(--red)"}">${log.status === "success" ? "成功" : log.error_message || "失败"}</span></div>
           </div>
-          <div class="admin-log-title">${escapeHtml(log.file_name || "")}</div>
-          <div class="admin-log-desc">导入 ${log.record_count || 0} 条记录 · ${log.account_count || 0} 个账号 · <span style="color:${log.status === "success" ? "var(--green)" : "var(--red)"}">${log.status === "success" ? "成功" : "失败"}</span></div>
-        </div>
-      `).join("");
+        `;
+      }).join("");
     })
     .catch((e) => {
       container.innerHTML = `<div class="muted" style="padding:12px;color:var(--red);">${escapeHtml(e.message)}</div>`;
@@ -3348,14 +3370,16 @@ function uploadCustomerProfileCSV() {
     return;
   }
   const file = input.files[0];
+  const mode = document.querySelector('input[name="import-mode"]:checked')?.value || 'increment';
   const formData = new FormData();
   formData.append("file", file);
-  resultEl.innerHTML = `<span class="spinner"></span> 正在导入 ${file.name}（${Math.round(file.size/1024/1024)}MB），请耐心等待...`;
-  
+  formData.append("mode", mode);
+  resultEl.innerHTML = `<span class="spinner"></span> 正在导入 ${file.name}（${Math.round(file.size/1024/1024)}MB，${mode === 'overwrite' ? '覆盖' : '增量'}模式），请耐心等待...`;
+
   // 设置较长超时（5分钟）
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 300000);
-  
+
   fetch("/api/customer-library/import-profiles", { method: "POST", body: formData, credentials: "include", signal: controller.signal })
     .then((r) => {
       clearTimeout(timeoutId);
@@ -3363,8 +3387,9 @@ function uploadCustomerProfileCSV() {
     })
     .then((data) => {
       if (data.ok) {
-        resultEl.innerHTML = `<span style="color:var(--green);">✓ 导入成功: ${data.count} 条客户档案</span>`;
+        resultEl.innerHTML = `<span style="color:var(--green);">✓ ${data.message}</span>`;
         input.value = "";
+        loadOperationImportLogs();
       } else {
         resultEl.innerHTML = `<span style="color:var(--red);">导入失败: ${escapeHtml(data.error)}</span>`;
       }
@@ -3387,14 +3412,16 @@ function uploadCustomerSessionCSV() {
     return;
   }
   const file = input.files[0];
+  const mode = document.querySelector('input[name="import-mode"]:checked')?.value || 'increment';
   const formData = new FormData();
   formData.append("file", file);
-  resultEl.innerHTML = `<span class="spinner"></span> 正在导入 ${file.name}（${Math.round(file.size/1024/1024)}MB），请耐心等待...`;
-  
+  formData.append("mode", mode);
+  resultEl.innerHTML = `<span class="spinner"></span> 正在导入 ${file.name}（${Math.round(file.size/1024/1024)}MB，${mode === 'overwrite' ? '覆盖' : '增量'}模式），请耐心等待...`;
+
   // 设置较长超时（5分钟）
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 300000);
-  
+
   fetch("/api/customer-library/import-sessions", { method: "POST", body: formData, credentials: "include", signal: controller.signal })
     .then((r) => {
       clearTimeout(timeoutId);
@@ -3402,8 +3429,9 @@ function uploadCustomerSessionCSV() {
     })
     .then((data) => {
       if (data.ok) {
-        resultEl.innerHTML = `<span style="color:var(--green);">✓ 导入成功: ${data.count} 条客户会话</span>`;
+        resultEl.innerHTML = `<span style="color:var(--green);">✓ ${data.message}</span>`;
         input.value = "";
+        loadOperationImportLogs();
       } else {
         resultEl.innerHTML = `<span style="color:var(--red);">导入失败: ${escapeHtml(data.error)}</span>`;
       }

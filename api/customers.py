@@ -5,7 +5,7 @@ import io
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Request, UploadFile, File
+from fastapi import APIRouter, Depends, Request, UploadFile, File, Form
 
 import db
 import security
@@ -33,6 +33,7 @@ def get_customer_trends(anchorName: str = "", _: dict = Depends(security.require
 @router.post("/api/customer-library/import-profiles")
 async def import_customer_profiles(
     file: UploadFile = File(...),
+    mode: str = Form("increment"),  # increment 或 overwrite
     _: dict = Depends(security.require_permission("admin-api"))
 ) -> dict:
     """导入客户档案 CSV."""
@@ -40,6 +41,10 @@ async def import_customer_profiles(
         return {"ok": False, "error": "请上传 CSV 文件"}
 
     try:
+        # 覆盖模式：先清空表
+        if mode == "overwrite":
+            db.execute("TRUNCATE TABLE finvue_customer_profiles")
+        
         content = await file.read()
         text = content.decode('utf-8')
         reader = csv.DictReader(io.StringIO(text))
@@ -80,9 +85,24 @@ async def import_customer_profiles(
         if batch:
             _insert_profiles_batch(batch)
 
-        return {"ok": True, "message": f"成功导入 {count} 条客户档案", "count": count}
+        # 记录导入日志
+        db.execute(
+            """INSERT INTO finvue_operation_import_logs
+            (import_type, file_name, record_count, status, imported_by, imported_at, mode)
+            VALUES (%s, %s, %s, 'success', 'admin', NOW(), %s)""",
+            ('customer_profiles', file.filename, count, mode)
+        )
+
+        return {"ok": True, "message": f"成功导入 {count} 条客户档案（{mode}模式）", "count": count}
 
     except Exception as e:
+        # 记录失败日志
+        db.execute(
+            """INSERT INTO finvue_operation_import_logs
+            (import_type, file_name, record_count, status, error_message, imported_by, imported_at, mode)
+            VALUES (%s, %s, 0, 'failed', %s, 'admin', NOW(), %s)""",
+            ('customer_profiles', file.filename, str(e), mode)
+        )
         return {"ok": False, "error": str(e)}
 
 
@@ -113,6 +133,7 @@ def _insert_profiles_batch(batch: list) -> None:
 @router.post("/api/customer-library/import-sessions")
 async def import_customer_sessions(
     file: UploadFile = File(...),
+    mode: str = Form("increment"),  # increment 或 overwrite
     _: dict = Depends(security.require_permission("admin-api"))
 ) -> dict:
     """导入客户会话 CSV."""
@@ -120,6 +141,10 @@ async def import_customer_sessions(
         return {"ok": False, "error": "请上传 CSV 文件"}
 
     try:
+        # 覆盖模式：先清空表
+        if mode == "overwrite":
+            db.execute("TRUNCATE TABLE finvue_customer_sessions")
+        
         content = await file.read()
         text = content.decode('utf-8')
         reader = csv.DictReader(io.StringIO(text))
@@ -165,9 +190,24 @@ async def import_customer_sessions(
         if batch:
             _insert_sessions_batch(batch)
 
-        return {"ok": True, "message": f"成功导入 {count} 条客户会话", "count": count}
+        # 记录导入日志
+        db.execute(
+            """INSERT INTO finvue_operation_import_logs
+            (import_type, file_name, record_count, status, imported_by, imported_at, mode)
+            VALUES (%s, %s, %s, 'success', 'admin', NOW(), %s)""",
+            ('customer_sessions', file.filename, count, mode)
+        )
+
+        return {"ok": True, "message": f"成功导入 {count} 条客户会话（{mode}模式）", "count": count}
 
     except Exception as e:
+        # 记录失败日志
+        db.execute(
+            """INSERT INTO finvue_operation_import_logs
+            (import_type, file_name, record_count, status, error_message, imported_by, imported_at, mode)
+            VALUES (%s, %s, 0, 'failed', %s, 'admin', NOW(), %s)""",
+            ('customer_sessions', file.filename, str(e), mode)
+        )
         return {"ok": False, "error": str(e)}
 
 
