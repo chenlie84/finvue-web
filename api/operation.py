@@ -620,6 +620,52 @@ def get_monthly_report(
     }
 
 
+@router.get("/api/operation/calendar")
+def get_calendar(
+    year: int,
+    month: int,
+    account: Optional[str] = None,
+    _: dict = Depends(security.require_permission("home"))
+) -> dict:
+    """获取直播日历数据."""
+    month_start = datetime(year, month, 1)
+    if month == 12:
+        month_end = datetime(year + 1, 1, 1) - timedelta(seconds=1)
+    else:
+        month_end = datetime(year, month + 1, 1) - timedelta(seconds=1)
+
+    where_clause = "start_time >= %s AND start_time <= %s"
+    params = [month_start.strftime("%Y-%m-%d %H:%M:%S"), month_end.strftime("%Y-%m-%d %H:%M:%S")]
+
+    if account:
+        where_clause += " AND account = %s"
+        params.append(account)
+
+    rows = db.fetch_all(
+        f"""
+        SELECT account, room_id, title, start_time, duration, pcu, acu,
+               watch_ucnt, follow_ucnt, earn_score
+        FROM finvue_operation_live_stats
+        WHERE {where_clause}
+        ORDER BY start_time
+        """,
+        tuple(params)
+    )
+
+    # 按日期分组
+    days = {}
+    for row in rows or []:
+        date_str = (row.get("start_time") or "").split(" ")[0]
+        if not date_str:
+            continue
+        if date_str not in days:
+            days[date_str] = {"count": 0, "lives": []}
+        days[date_str]["count"] += 1
+        days[date_str]["lives"].append(row)
+
+    return {"ok": True, "year": year, "month": month, "days": days}
+
+
 @router.get("/api/operation/import-logs")
 def get_import_logs(
     importType: Optional[str] = None,
