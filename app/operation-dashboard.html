@@ -488,17 +488,17 @@ function renderWeeklyReport(data) {
       html += `
         <div>
           <div class="muted" style="font-size:12px;margin-bottom:8px;">直播明细</div>
-          <table class="tbl">
-            <tr><th>开播时间</th><th>直播标题</th><th>时长(分)</th><th>峰值</th><th>平均</th><th>观看</th><th>涨粉</th></tr>
+          <table class="tbl" style="font-size:12px;">
+            <tr><th>开播时间</th><th>时长</th><th>峰值/平均</th><th>观看(粉/非粉)</th><th>停留(粉/非粉)</th><th>涨粉</th><th>涨粉率</th></tr>
             ${acc.live.map(l => `
               <tr>
-                <td>${(l.start_time || '').split(' ')[0].slice(5) || '-'}</td>
-                <td class="video-title">${esc(l.title) || '-'}</td>
+                <td>${(l.start_time || '').slice(5,16) || '-'}</td>
                 <td class="mono">${l.duration || 0}分</td>
-                <td class="mono">${fmt(l.pcu)}</td>
-                <td class="mono">${fmt(l.acu)}</td>
-                <td class="mono">${fmt(l.watch_ucnt)}</td>
+                <td class="mono">${fmt(l.pcu)}/${fmt(l.acu)}</td>
+                <td class="mono">${fmt(l.watch_ucnt)}<span style="color:var(--gold)">(${fmt(l.fans_watch_ucnt)}/${fmt(l.non_fans_watch_ucnt)})</span></td>
+                <td class="mono"><span style="color:var(--gold)">${l.fans_avg_watch_duration?.toFixed(1) || 0}</span>/<span style="color:var(--blue)">${l.non_fans_avg_watch_duration?.toFixed(1) || 0}</span>分</td>
                 <td class="green mono">${fmt(l.follow_ucnt)}</td>
+                <td>${((l.follow_ucnt / l.watch_ucnt) * 100 || 0).toFixed(2)}%</td>
               </tr>
             `).join('')}
           </table>
@@ -764,15 +764,17 @@ function renderMonthlyReport(data) {
         ${accData.live.length ? `
           <details class="prompt-detail">
             <summary>直播明细 (${accData.live.length} 场)</summary>
-            <table class="tbl" style="margin-top:12px;">
-              <tr><th>日期</th><th>标题</th><th>时长</th><th>观看</th><th>涨粉</th></tr>
-              ${accData.live.slice(0, 20).map(l => `
+            <table class="tbl" style="margin-top:12px;font-size:12px;">
+              <tr><th>开播时间</th><th>时长</th><th>峰值/平均</th><th>观看(粉/非粉)</th><th>停留(粉/非粉)</th><th>涨粉</th><th>涨粉率</th></tr>
+              ${accData.live.slice(0, 30).map(l => `
                 <tr>
-                  <td>${(l.start_time || '').split(' ')[0] || '-'}</td>
-                  <td class="video-title">${esc(l.title) || '-'}</td>
+                  <td>${(l.start_time || '').slice(5,16) || '-'}</td>
                   <td class="mono">${l.duration || 0}分</td>
-                  <td class="mono">${fmt(l.watch_ucnt)}</td>
+                  <td class="mono">${fmt(l.pcu)}/${fmt(l.acu)}</td>
+                  <td class="mono">${fmt(l.watch_ucnt)}<span style="color:var(--gold)">(${fmt(l.fans_watch_ucnt)}/${fmt(l.non_fans_watch_ucnt)})</span></td>
+                  <td class="mono"><span style="color:var(--gold)">${l.fans_avg_watch_duration?.toFixed(1) || 0}</span>/<span style="color:var(--blue)">${l.non_fans_avg_watch_duration?.toFixed(1) || 0}</span>分</td>
                   <td class="green mono">${fmt(l.follow_ucnt)}</td>
+                  <td>${((l.follow_ucnt / l.watch_ucnt) * 100 || 0).toFixed(2)}%</td>
                 </tr>
               `).join('')}
             </table>
