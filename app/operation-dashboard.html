@@ -656,12 +656,15 @@ function renderMonthlyReport(data) {
   const live = data.live || [];
   const video = data.video || [];
   const history = data.history || [];
-  
+
+  // 用于存储待初始化的图表
+  let chartsToInit = [];
+
   if (!live.length && !video.length) {
     $('monthly-content').innerHTML = `<div class="panel"><div class="empty">该月暂无数据</div></div>`;
     return;
   }
-  
+
   // 计算月度汇总
   const accounts = {};
   for (const row of live) {
