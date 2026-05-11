@@ -412,6 +412,29 @@ async def import_video_data(
     return result
 
 
+@router.delete("/api/operation/live/{room_id}")
+def delete_live_record(
+    room_id: str,
+    _: dict = Depends(security.require_permission("home"))
+) -> dict:
+    """删除直播记录."""
+    # 检查记录是否存在
+    existing = db.fetch_one(
+        "SELECT id, account, start_time FROM finvue_operation_live_stats WHERE room_id = %s",
+        (room_id,)
+    )
+    if not existing:
+        return {"ok": False, "error": "记录不存在"}
+
+    # 删除记录
+    db.execute(
+        "DELETE FROM finvue_operation_live_stats WHERE room_id = %s",
+        (room_id,)
+    )
+
+    return {"ok": True, "deleted": room_id, "account": existing["account"]}
+
+
 # === 报表查询接口 ===
 
 @router.get("/api/operation/accounts")

@@ -938,7 +938,7 @@ function showDayDetail(event, dateStr, dayData) {
       <span class="badge gold">${dayData.count} 场</span>
     </div>
     <table class="tbl">
-      <tr><th>主播</th><th>开播时间</th><th>标题</th><th>时长</th><th>观看</th><th>涨粉</th></tr>
+      <tr><th>主播</th><th>开播时间</th><th>操作</th><th>时长</th><th>观看</th><th>涨粉</th></tr>
       ${dayData.lives.map(l => `
         <tr>
           <td>${esc(l.account)}</td>
@@ -953,6 +953,26 @@ function showDayDetail(event, dateStr, dayData) {
   `;
   
   $('calendar-detail').innerHTML = html;
+}
+
+// 删除直播记录
+async function deleteLiveRecord(roomId) {
+  if (!confirm('确定删除该直播记录？')) return;
+  
+  try {
+    const res = await fetch('/api/operation/live/' + roomId, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || '删除失败');
+    
+    // 刷新日历
+    loadCalendar();
+    $('calendar-detail').innerHTML = '<div style="color:var(--green);padding:8px;">已删除</div>';
+  } catch (e) {
+    alert('删除失败: ' + e.message);
+  }
 }
 
 // 初始化
