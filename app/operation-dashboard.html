@@ -86,7 +86,8 @@
   .calendar-day.has-live:hover{border-color:var(--green);}
   .calendar-day.other-month{opacity:0.4;}
   .calendar-date{font-size:13px;font-weight:500;margin-bottom:4px;}
-  .calendar-live-count{font-size:11px;color:var(--green);}
+  .calendar-anchor{font-size:11px;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;line-height:1.3;}
+  .calendar-live-count{font-size:11px;color:var(--green);margin-top:2px;}
   
   .live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:4px;}
   
@@ -684,45 +685,60 @@ function renderCalendar(data, year, month) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay = new Date(year, month, 1).getDay();
   const startOffset = firstDay === 0 ? 6 : firstDay - 1; // 周一为第一天
-  
+
   const liveData = data.days || {};
   const today = new Date();
-  
+
   let html = '';
-  
+
   // 上月填充
   const prevMonthDays = new Date(year, month, 0).getDate();
   for (let i = startOffset - 1; i >= 0; i--) {
     const day = prevMonthDays - i;
     html += `<div class="calendar-day other-month"><div class="calendar-date">${day}</div></div>`;
   }
-  
+
   // 当月
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const dayData = liveData[dateStr] || {};
     const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
     const hasLive = dayData.count > 0;
-    
+
     const classes = ['calendar-day'];
     if (isToday) classes.push('today');
     if (hasLive) classes.push('has-live');
-    
+
+    // 收集主播名字
+    let anchorNames = '';
+    if (hasLive && dayData.lives) {
+      const names = [...new Set(dayData.lives.map(l => l.account))];
+      if (names.length === 1) {
+        anchorNames = `<div class="calendar-anchor">${esc(names[0])}</div>`;
+      } else if (names.length <= 2) {
+        anchorNames = names.map(n => `<div class="calendar-anchor">${esc(n)}</div>`).join('');
+      } else {
+        anchorNames = names.slice(0, 2).map(n => `<div class="calendar-anchor">${esc(n)}</div>`).join('');
+        anchorNames += `<div class="calendar-anchor muted">+${names.length - 2}</div>`;
+      }
+    }
+
     html += `
       <div class="${classes.join(' ')}" onclick="showDayDetail('${dateStr}', ${JSON.stringify(dayData).replace(/"/g, '&quot;')})">
         <div class="calendar-date">${day}</div>
-        ${hasLive ? `<div class="calendar-live-count"><span class="live-dot"></span>${dayData.count}场</div>` : ''}
+        ${anchorNames}
+        ${hasLive ? `<div class="calendar-live-count">${dayData.count}场</div>` : ''}
       </div>
     `;
   }
-  
+
   // 下月填充
   const totalCells = startOffset + daysInMonth;
   const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
   for (let i = 1; i <= remaining; i++) {
     html += `<div class="calendar-day other-month"><div class="calendar-date">${i}</div></div>`;
   }
-  
+
   $('calendar-grid').innerHTML = html;
   $('calendar-detail').innerHTML = '<div class="muted">点击日期查看直播详情</div>';
 }
