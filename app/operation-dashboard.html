@@ -716,6 +716,7 @@ function renderMonthlyReport(data) {
   
   // 各主播明细（每个主播展示折线图+柱状图组合）
   const dailyByAnchor = data.daily_by_anchor || {};
+  let chartIndex = 0;
 
   for (const [accName, accData] of accountList) {
     const anchorDaily = dailyByAnchor[accName] || [];
@@ -723,7 +724,8 @@ function renderMonthlyReport(data) {
     
     // 该主播的组合图表（ECharts）
     let chartHtml = '';
-    const chartId = 'chart-' + accName.replace(/[^a-zA-Z0-9]/g, '-');
+    const chartId = 'chart-' + chartIndex;
+    chartIndex++;
     if (anchorDaily.length > 0) {
       chartHtml = `
         <div id="${chartId}" style="margin-top:12px;height:220px;background:var(--bg2);border-radius:var(--r);"></div>
