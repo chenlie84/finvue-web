@@ -95,7 +95,7 @@ def _insert_profiles_batch(batch: list) -> None:
         aname = b[2].replace("'", "''")
         theme = b[4].replace("'", "''")
         atime = "'{}'".format(b[3]) if b[3] else 'NULL'
-        parts.append("('{}','{}','{}',{},'{}',{},{},{},'[]','[]','{}')".format(
+        parts.append("('{}','{}','{}',{},'{}',{},{},{},'[]','[]','{{}}')".format(
             cid, cname, aname, atime, theme, b[5], b[6], b[7]
         ))
     
@@ -178,7 +178,7 @@ def _insert_sessions_batch(batch: list) -> None:
         mval = b[7].replace("'", "''")
         atime = "'{}'".format(b[10]) if b[10] else 'NULL'
         src = b[11].replace("'", "''")
-        parts.append("('{}','{}','{}','{}','{}','{}','{}','{}',{},{}},'{}','{}')".format(
+        parts.append("('{}','{}','{}','{}','{}','{}','{}','{}',{},{},'{}','{}','{{}}')".format(
             sid, cid, aname, rid, theme, rtype, mtype, mval, b[8], b[9], atime, src
         ))
     
