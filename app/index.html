@@ -756,9 +756,8 @@
         <div class="page-sub">沉淀每场直播里的高停留客户榜单，按客户归档历史观看记录，为后续客户画像分析做基础数据层。</div>
         <div style="display:flex;gap:10px;margin-bottom:20px;">
           <input class="inp" id="customerLibrarySearch" placeholder="搜索客户昵称、主播、标签…" style="flex:1;"/>
-          <button class="btn btn-outline db-sync-btn" style="font-size:12px;padding:8px 14px;" onclick="syncLiveRoomAnalytics()">同步数据库</button>
-          <button class="btn btn-gold db-sync-btn" style="font-size:12px;padding:8px 14px;" onclick="syncLiveRoomAnalytics({forceFull:true})">全量回补历史</button>
           <button class="btn btn-outline" style="font-size:12px;padding:8px 14px;" onclick="loadCustomerLibrary()">刷新客户库</button>
+          <button class="btn btn-outline" style="font-size:12px;padding:8px 14px;" onclick="showSec('operation-import')">导入数据</button>
         </div>
         <div class="g4 mb">
           <div class="kpi" style="--accent:var(--gold)"><div class="kpi-lbl">客户条目数</div><div class="kpi-val gold" id="customerLibraryCount">0</div><div class="kpi-delta muted">去重客户</div></div>
