@@ -691,32 +691,6 @@ function renderMonthlyReport(data) {
           </div>
         </div>
         ${chartHtml}
-        <details class="prompt-details">
-          <summary>直播明细（${accData.live.length} 场）</summary> of accountList) {
-    html += `
-      <div class="panel mb">
-        <div class="panel-hd">
-          <div class="panel-title">👤 ${esc(accName)}</div>
-          <span class="badge gold">${accData.stats.liveCount} 场</span>
-        </div>
-        <div class="month-stats-grid">
-          <div class="month-stat-card">
-            <div class="month-stat-label">观看总数</div>
-            <div class="month-stat-value gold">${fmt(accData.stats.totalWatch)}</div>
-          </div>
-          <div class="month-stat-card">
-            <div class="month-stat-label">涨粉总数</div>
-            <div class="month-stat-value green">${fmt(accData.stats.totalFollow)}</div>
-          </div>
-          <div class="month-stat-card">
-            <div class="month-stat-label">音浪收入</div>
-            <div class="month-stat-value">${fmt(accData.stats.totalEarn)}</div>
-          </div>
-          <div class="month-stat-card">
-            <div class="month-stat-label">短视频</div>
-            <div class="month-stat-value blue">${accData.video.length}</div>
-          </div>
-        </div>
         ${accData.live.length ? `
           <details class="prompt-detail">
             <summary>直播明细 (${accData.live.length} 场)</summary>
@@ -737,7 +711,7 @@ function renderMonthlyReport(data) {
       </div>
     `;
   }
-  
+
   $('monthly-content').innerHTML = html;
   
   // 添加折线图tooltip交互
