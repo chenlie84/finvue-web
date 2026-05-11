@@ -3347,11 +3347,20 @@ function uploadCustomerProfileCSV() {
     resultEl.innerHTML = '<span style="color:var(--red);">请先选择文件</span>';
     return;
   }
+  const file = input.files[0];
   const formData = new FormData();
-  formData.append("file", input.files[0]);
-  resultEl.innerHTML = '<span class="spinner"></span> 上传中...';
-  fetch("/api/customer-library/import-profiles", { method: "POST", body: formData, credentials: "include" })
-    .then((r) => r.json())
+  formData.append("file", file);
+  resultEl.innerHTML = `<span class="spinner"></span> 正在导入 ${file.name}（${Math.round(file.size/1024/1024)}MB），请耐心等待...`;
+  
+  // 设置较长超时（5分钟）
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 300000);
+  
+  fetch("/api/customer-library/import-profiles", { method: "POST", body: formData, credentials: "include", signal: controller.signal })
+    .then((r) => {
+      clearTimeout(timeoutId);
+      return r.json();
+    })
     .then((data) => {
       if (data.ok) {
         resultEl.innerHTML = `<span style="color:var(--green);">✓ 导入成功: ${data.count} 条客户档案</span>`;
@@ -3361,7 +3370,12 @@ function uploadCustomerProfileCSV() {
       }
     })
     .catch((e) => {
-      resultEl.innerHTML = `<span style="color:var(--red);">上传失败: ${escapeHtml(e.message)}</span>`;
+      clearTimeout(timeoutId);
+      if (e.name === 'AbortError') {
+        resultEl.innerHTML = `<span style="color:var(--red);">导入超时（超过5分钟），请尝试分批导入或联系管理员</span>`;
+      } else {
+        resultEl.innerHTML = `<span style="color:var(--red);">上传失败: ${escapeHtml(e.message)}</span>`;
+      }
     });
 }
 
@@ -3372,11 +3386,20 @@ function uploadCustomerSessionCSV() {
     resultEl.innerHTML = '<span style="color:var(--red);">请先选择文件</span>';
     return;
   }
+  const file = input.files[0];
   const formData = new FormData();
-  formData.append("file", input.files[0]);
-  resultEl.innerHTML = '<span class="spinner"></span> 上传中...';
-  fetch("/api/customer-library/import-sessions", { method: "POST", body: formData, credentials: "include" })
-    .then((r) => r.json())
+  formData.append("file", file);
+  resultEl.innerHTML = `<span class="spinner"></span> 正在导入 ${file.name}（${Math.round(file.size/1024/1024)}MB），请耐心等待...`;
+  
+  // 设置较长超时（5分钟）
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 300000);
+  
+  fetch("/api/customer-library/import-sessions", { method: "POST", body: formData, credentials: "include", signal: controller.signal })
+    .then((r) => {
+      clearTimeout(timeoutId);
+      return r.json();
+    })
     .then((data) => {
       if (data.ok) {
         resultEl.innerHTML = `<span style="color:var(--green);">✓ 导入成功: ${data.count} 条客户会话</span>`;
@@ -3386,8 +3409,13 @@ function uploadCustomerSessionCSV() {
       }
     })
     .catch((e) => {
-      resultEl.innerHTML = `<span style="color:var(--red);">上传失败: ${escapeHtml(e.message)}</span>`;
-    });
+      clearTimeout(timeoutId);
+      if (e.name === 'AbortError') {
+        resultEl.innerHTML = `<span style="color:var(--red);">导入超时（超过5分钟），请尝试分批导入或联系管理员</span>`;
+      } else {
+        resultEl.innerHTML = `<span style="color:var(--red);">上传失败: ${escapeHtml(e.message)}</span>`;
+      }
+    }
 }
 
 function canAccessAdmin() {
