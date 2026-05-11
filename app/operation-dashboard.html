@@ -331,9 +331,27 @@
             </div>
             <div class="filter-bar">
                 <select id="week-selector" onchange="loadWeeklyReport()">
-                    <option value="">本周数据</option>
-                    <option value="-7">上周数据</option>
+                    <option value="0">本周</option>
+                    <option value="-7">上周</option>
                     <option value="-14">两周前</option>
+                    <option value="-21">三周前</option>
+                    <option value="-28">四周前</option>
+                    <option value="-35">五周前</option>
+                    <option value="-42">六周前</option>
+                    <option value="-49">七周前</option>
+                    <option value="-56">八周前</option>
+                    <option value="-63">九周前</option>
+                    <option value="-70">十周前</option>
+                    <option value="-77">十一周前</option>
+                    <option value="-84">十二周前</option>
+                    <option value="-91">十三周前</option>
+                    <option value="-98">十四周前</option>
+                    <option value="-105">十五周前</option>
+                    <option value="-112">十六周前</option>
+                    <option value="-119">十七周前</option>
+                    <option value="-126">十八周前</option>
+                    <option value="-133">十九周前</option>
+                    <option value="-140">二十周前</option>
                 </select>
                 <select id="weekly-account-filter" onchange="loadWeeklyReport()">
                     <option value="">全部主播</option>
@@ -400,7 +418,12 @@
                 $('weekly-account-filter').innerHTML = '<option value="">全部主播</option>' + options;
                 $('monthly-account-filter').innerHTML = '<option value="">全部主播</option>' + options;
 
-                if (accounts.length > 0) {
+                // 显示数据统计
+                const total = data.total_count || 0;
+                const range = data.data_range || {};
+                if (total > 0 && range.min && range.max) {
+                    $('lastSync').textContent = `共 ${total} 条数据 | 时间范围: ${range.min.split(' ')[0]} ~ ${range.max.split(' ')[0]}`;
+                } else if (accounts.length > 0) {
                     const lastLive = accounts[0].last_live_time || '';
                     $('lastSync').textContent = '最近直播: ' + (lastLive ? lastLive.split(' ')[0] : '未知');
                 } else {

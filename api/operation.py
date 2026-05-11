@@ -157,6 +157,9 @@ VIDEO_FIELD_MAP = {
 def _parse_csv_field(value: str, field_name: str) -> Any:
     """解析 CSV 字段值."""
     value = str(value or "").strip()
+    # 去掉值周围可能存在的额外引号
+    if value.startswith('"') and value.endswith('"'):
+        value = value[1:-1].strip()
     if not value or value in ("nan", "NaN", "null", "NULL", "-"):
         return None
 
@@ -180,6 +183,18 @@ def _parse_csv_field(value: str, field_name: str) -> Any:
     if field_name in time_fields:
         try:
             # 支持多种时间格式
+            # 先处理 ISO 8601 格式带毫秒 (如 2026-05-09T07:41:21.000Z)
+            if "T" in value and value.endswith("Z"):
+                # 去掉 Z 和毫秒部分
+                value_clean = value.rstrip("Z")
+                if "." in value_clean:
+                    value_clean = value_clean.split(".")[0]
+                try:
+                    dt = datetime.strptime(value_clean, "%Y-%m-%dT%H:%M:%S")
+                    return dt.strftime("%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    pass
+
             for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d", "%m-%d %H:%M:%S"):
                 try:
                     dt = datetime.strptime(value, fmt)
@@ -412,7 +427,26 @@ def get_accounts(_: dict = Depends(security.require_permission("home"))) -> dict
         ORDER BY live_count DESC
         """
     )
-    return {"ok": True, "accounts": rows or []}
+
+    # 获取整体数据时间范围
+    total_info = db.fetch_one(
+        """
+        SELECT COUNT(*) as total_count,
+               MAX(start_time) as max_time,
+               MIN(start_time) as min_time
+        FROM finvue_operation_live_stats
+        """
+    )
+
+    return {
+        "ok": True,
+        "accounts": rows or [],
+        "total_count": total_info.get("total_count", 0) if total_info else 0,
+        "data_range": {
+            "min": total_info.get("min_time") if total_info else None,
+            "max": total_info.get("max_time") if total_info else None
+        }
+    }
 
 
 @router.get("/api/operation/weekly-report")
