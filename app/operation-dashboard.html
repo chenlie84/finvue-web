@@ -564,9 +564,9 @@ function renderAnchorChart(containerId, daily) {
           if (p.seriesName === '在线人数') {
             result += '<span style="color:#C8922A">● 在线人数: ' + p.value + ' 人</span><br/>';
           } else if (p.seriesName === '粉丝停留') {
-            result += '<span style="color:#C8922A">▌ 粉丝停留: ' + p.value + ' 秒</span><br/>';
+            result += '<span style="color:#C8922A">▌ 粉丝停留: ' + p.value + ' 分钟</span><br/>';
           } else if (p.seriesName === '非粉停留') {
-            result += '<span style="color:#4A90D9">▌ 非粉停留: ' + p.value + ' 秒</span><br/>';
+            result += '<span style="color:#4A90D9">▌ 非粉停留: ' + p.value + ' 分钟</span><br/>';
           }
         });
         return result;
@@ -603,7 +603,7 @@ function renderAnchorChart(containerId, daily) {
       },
       {
         type: 'value',
-        name: '停留时长(秒)',
+        name: '停留时长(分)',
         nameTextStyle: { color: '#4A90D9', fontSize: 10 },
         axisLine: { show: true, lineStyle: { color: '#4A90D9' } },
         axisLabel: { color: '#4A90D9', fontSize: 10 },
