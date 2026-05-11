@@ -3415,7 +3415,7 @@ function uploadCustomerSessionCSV() {
       } else {
         resultEl.innerHTML = `<span style="color:var(--red);">上传失败: ${escapeHtml(e.message)}</span>`;
       }
-    }
+    });
 }
 
 function canAccessAdmin() {
