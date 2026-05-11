@@ -498,6 +498,7 @@ function renderWeeklyReport(data) {
                 <td class="mono">${fmt(l.watch_ucnt)}<span style="color:var(--gold)">(${fmt(l.fans_watch_ucnt)}/${fmt(l.non_fans_watch_ucnt)})</span></td>
                 <td class="mono"><span style="color:var(--gold)">${l.fans_avg_watch_duration?.toFixed(1) || 0}</span>/<span style="color:var(--blue)">${l.non_fans_avg_watch_duration?.toFixed(1) || 0}</span>分</td>
                 <td class="green mono">${fmt(l.follow_ucnt)}</td>
+          <td>${l.notes && l.notes.includes("[手工录入]") ? "<button onclick=deleteLiveRecord('" + l.room_id + "') style=font-size:10px;padding:2px 6px;background:var(--red);border:none;color:#fff;border-radius:4px;cursor:pointer;>删除</button>" : "<span class=muted style=font-size:10px;>CSV导入</span>"}</td>
                 <td>${((l.follow_ucnt / l.watch_ucnt) * 100 || 0).toFixed(2)}%</td>
               </tr>
             `).join('')}
@@ -938,15 +939,15 @@ function showDayDetail(event, dateStr, dayData) {
       <span class="badge gold">${dayData.count} 场</span>
     </div>
     <table class="tbl">
-      <tr><th>主播</th><th>开播时间</th><th>操作</th><th>时长</th><th>观看</th><th>涨粉</th></tr>
+      <tr><th>主播</th><th>开播时间</th><th>时长</th><th>观看</th><th>涨粉</th><th>来源</th></tr>
       ${dayData.lives.map(l => `
         <tr>
           <td>${esc(l.account)}</td>
           <td class="mono">${(l.start_time || '').split(' ')[1]?.slice(0, 5) || '-'}</td>
-          <td class="video-title">${esc(l.title) || '-'}</td>
           <td class="mono">${l.duration || 0}分</td>
           <td class="mono">${fmt(l.watch_ucnt)}</td>
           <td class="green mono">${fmt(l.follow_ucnt)}</td>
+          <td>${l.notes && l.notes.includes("[手工录入]") ? "<button onclick=deleteLiveRecord('" + l.room_id + "') style=font-size:10px;padding:2px 6px;background:var(--red);border:none;color:#fff;border-radius:4px;cursor:pointer;>删除</button>" : "<span class=muted style=font-size:10px;>CSV导入</span>"}</td>
         </tr>
       `).join('')}
     </table>
