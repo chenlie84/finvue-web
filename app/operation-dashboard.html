@@ -481,7 +481,7 @@ function renderWeeklyReport(data) {
               <tr>
                 <td>${(l.start_time || '').split(' ')[0].slice(5) || '-'}</td>
                 <td class="video-title">${esc(l.title) || '-'}</td>
-                <td class="mono">${Math.round((l.duration || 0) / 60)}</td>
+                <td class="mono">${l.duration || 0}分</td>
                 <td class="mono">${fmt(l.pcu)}</td>
                 <td class="mono">${fmt(l.acu)}</td>
                 <td class="mono">${fmt(l.watch_ucnt)}</td>
@@ -632,7 +632,7 @@ function renderMonthlyReport(data) {
                 <tr>
                   <td>${(l.start_time || '').split(' ')[0] || '-'}</td>
                   <td class="video-title">${esc(l.title) || '-'}</td>
-                  <td class="mono">${Math.round((l.duration || 0) / 60)}分</td>
+                  <td class="mono">${l.duration || 0}分</td>
                   <td class="mono">${fmt(l.watch_ucnt)}</td>
                   <td class="green mono">${fmt(l.follow_ucnt)}</td>
                 </tr>
@@ -770,7 +770,7 @@ function showDayDetail(dateStr, dayData) {
           <td>${esc(l.account)}</td>
           <td class="mono">${(l.start_time || '').split(' ')[1]?.slice(0, 5) || '-'}</td>
           <td class="video-title">${esc(l.title) || '-'}</td>
-          <td class="mono">${Math.round((l.duration || 0) / 60)}分</td>
+          <td class="mono">${l.duration || 0}分</td>
           <td class="mono">${fmt(l.watch_ucnt)}</td>
           <td class="green mono">${fmt(l.follow_ucnt)}</td>
         </tr>

@@ -508,6 +508,12 @@ def get_weekly_report(
         acc = row["account"]
         if acc not in accounts_data:
             accounts_data[acc] = {"account": acc, "live": [], "video": [], "stats": {"liveCount": 0, "totalFollow": 0}}
+        # 转换 datetime 为字符串
+        if row.get("start_time"):
+            if isinstance(row["start_time"], datetime):
+                row["start_time"] = row["start_time"].strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                row["start_time"] = str(row["start_time"])
         accounts_data[acc]["live"].append(row)
         accounts_data[acc]["stats"]["liveCount"] += 1
         accounts_data[acc]["stats"]["totalFollow"] += int(row.get("follow_ucnt") or 0)
@@ -577,6 +583,21 @@ def get_monthly_report(
         """,
         tuple(params)
     )
+
+    # 转换 datetime 为字符串
+    for row in live_rows or []:
+        if row.get("start_time"):
+            if isinstance(row["start_time"], datetime):
+                row["start_time"] = row["start_time"].strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                row["start_time"] = str(row["start_time"])
+
+    for row in video_rows or []:
+        if row.get("publish_time"):
+            if isinstance(row["publish_time"], datetime):
+                row["publish_time"] = row["publish_time"].strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                row["publish_time"] = str(row["publish_time"])
 
     # 历史分月统计
     history_rows = db.fetch_all(
