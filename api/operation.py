@@ -763,3 +763,69 @@ def get_import_logs(
         tuple(params + [limit])
     )
     return {"ok": True, "logs": rows or []}
+
+
+@router.get("/api/operation/anchor-summary")
+def get_anchor_summary(
+    account: str,
+    _: dict = Depends(security.require_permission("home"))
+) -> dict:
+    """获取单个主播的直播数据汇总（用于主播资料库、主播画像等页面）."""
+    if not account:
+        return {"ok": False, "error": "缺少主播账号参数"}
+
+    # 汇总统计
+    summary = db.fetch_one(
+        """
+        SELECT 
+            COUNT(*) as total_lives,
+            SUM(duration) as total_duration,
+            AVG(duration) as avg_duration,
+            MAX(pcu) as max_pcu,
+            AVG(acu) as avg_acu,
+            SUM(watch_ucnt) as total_watch,
+            AVG(watch_ucnt) as avg_watch,
+            SUM(follow_ucnt) as total_follow,
+            AVG(follow_ucnt) as avg_follow,
+            SUM(earn_score) as total_earn,
+            AVG(earn_score) as avg_earn,
+            MIN(start_time) as first_live,
+            MAX(start_time) as last_live
+        FROM finvue_operation_live_stats
+        WHERE account = %s
+        """,
+        (account,)
+    )
+
+    # 最近10场直播
+    recent_lives = db.fetch_all(
+        """
+        SELECT 
+            start_time, duration, pcu, acu, watch_ucnt, follow_ucnt, earn_score, title
+        FROM finvue_operation_live_stats
+        WHERE account = %s
+        ORDER BY start_time DESC
+        LIMIT 10
+        """,
+        (account,)
+    )
+
+    # 转换 datetime 为字符串
+    if summary and summary.get("first_live"):
+        if isinstance(summary["first_live"], datetime):
+            summary["first_live"] = summary["first_live"].strftime("%Y-%m-%d")
+    if summary and summary.get("last_live"):
+        if isinstance(summary["last_live"], datetime):
+            summary["last_live"] = summary["last_live"].strftime("%Y-%m-%d")
+
+    for row in recent_lives or []:
+        if row.get("start_time"):
+            if isinstance(row["start_time"], datetime):
+                row["start_time"] = row["start_time"].strftime("%Y-%m-%d %H:%M")
+
+    return {
+        "ok": True,
+        "account": account,
+        "summary": summary or {},
+        "recent_lives": recent_lives or []
+    }

@@ -615,6 +615,7 @@
                     <button class="btn btn-gold" type="button" id="metricsAnchorLoadBtn" onclick="loadConnectedAnchorMetrics()" style="font-size:12px;padding:8px 14px;">载入数据</button>
                   </div>
                   <div class="muted" style="font-size:12px;line-height:1.7;margin-top:10px;" id="metricsAnchorHint">如果这场直播的数据已经在已接入系统里，就不需要再上传 Excel。</div>
+                  <div id="metricsAnchorHistory" style="margin-top:12px;display:none;"></div>
                 </div>
                 <div class="lbl">直播数据文件（可选）</div>
                 <div class="upload-zone mb" style="margin-bottom:10px;">
@@ -1068,180 +1069,21 @@
         </div>
 
         <!-- 统计卡 -->
-        <div class="g4 mb">
-          <div class="kpi" style="--accent:var(--gold)"><div class="kpi-lbl">在管投顾</div><div class="kpi-val gold">342</div><div class="kpi-delta green">↑ 18 本周</div></div>
-          <div class="kpi" style="--accent:var(--green)"><div class="kpi-lbl">平均综合评分</div><div class="kpi-val">8.1</div><div class="kpi-delta green">↑ 0.3</div></div>
-          <div class="kpi" style="--accent:var(--blue)"><div class="kpi-lbl">本月直播总场</div><div class="kpi-val">128</div><div class="kpi-delta muted">同比持平</div></div>
-          <div class="kpi" style="--accent:var(--red)"><div class="kpi-lbl">合规预警人数</div><div class="kpi-val red">7</div><div class="kpi-delta red">↑ 3 待处理</div></div>
+        <div class="g4 mb" id="portraitStatsGrid">
+          <div class="kpi" style="--accent:var(--gold)"><div class="kpi-lbl">主播总数</div><div class="kpi-val gold" id="portraitAnchorCount">—</div><div class="kpi-delta muted" id="portraitAnchorCountDelta">正在加载...</div></div>
+          <div class="kpi" style="--accent:var(--green)"><div class="kpi-lbl">本月直播场次</div><div class="kpi-val" id="portraitLiveCount">—</div><div class="kpi-delta green" id="portraitLiveCountDelta">运营数据中心</div></div>
+          <div class="kpi" style="--accent:var(--blue)"><div class="kpi-lbl">本月总观看</div><div class="kpi-val" id="portraitWatchCount">—</div><div class="kpi-delta muted">来自直播统计</div></div>
+          <div class="kpi" style="--accent:var(--purple)"><div class="kpi-lbl">本月总涨粉</div><div class="kpi-val" id="portraitFollowCount">—</div><div class="kpi-delta muted">运营数据中心</div></div>
         </div>
 
-        <!-- 投顾列表 -->
+        <!-- 主播列表（从运营数据加载） -->
         <div class="panel mb">
-          <div class="panel-hd"><div class="panel-title">投顾列表</div><button class="btn btn-gold" style="font-size:12px;padding:5px 14px;" onclick="showToast('新增投顾')">+ 新增</button></div>
-          <table class="tbl">
-            <tr><th>投顾</th><th>类型</th><th>年限</th><th>本月场次</th><th>专业性</th><th>合规</th><th>综合评分</th><th>状态</th><th>操作</th></tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:10px;"><div class="a-avatar" style="width:30px;height:30px;background:var(--gold-dim);color:var(--gold)">王</div><div><div style="font-weight:500;">王晓明</div><div style="font-size:11px;color:var(--text1)">wx@finvue.com</div></div></div></td>
-              <td><span class="badge gold">权益</span></td><td class="mono">7年</td><td class="mono">12</td>
-              <td><span class="green mono">9.1</span></td><td><span class="green mono">9.5</span></td><td><span class="gold mono" style="font-size:15px;font-weight:600;">9.2</span></td>
-              <td><span class="badge green">● 活跃</span></td>
-              <td><button class="btn-sm btn-outline-sm" onclick="showPortrait()">详情</button></td>
-            </tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:10px;"><div class="a-avatar" style="width:30px;height:30px;background:rgba(45,189,133,0.12);color:var(--green)">张</div><div><div style="font-weight:500;">张慧芳</div><div style="font-size:11px;color:var(--text1)">zh@finvue.com</div></div></div></td>
-              <td><span class="badge blue">固收</span></td><td class="mono">5年</td><td class="mono">9</td>
-              <td><span class="green mono">8.8</span></td><td><span class="green mono">9.0</span></td><td><span class="gold mono" style="font-size:15px;font-weight:600;">8.8</span></td>
-              <td><span class="badge green">● 活跃</span></td>
-              <td><button class="btn-sm btn-outline-sm" onclick="showToast('查看张慧芳画像')">详情</button></td>
-            </tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:10px;"><div class="a-avatar" style="width:30px;height:30px;background:rgba(74,144,217,0.12);color:var(--blue)">陈</div><div><div style="font-weight:500;">陈建华</div><div style="font-size:11px;color:var(--text1)">cj@finvue.com</div></div></div></td>
-              <td><span class="badge purple">基金</span></td><td class="mono">9年</td><td class="mono">7</td>
-              <td><span class="mono">8.4</span></td><td><span class="mono">8.7</span></td><td><span class="gold mono" style="font-size:15px;font-weight:600;">8.5</span></td>
-              <td><span class="badge green">● 活跃</span></td>
-              <td><button class="btn-sm btn-outline-sm" onclick="showToast('查看陈建华画像')">详情</button></td>
-            </tr>
-            <tr>
-              <td><div style="display:flex;align-items:center;gap:10px;"><div class="a-avatar" style="width:30px;height:30px;background:rgba(224,82,82,0.1);color:var(--red)">李</div><div><div style="font-weight:500;">李凯文</div><div style="font-size:11px;color:var(--text1)">lk@finvue.com</div></div></div></td>
-              <td><span class="badge gold">权益</span></td><td class="mono">3年</td><td class="mono">5</td>
-              <td><span class="mono">7.8</span></td><td><span class="red mono">5.2</span></td><td><span class="red mono" style="font-size:15px;font-weight:600;">6.8</span></td>
-              <td><span class="badge red">⚠ 预警</span></td>
-              <td><button class="btn-sm btn-outline-sm" onclick="showToast('查看李凯文画像')">详情</button></td>
-            </tr>
-          </table>
-        </div>
-
-        <!-- 个人画像详情（王晓明示例） -->
-        <div class="panel" id="portraitDetail" style="display:none;">
-          <div class="panel-hd">
-            <div style="display:flex;align-items:center;gap:14px;">
-              <div class="a-avatar" style="width:48px;height:48px;font-size:18px;background:var(--gold-dim);color:var(--gold)">王</div>
-              <div><div style="font-size:16px;font-weight:600;">王晓明</div><div style="font-size:12px;color:var(--text1);">权益投顾 · 7年从业 · CFA · 北京</div></div>
-            </div>
-            <span class="panel-act" onclick="document.getElementById('portraitDetail').style.display='none'">收起 ✕</span>
-          </div>
-          <div class="g2" style="margin-bottom:0;">
-            <div>
-              <div style="margin-bottom:14px;">
-                <div style="font-size:12px;color:var(--text1);margin-bottom:8px;">综合能力评分</div>
-                <div class="prog-wrap"><div class="prog-hd"><span>内容专业性</span><span class="gold">9.1</span></div><div class="prog-track"><div class="prog-fill" style="width:91%"></div></div></div>
-                <div class="prog-wrap"><div class="prog-hd"><span>合规意识</span><span class="green">9.5</span></div><div class="prog-track"><div class="prog-fill green" style="width:95%"></div></div></div>
-                <div class="prog-wrap"><div class="prog-hd"><span>热点把握</span><span class="blue">8.8</span></div><div class="prog-track"><div class="prog-fill blue" style="width:88%"></div></div></div>
-                <div class="prog-wrap"><div class="prog-hd"><span>用户价值</span><span>8.6</span></div><div class="prog-track"><div class="prog-fill" style="width:86%"></div></div></div>
-              </div>
-            </div>
-            <div>
-              <div style="font-size:12px;color:var(--text1);margin-bottom:10px;">近期表现</div>
-              <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;">
-                <div style="display:flex;justify-content:space-between;"><span class="muted">本月场次</span><span class="mono">12场</span></div>
-                <div style="display:flex;justify-content:space-between;"><span class="muted">累计时长</span><span class="mono">184h</span></div>
-                <div style="display:flex;justify-content:space-between;"><span class="muted">合规通过率</span><span class="mono green">100%</span></div>
-                <div style="display:flex;justify-content:space-between;"><span class="muted">预警次数</span><span class="mono">0次</span></div>
-                <div style="display:flex;justify-content:space-between;"><span class="muted">平台排名</span><span class="mono gold">#1</span></div>
-              </div>
-              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
-                <div style="font-size:12px;color:var(--text1);margin-bottom:6px;">擅长领域</div>
-                <div style="display:flex;flex-wrap:wrap;gap:5px;">
-                  <span class="badge gold">A股价值</span><span class="badge blue">ETF配置</span><span class="badge green">宏观研判</span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <div class="panel-hd"><div class="panel-title">主播直播数据</div><span class="panel-act" id="portraitAnchorMeta">从运营数据中心加载</span></div>
+          <div id="portraitAnchorList" class="muted">正在加载主播数据...</div>
         </div>
       </div>
-
-      <!-- ══ 热点追踪 ══ -->
-      <div class="sec" id="sec-hotspot">
-        <div class="page-title">热点追踪</div>
-        <div class="page-sub">实时追踪市场热点话题，关联分析投顾内容策略</div>
-
-        <div class="g2 mb">
-          <div class="panel">
-            <div class="panel-hd"><div class="panel-title">今日市场热点</div><span class="panel-act" onclick="showToast('已刷新热点数据')">刷新 ↻</span></div>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;">
-              <span class="hot-tag" style="background:rgba(224,82,82,0.1);border-color:rgba(224,82,82,0.3);color:var(--red)">🔥 美联储5月议息 <span style="opacity:.6">热度极高</span></span>
-              <span class="hot-tag" style="background:var(--gold-dim);border-color:rgba(200,146,42,0.3);color:var(--gold)">📈 A股量化宽松预期</span>
-              <span class="hot-tag" style="background:var(--gold-dim);border-color:rgba(200,146,42,0.3);color:var(--gold)">🥇 黄金突破3100</span>
-              <span class="hot-tag" style="background:rgba(74,144,217,0.1);border-color:rgba(74,144,217,0.3);color:var(--blue)">💡 新能源车销量</span>
-              <span class="hot-tag" style="background:rgba(74,144,217,0.1);border-color:rgba(74,144,217,0.3);color:var(--blue)">🤖 AI算力扩张</span>
-              <span class="hot-tag" style="background:rgba(45,189,133,0.1);border-color:rgba(45,189,133,0.3);color:var(--green)">📊 CPI低于预期</span>
-              <span class="hot-tag" style="background:rgba(45,189,133,0.1);border-color:rgba(45,189,133,0.3);color:var(--green)">🏘 地产政策松绑</span>
-              <span class="hot-tag" style="border-color:var(--border2);color:var(--text1);">人民币走强</span>
-              <span class="hot-tag" style="border-color:var(--border2);color:var(--text1);">港股北上资金</span>
-              <span class="hot-tag" style="border-color:var(--border2);color:var(--text1);">银行板块分红</span>
-            </div>
-          </div>
-          <div class="panel">
-            <div class="panel-hd"><div class="panel-title">自定义热点库</div><button class="btn btn-gold" style="font-size:12px;padding:5px 12px;" onclick="showToast('新增热点')">+ 添加</button></div>
-            <div style="display:flex;flex-direction:column;gap:8px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg2);border-radius:var(--r);border:1px solid var(--border);">
-                <span style="font-size:13px;">美联储降息节奏</span><div style="display:flex;gap:8px;"><span class="badge red">高热</span><button class="btn-sm btn-outline-sm" onclick="showToast('已删除')">✕</button></div>
-              </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg2);border-radius:var(--r);border:1px solid var(--border);">
-                <span style="font-size:13px;">科技股估值修复</span><div style="display:flex;gap:8px;"><span class="badge gold">中热</span><button class="btn-sm btn-outline-sm" onclick="showToast('已删除')">✕</button></div>
-              </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg2);border-radius:var(--r);border:1px solid var(--border);">
-                <span style="font-size:13px;">债券收益率曲线</span><div style="display:flex;gap:8px;"><span class="badge gray">低热</span><button class="btn-sm btn-outline-sm" onclick="showToast('已删除')">✕</button></div>
-              </div>
-            </div>
-            <div style="display:flex;gap:8px;margin-top:12px;">
-              <input class="inp" placeholder="新增热点关键词…" style="flex:1;" id="newHotInp"/>
-              <button class="btn btn-gold" onclick="showToast('热点已添加')" style="font-size:12px;padding:6px 14px;">添加</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- 热点新闻流 -->
-        <div class="panel mb">
-          <div class="panel-hd"><div class="panel-title">热点资讯流</div><span class="panel-act">查看全部</span></div>
-          <div style="display:flex;flex-direction:column;">
-            <div class="feed-item">
-              <div class="feed-dot r"></div>
-              <div style="flex:1;">
-                <div style="font-size:13px;font-weight:500;">美联储3月会议纪要释放鸽派信号，市场预期5月降息概率升至68%</div>
-                <div style="display:flex;gap:8px;margin-top:4px;"><span class="badge red">美联储</span><span class="badge gold">宏观</span></div>
-                <div style="font-size:11px;color:var(--text2);margin-top:4px;font-family:var(--font-mono);">路透社 · 2小时前</div>
-              </div>
-            </div>
-            <div class="feed-item">
-              <div class="feed-dot"></div>
-              <div style="flex:1;">
-                <div style="font-size:13px;font-weight:500;">黄金现货突破3124美元，创历史新高，避险情绪持续升温</div>
-                <div style="display:flex;gap:8px;margin-top:4px;"><span class="badge gold">黄金</span><span class="badge blue">大宗商品</span></div>
-                <div style="font-size:11px;color:var(--text2);margin-top:4px;font-family:var(--font-mono);">彭博 · 4小时前</div>
-              </div>
-            </div>
-            <div class="feed-item">
-              <div class="feed-dot b"></div>
-              <div style="flex:1;">
-                <div style="font-size:13px;font-weight:500;">A股AI算力板块大幅上涨，北向资金单日净流入超80亿</div>
-                <div style="display:flex;gap:8px;margin-top:4px;"><span class="badge blue">A股</span><span class="badge purple">科技</span></div>
-                <div style="font-size:11px;color:var(--text2);margin-top:4px;font-family:var(--font-mono);">财联社 · 6小时前</div>
-              </div>
-            </div>
-            <div class="feed-item">
-              <div class="feed-dot g"></div>
-              <div style="flex:1;">
-                <div style="font-size:13px;font-weight:500;">CPI数据低于市场预期，通胀压力减缓，债市短期走强</div>
-                <div style="display:flex;gap:8px;margin-top:4px;"><span class="badge green">宏观数据</span><span class="badge blue">债市</span></div>
-                <div style="font-size:11px;color:var(--text2);margin-top:4px;font-family:var(--font-mono);">Wind · 8小时前</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 热点关联度分析 -->
-        <div class="panel">
-          <div class="panel-hd"><div class="panel-title">投顾热点覆盖率</div><span class="muted" style="font-size:12px;">本周</span></div>
-          <div class="prog-wrap"><div class="prog-hd"><span>美联储政策</span><span class="red">高热 · 覆盖率 82%</span></div><div class="prog-track"><div class="prog-fill red" style="width:82%"></div></div></div>
-          <div class="prog-wrap"><div class="prog-hd"><span>黄金走势</span><span class="gold">中热 · 覆盖率 67%</span></div><div class="prog-track"><div class="prog-fill" style="width:67%"></div></div></div>
-          <div class="prog-wrap"><div class="prog-hd"><span>A股板块轮动</span><span class="gold">中热 · 覆盖率 74%</span></div><div class="prog-track"><div class="prog-fill" style="width:74%"></div></div></div>
-          <div class="prog-wrap"><div class="prog-hd"><span>AI科技主线</span><span class="blue">热点 · 覆盖率 55%</span></div><div class="prog-track"><div class="prog-fill blue" style="width:55%"></div></div></div>
-          <div class="prog-wrap"><div class="prog-hd"><span>地产政策</span><span class="green">低热 · 覆盖率 38%</span></div><div class="prog-track"><div class="prog-fill green" style="width:38%"></div></div></div>
-        </div>
-      </div>
-
-      <!-- ══ 实时行情 ══ -->
+      
+      <!-- ══ SOP ══ -->
       <div class="sec" id="sec-market">
         <div class="page-title">实时行情</div>
         <div class="page-sub">主要市场指数 · 汇率 · 大宗商品 · 数据每分钟更新</div>
@@ -4205,6 +4047,66 @@ function ensureMetricsAnchorRangeDefaults() {
     start: formatDateInputValue(start),
     end: formatDateInputValue(end)
   };
+}
+
+async function loadMetricsAnchorHistory(account) {
+  const historyEl = document.getElementById('metricsAnchorHistory');
+  if (!historyEl) return;
+  
+  if (!account) {
+    historyEl.style.display = 'none';
+    historyEl.innerHTML = '';
+    return;
+  }
+  
+  historyEl.style.display = 'block';
+  historyEl.innerHTML = '<div class="muted" style="font-size:12px;">正在加载历史数据...</div>';
+  
+  try {
+    const res = await fetch(`/api/operation/anchor-summary?account=${encodeURIComponent(account)}`, { credentials: 'include' });
+    const data = await res.json();
+    
+    if (!data.ok || !data.summary?.total_lives) {
+      historyEl.innerHTML = `<div class="muted" style="font-size:12px;color:var(--text2);">暂无历史直播数据，可在运营数据中心导入</div>`;
+      return;
+    }
+    
+    const summary = data.summary;
+    const recentLives = data.recent_lives || [];
+    
+    historyEl.innerHTML = `
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px;">
+        <div style="font-size:12px;color:var(--text1);margin-bottom:8px;">
+          <span style="color:var(--gold);">📊 历史直播数据</span> · 
+          ${summary.total_lives} 场直播 · 
+          ${summary.first_live || '—'} ~ ${summary.last_live || '—'}
+        </div>
+        <div style="display:flex;gap:12px;font-size:11px;flex-wrap:wrap;">
+          <span>总时长 <b class="mono">${Math.round((summary.total_duration || 0) / 60)}小时</b></span>
+          <span>总观看 <b class="mono">${fmt(summary.total_watch || 0)}</b></span>
+          <span>总涨粉 <b class="mono green">${fmt(summary.total_follow || 0)}</b></span>
+          <span>场均时长 <b class="mono">${Math.round(summary.avg_duration || 0)}分</b></span>
+          <span>峰值 <b class="mono">${fmt(summary.max_pcu || 0)}</b></span>
+        </div>
+        ${recentLives.length ? `
+          <div style="margin-top:10px;">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">最近直播</div>
+            <div style="display:flex;gap:6px;font-size:11px;flex-wrap:wrap;">
+              ${recentLives.slice(0, 5).map(l => `
+                <span style="background:var(--bg1);padding:3px 8px;border-radius:4px;">
+                  <span class="mono">${l.start_time?.split(' ')[0]?.slice(5) || '—'}</span>
+                  <span class="muted">${l.duration || 0}分</span>
+                  <span class="green">${fmt(l.follow_ucnt || 0)}粉</span>
+                </span>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  } catch (e) {
+    historyEl.innerHTML = `<div class="muted" style="font-size:12px;color:var(--red);">加载失败: ${escapeHtml(e.message)}</div>`;
+  }
 }
 
 function extractJsonObject(text) {
@@ -8772,6 +8674,10 @@ function renderAnchorLibraryDetail(profile) {
         ` : `<div class="muted">至少需要两次分析记录，系统才能判断这个主播最近有没有明显改善。</div>`}
       </div>
       <div class="panel" style="margin:0;">
+        <div class="panel-hd"><div class="panel-title">直播数据统计</div><span class="panel-act" id="anchorLiveDataMeta">加载中...</span></div>
+        <div id="anchorLiveDataContent" class="muted">正在获取直播数据...</div>
+      </div>
+      <div class="panel" style="margin:0;">
         <div class="panel-hd"><div class="panel-title">最近快照</div></div>
         <div style="display:flex;flex-direction:column;gap:10px;">${snapshots || '<div class="muted">暂无历史快照</div>'}</div>
       </div>
@@ -8786,6 +8692,96 @@ function renderAnchorLibraryDetail(profile) {
         <div>${activeReportHtml}</div>
       </div>
     </div>`;
+  
+  // 获取主播直播数据汇总
+  loadAnchorLiveData(profile.anchorName);
+}
+
+async function loadAnchorLiveData(anchorName) {
+  const metaEl = document.getElementById('anchorLiveDataMeta');
+  const contentEl = document.getElementById('anchorLiveDataContent');
+  
+  if (!anchorName) {
+    metaEl.textContent = '未选择主播';
+    contentEl.innerHTML = '<div class="muted">请先选择主播</div>';
+    return;
+  }
+  
+  metaEl.textContent = '加载中...';
+  
+  try {
+    const res = await fetch(`/api/operation/anchor-summary?account=${encodeURIComponent(anchorName)}`, { credentials: 'include' });
+    const data = await res.json();
+    
+    if (!data.ok) {
+      metaEl.textContent = '获取失败';
+      contentEl.innerHTML = `<div class="muted">${escapeHtml(data.error || '暂无直播数据')}</div>`;
+      return;
+    }
+    
+    const summary = data.summary || {};
+    const recentLives = data.recent_lives || [];
+    
+    if (!summary.total_lives) {
+      metaEl.textContent = '暂无数据';
+      contentEl.innerHTML = '<div class="muted">该主播暂无直播数据记录，可在运营数据中心导入</div>';
+      return;
+    }
+    
+    metaEl.textContent = `${summary.total_lives || 0} 场直播 · ${summary.first_live || '—'} ~ ${summary.last_live || '—'}`;
+    
+    contentEl.innerHTML = `
+      <div class="g4" style="margin-bottom:16px;">
+        <div class="kpi" style="--accent:var(--gold)">
+          <div class="kpi-lbl">总直播场次</div>
+          <div class="kpi-val gold">${summary.total_lives || 0}</div>
+        </div>
+        <div class="kpi" style="--accent:var(--blue)">
+          <div class="kpi-lbl">总直播时长</div>
+          <div class="kpi-val">${Math.round((summary.total_duration || 0) / 60)}小时</div>
+        </div>
+        <div class="kpi" style="--accent:var(--green)">
+          <div class="kpi-lbl">总观看人数</div>
+          <div class="kpi-val green">${fmt(summary.total_watch || 0)}</div>
+        </div>
+        <div class="kpi" style="--accent:var(--purple)">
+          <div class="kpi-lbl">总涨粉数</div>
+          <div class="kpi-val">${fmt(summary.total_follow || 0)}</div>
+        </div>
+      </div>
+      <div class="g2" style="margin:0;align-items:start;">
+        <div style="flex:1;">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">平均数据</div>
+          <table class="tbl" style="font-size:12px;">
+            <tr><td>场均时长</td><td class="mono">${Math.round(summary.avg_duration || 0)}分钟</td></tr>
+            <tr><td>场均观看</td><td class="mono">${fmt(Math.round(summary.avg_watch || 0))}</td></tr>
+            <tr><td>场均涨粉</td><td class="mono green">${fmt(Math.round(summary.avg_follow || 0))}</td></tr>
+            <tr><td>场均音浪</td><td class="mono">${fmt(Math.round(summary.avg_earn || 0))}</td></tr>
+            <tr><td>峰值人数</td><td class="mono">${fmt(summary.max_pcu || 0)}</td></tr>
+          </table>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">最近10场直播</div>
+          ${recentLives.length ? `
+            <table class="tbl" style="font-size:12px;">
+              <tr><th>时间</th><th>时长</th><th>观看</th><th>涨粉</th></tr>
+              ${recentLives.map(l => `
+                <tr>
+                  <td class="mono">${l.start_time || '—'}</td>
+                  <td class="mono">${l.duration || 0}分</td>
+                  <td class="mono">${fmt(l.watch_ucnt || 0)}</td>
+                  <td class="mono green">${fmt(l.follow_ucnt || 0)}</td>
+                </tr>
+              `).join('')}
+            </table>
+          ` : '<div class="muted">暂无直播记录</div>'}
+        </div>
+      </div>
+    `;
+  } catch (e) {
+    metaEl.textContent = '获取失败';
+    contentEl.innerHTML = `<div class="muted">${escapeHtml(e.message || '网络错误')}</div>`;
+  }
 }
 
 function openAnchorSnapshot(profileId, snapshotKey) {
@@ -10378,6 +10374,9 @@ els.metricsAnchorStart?.addEventListener("change", () => {
 });
 els.metricsAnchorEnd?.addEventListener("change", () => {
   state.metricsAnchorRange.end = String(els.metricsAnchorEnd.value || "").trim();
+});
+els.metricsAnchorSelect?.addEventListener("change", (event) => {
+  loadMetricsAnchorHistory(event.target.value);
 });
 els.optimizePromptLibraryBtn.addEventListener("click", optimizePromptLibraryWithAi);
 els.rolePresetSelect?.addEventListener("change", (event) => {
