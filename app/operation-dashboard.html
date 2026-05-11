@@ -536,50 +536,46 @@ function renderAnchorLineChart(daily, height, maxAcu) {
   if (!daily.length) return '';
   const padding = { top: 10, right: 10, bottom: 25, left: 40 };
   const innerHeight = height - padding.top - padding.bottom;
-  
-  // 计算点位置（使用百分比宽度）
+  // 使用viewBox定义坐标系，宽度1000保证足够空间
+  const viewBoxWidth = 1000;
+  const innerWidth = viewBoxWidth - padding.left - padding.right;
+
+  // 计算点位置（使用绝对坐标）
   const points = daily.map((d, i) => {
-    const xPercent = (i / (daily.length - 1 || 1)) * 100;
+    const x = padding.left + (i / (daily.length - 1 || 1)) * innerWidth;
     const acu = d.avg_acu || 0;
     const y = padding.top + innerHeight - (acu / (maxAcu || 1)) * innerHeight;
-    return { xPercent, y, acu: Math.round(acu), day: d.day, count: d.live_count };
+    return { x, y, acu: Math.round(acu), day: d.day, count: d.live_count };
   });
-  
-  // 生成折线路径（使用百分比坐标）
-  const linePath = points.map((p, i) => {
-    const x = padding.left + (p.xPercent / 100) * (100 - padding.left - padding.right);
-    return `${i === 0 ? 'M' : 'L'} ${x}% ${p.y}`;
-  }).join(' ');
-  
+
+  // 生成折线路径
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
   // Y轴刻度
-  const yTicks = [maxAcu, maxAcu/2, 0].map((v, i) => {
+  const yTicks = [maxAcu, maxAcu/2, 0].map((v) => {
     const y = padding.top + innerHeight - (v / (maxAcu || 1)) * innerHeight;
     return `<text x="5" y="${y + 4}" style="font-size:10px;fill:var(--text2);">${Math.round(v)}</text>`;
   }).join('');
-  
+
   // X轴日期标签（选几个显示）
   const labelCount = Math.min(5, daily.length);
   const xLabels = [];
   for (let i = 0; i < labelCount; i++) {
     const idx = Math.floor(i * (daily.length - 1) / (labelCount - 1 || 1));
-    const xPercent = (idx / (daily.length - 1 || 1)) * 100;
-    const x = padding.left + (xPercent / 100) * (100 - padding.left - padding.right);
-    xLabels.push(`<text x="${x}%" y="${height - 5}" style="font-size:9px;fill:var(--text2);text-anchor:middle;">${daily[idx].day?.slice(5) || ''}</text>`);
+    const x = padding.left + (idx / (daily.length - 1 || 1)) * innerWidth;
+    xLabels.push(`<text x="${x}" y="${height - 5}" style="font-size:9px;fill:var(--text2);text-anchor:middle;">${daily[idx].day?.slice(5) || ''}</text>`);
   }
-  
+
   return `
     <!-- Y轴 -->
     ${yTicks}
     <!-- 折线 -->
     <path d="${linePath}" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round"/>
     <!-- 数据点 -->
-    ${points.map(p => {
-      const x = padding.left + (p.xPercent / 100) * (100 - padding.left - padding.right);
-      return `<circle cx="${x}%" cy="${p.y}" r="3" fill="var(--gold)" style="cursor:pointer;" 
-        onmouseover="this.setAttribute('r','5');this.style.fill='var(--gold2)'"
-        onmouseout="this.setAttribute('r','3');this.style.fill='var(--gold)'"
-        title="${p.day}: ${p.acu}人 ${p.count}场"/>`;
-    }).join('')}
+    ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="3" fill="var(--gold)" style="cursor:pointer;"
+      onmouseover="this.setAttribute('r','5');this.style.fill='var(--gold2)'"
+      onmouseout="this.setAttribute('r','3');this.style.fill='var(--gold)'"
+      title="${p.day}: ${p.acu}人 ${p.count}场"/>`).join('')}
     <!-- X轴日期 -->
     ${xLabels}
   `;
@@ -659,7 +655,7 @@ function renderMonthlyReport(data) {
             <span style="font-size:12px;color:var(--text1);">📈 在线人数趋势</span>
             <span class="muted" style="font-size:11px;">峰值: ${fmt(Math.round(maxAcu))} 人 · ${anchorDaily.length}天</span>
           </div>
-          <svg width="100%" height="160" style="overflow:visible;">
+          <svg width="100%" height="160" viewBox="0 0 1000 160" preserveAspectRatio="xMidYMid meet" style="overflow:visible;">
             ${renderAnchorLineChart(anchorDaily, 160, maxAcu)}
           </svg>
         </div>
