@@ -198,6 +198,7 @@
       <div class="panel">
         <div class="panel-hd">
           <div class="panel-title">📝 手工添加直播记录</div>
+          <span class="muted" style="font-size:12px;">点击日历日期自动填充</span>
         </div>
         <div class="g2">
           <div>
@@ -207,8 +208,8 @@
             </select>
           </div>
           <div>
-            <label class="lbl">直播日期</label>
-            <input type="date" id="add-live-date" class="inp" style="width:100%;">
+            <label class="lbl">直播日期 <span class="muted">(点击日历选择)</span></label>
+            <input type="date" id="add-live-date" class="inp" style="width:100%;background:var(--bg2);color:var(--text1);" readonly>
           </div>
         </div>
         <div class="g2">
@@ -760,6 +761,9 @@ function showDayDetail(event, dateStr, dayData) {
   if (event && event.currentTarget) {
     event.currentTarget.classList.add('selected');
   }
+  
+  // 自动填充手工添加表单的日期字段
+  $('add-live-date').value = dateStr;
 
   if (!dayData || !dayData.lives || !dayData.lives.length) {
     $('calendar-detail').innerHTML = `<div class="muted">${dateStr} 无直播记录</div>`;
