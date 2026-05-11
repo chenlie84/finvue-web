@@ -754,7 +754,7 @@ def get_import_logs(
     rows = db.fetch_all(
         f"""
         SELECT id, import_type, file_name, record_count, account_count,
-               status, error_message, imported_by, imported_at
+               status, error_message, imported_by, imported_at, mode
         FROM finvue_operation_import_logs
         WHERE {where}
         ORDER BY imported_at DESC
