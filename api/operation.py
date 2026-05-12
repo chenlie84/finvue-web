@@ -837,7 +837,7 @@ def get_calendar(
         rows = db.fetch_all(
             f"""
             SELECT account, room_id, title, start_time, duration, pcu, acu,
-                   watch_ucnt, follow_ucnt, earn_score, notes
+                   watch_ucnt, follow_ucnt, earn_score
             FROM finvue_operation_live_stats
             WHERE {where_clause}
             ORDER BY start_time
