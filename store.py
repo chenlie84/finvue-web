@@ -1088,10 +1088,10 @@ def get_customer_trends_summary(anchor_name: str = "") -> dict[str, Any]:
     if not anchor_name:
         anchor_stats = db.fetch_all(
             """
-            SELECT latest_anchor_name as anchor_name, COUNT(*) as customer_count
-            FROM finvue_customer_profiles
-            WHERE latest_anchor_name IS NOT NULL AND latest_anchor_name != ''
-            GROUP BY latest_anchor_name
+            SELECT anchor_name, COUNT(DISTINCT customer_id) as customer_count
+            FROM finvue_customer_sessions
+            WHERE anchor_name IS NOT NULL AND anchor_name != ''
+            GROUP BY anchor_name
             ORDER BY customer_count DESC
             """,
             ()
@@ -1106,23 +1106,21 @@ def get_customer_trends_summary(anchor_name: str = "") -> dict[str, Any]:
                 "stats": {"customerCount": sum(r["customer_count"] for r in anchor_stats or []),
                           "anchorCount": len(anchor_groups)}}
 
-    # === 指定主播：一次查询获取所有数据 ===
-    # 使用 LEFT JOIN + GROUP_CONCAT 一次性获取客户、场次、月份信息
+    # === 指定主播：从 sessions 表获取数据（因为 profiles 表可能不完整） ===
+    # 直接从 customer_sessions 表查询该主播的客户数据
     rows = db.fetch_all(
         """
         SELECT 
-            p.customer_id,
-            p.customer_name,
+            s.customer_id,
             COUNT(DISTINCT s.room_id) as session_count,
             MIN(DATE(s.analyzed_at)) as first_date,
             MAX(DATE(s.analyzed_at)) as latest_date,
             MIN(s.watch_rank) as best_rank,
             AVG(s.watch_duration_seconds) as avg_watch_seconds,
             GROUP_CONCAT(DISTINCT DATE_FORMAT(s.analyzed_at, '%Y-%m') ORDER BY s.analyzed_at) as months_str
-        FROM finvue_customer_profiles p
-        LEFT JOIN finvue_customer_sessions s ON p.customer_id = s.customer_id
-        WHERE p.latest_anchor_name = %s
-        GROUP BY p.customer_id, p.customer_name
+        FROM finvue_customer_sessions s
+        WHERE s.anchor_name = %s
+        GROUP BY s.customer_id
         """,
         (anchor_name,)
     )
@@ -1156,7 +1154,7 @@ def get_customer_trends_summary(anchor_name: str = "") -> dict[str, Any]:
         
         customer_stats.append({
             "customerId": r["customer_id"],
-            "customerName": r.get("customer_name") or "",
+            "customerName": r.get("customer_name") or r["customer_id"],  # 使用customer_id作为默认名称
             "count": count,
             "firstMonth": first_month,
             "months": months,
