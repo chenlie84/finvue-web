@@ -27,7 +27,13 @@ async def post_customer_library(request: Request, _: dict = Depends(security.req
 
 @router.get("/api/customer-trends-summary")
 def get_customer_trends(anchorName: str = "", _: dict = Depends(security.require_permission("customer-library"))) -> dict:
-    return store.get_customer_trends_summary(anchorName)
+    try:
+        return store.get_customer_trends_summary(anchorName)
+    except Exception as e:
+        import traceback
+        print(f"[customer-trends] Error: {e}")
+        traceback.print_exc()
+        return {"ok": False, "error": str(e), "anchorGroups": [], "stats": {"customerCount": 0, "anchorCount": 0}}
 
 
 @router.post("/api/customer-library/import-profiles")

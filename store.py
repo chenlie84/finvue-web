@@ -1143,7 +1143,13 @@ def get_customer_trends_summary(anchor_name: str = "") -> dict[str, Any]:
         active = False
         if latest_date:
             try:
-                latest_dt = datetime.strptime(str(latest_date), "%Y-%m-%d")
+                # 处理可能是 datetime 或 date 对象
+                if isinstance(latest_date, datetime):
+                    latest_dt = latest_date
+                elif hasattr(latest_date, 'year'):  # datetime.date 对象
+                    latest_dt = datetime.combine(latest_date, datetime.min.time())
+                else:
+                    latest_dt = datetime.strptime(str(latest_date).split()[0], "%Y-%m-%d")
                 active = (ref_date - latest_dt).days <= 30
             except:
                 pass
