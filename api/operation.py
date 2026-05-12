@@ -1054,114 +1054,123 @@ def get_anchor_summary(
 @router.get("/api/operation/home-overview")
 def get_home_overview(_: dict = Depends(security.require_permission("home"))) -> dict:
     """获取工作台概览数据（一次性获取所有数据，减少前端请求次数）."""
-    now = datetime.now()
-    current_month = now.strftime("%Y-%m")
-    current_week_start = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
+    try:
+        now = datetime.now()
+        current_month = now.strftime("%Y-%m")
+        current_week_start = (now - timedelta(days=now.weekday())).strftime("%Y-%m-%d")
 
-    # 1. 主播列表（带汇总数据）
-    anchors = db.fetch_all(
-        """
-        SELECT 
-            account,
-            COUNT(*) as live_count,
-            SUM(duration) as total_duration,
-            AVG(duration) as avg_duration,
-            MAX(pcu) as max_pcu,
-            AVG(acu) as avg_acu,
-            SUM(watch_ucnt) as total_watch,
-            AVG(watch_ucnt) as avg_watch,
-            SUM(follow_ucnt) as total_follow,
-            AVG(follow_ucnt) as avg_follow,
-            SUM(earn_score) as total_earn,
-            MAX(start_time) as last_live_time,
-            MIN(start_time) as first_live_time,
-            SUM(CASE WHEN DATE_FORMAT(start_time, '%%Y-%%m') = %s THEN 1 ELSE 0 END) as month_live_count,
-            SUM(CASE WHEN DATE_FORMAT(start_time, '%%Y-%%m') = %s THEN watch_ucnt ELSE 0 END) as month_watch,
-            SUM(CASE WHEN DATE_FORMAT(start_time, '%%Y-%%m') = %s THEN follow_ucnt ELSE 0 END) as month_follow
-        FROM finvue_operation_live_stats
-        GROUP BY account
-        ORDER BY live_count DESC
-        """,
-        (current_month, current_month, current_month)
-    )
+        # 1. 主播列表（带汇总数据）
+        anchors = db.fetch_all(
+            """
+            SELECT
+                account,
+                COUNT(*) as live_count,
+                SUM(duration) as total_duration,
+                AVG(duration) as avg_duration,
+                MAX(pcu) as max_pcu,
+                AVG(acu) as avg_acu,
+                SUM(watch_ucnt) as total_watch,
+                AVG(watch_ucnt) as avg_watch,
+                SUM(follow_ucnt) as total_follow,
+                AVG(follow_ucnt) as avg_follow,
+                SUM(earn_score) as total_earn,
+                MAX(start_time) as last_live_time,
+                MIN(start_time) as first_live_time,
+                SUM(CASE WHEN DATE_FORMAT(start_time, '%%Y-%%m') = %s THEN 1 ELSE 0 END) as month_live_count,
+                SUM(CASE WHEN DATE_FORMAT(start_time, '%%Y-%%m') = %s THEN watch_ucnt ELSE 0 END) as month_watch,
+                SUM(CASE WHEN DATE_FORMAT(start_time, '%%Y-%%m') = %s THEN follow_ucnt ELSE 0 END) as month_follow
+            FROM finvue_operation_live_stats
+            GROUP BY account
+            ORDER BY live_count DESC
+            """,
+            (current_month, current_month, current_month)
+        )
 
-    # 2. 本月汇总
-    month_summary = db.fetch_one(
-        """
-        SELECT 
-            COUNT(*) as month_live_count,
-            SUM(duration) as month_duration,
-            SUM(watch_ucnt) as month_watch,
-            SUM(follow_ucnt) as month_follow,
-            SUM(earn_score) as month_earn,
-            AVG(acu) as month_avg_acu
-        FROM finvue_operation_live_stats
-        WHERE DATE_FORMAT(start_time, '%%Y-%%m') = %s
-        """,
-        (current_month,)
-    )
+        # 2. 本月汇总
+        month_summary = db.fetch_one(
+            """
+            SELECT
+                COUNT(*) as month_live_count,
+                SUM(duration) as month_duration,
+                SUM(watch_ucnt) as month_watch,
+                SUM(follow_ucnt) as month_follow,
+                SUM(earn_score) as month_earn,
+                AVG(acu) as month_avg_acu
+            FROM finvue_operation_live_stats
+            WHERE DATE_FORMAT(start_time, '%%Y-%%m') = %s
+            """,
+            (current_month,)
+        )
 
-    # 3. 本周汇总
-    week_summary = db.fetch_one(
-        """
-        SELECT 
-            COUNT(*) as week_live_count,
-            SUM(duration) as week_duration,
-            SUM(watch_ucnt) as week_watch,
-            SUM(follow_ucnt) as week_follow,
-            SUM(earn_score) as week_earn
-        FROM finvue_operation_live_stats
-        WHERE DATE(start_time) >= %s
-        """,
-        (current_week_start,)
-    )
+        # 3. 本周汇总
+        week_summary = db.fetch_one(
+            """
+            SELECT
+                COUNT(*) as week_live_count,
+                SUM(duration) as week_duration,
+                SUM(watch_ucnt) as week_watch,
+                SUM(follow_ucnt) as week_follow,
+                SUM(earn_score) as week_earn
+            FROM finvue_operation_live_stats
+            WHERE DATE(start_time) >= %s
+            """,
+            (current_week_start,)
+        )
 
-    # 4. 数据总体信息
-    total_info = db.fetch_one(
-        """
-        SELECT 
-            COUNT(*) as total_count,
-            COUNT(DISTINCT account) as anchor_count,
-            MAX(start_time) as max_time,
-            MIN(start_time) as min_time
-        FROM finvue_operation_live_stats
-        """
-    )
+        # 4. 数据总体信息
+        total_info = db.fetch_one(
+            """
+            SELECT
+                COUNT(*) as total_count,
+                COUNT(DISTINCT account) as anchor_count,
+                MAX(start_time) as max_time,
+                MIN(start_time) as min_time
+            FROM finvue_operation_live_stats
+            """
+        )
 
-    # 5. 最近7天每日数据（用于趋势图）
-    daily_trend = db.fetch_all(
-        """
-        SELECT 
-            DATE(start_time) as date,
-            COUNT(*) as live_count,
-            SUM(watch_ucnt) as watch,
-            SUM(follow_ucnt) as follow,
-            AVG(acu) as avg_acu
-        FROM finvue_operation_live_stats
-        WHERE DATE(start_time) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-        GROUP BY DATE(start_time)
-        ORDER BY date
-        """
-    )
+        # 5. 最近7天每日数据（用于趋势图）
+        daily_trend = db.fetch_all(
+            """
+            SELECT
+                DATE(start_time) as date,
+                COUNT(*) as live_count,
+                SUM(watch_ucnt) as watch,
+                SUM(follow_ucnt) as follow,
+                AVG(acu) as avg_acu
+            FROM finvue_operation_live_stats
+            WHERE DATE(start_time) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            GROUP BY DATE(start_time)
+            ORDER BY date
+            """
+        )
 
-    # 6. 最近活跃主播（7天内直播过的）
-    active_anchors = db.fetch_all(
-        """
-        SELECT DISTINCT account, MAX(start_time) as last_live
-        FROM finvue_operation_live_stats
-        WHERE DATE(start_time) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-        GROUP BY account
-        ORDER BY last_live DESC
-        """
-    )
+        # 6. 最近活跃主播（7天内直播过的）
+        active_anchors = db.fetch_all(
+            """
+            SELECT DISTINCT account, MAX(start_time) as last_live
+            FROM finvue_operation_live_stats
+            WHERE DATE(start_time) >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            GROUP BY account
+            ORDER BY last_live DESC
+            """
+        )
 
-    return {
-        "ok": True,
-        "anchors": anchors or [],
-        "month_summary": month_summary or {},
-        "week_summary": week_summary or {},
-        "total_info": total_info or {},
-        "daily_trend": daily_trend or [],
-        "active_anchors": active_anchors or [],
-        "current_month": current_month,
-    }
+        return {
+            "ok": True,
+            "anchors": anchors or [],
+            "month_summary": month_summary or {},
+            "week_summary": week_summary or {},
+            "total_info": total_info or {},
+            "daily_trend": daily_trend or [],
+            "active_anchors": active_anchors or [],
+            "current_month": current_month
+        }
+    except Exception as e:
+        import traceback
+        print(f"[home-overview] Error: {e}")
+        traceback.print_exc()
+        return {"ok": False, "error": str(e), "anchors": [], "month_summary": {}, "week_summary": {}, "total_info": {}, "daily_trend": [], "active_anchors": []}
+
+
+@router.post("/api/operation/add-live")
