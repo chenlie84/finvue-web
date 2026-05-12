@@ -291,6 +291,12 @@
     async function initFromServer() {
       try {
         const resp = await fetch(`${API_BASE}/anchors`);
+        if (resp.status === 403) {
+          // 用户没有 sop 权限，静默处理
+          console.log("用户没有 SOP 权限");
+          document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#999;"><h3>权限不足</h3><p>您没有访问"带新SOP"功能的权限，请联系管理员授权。</p></div>';
+          return;
+        }
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const { anchors } = await resp.json();
         db.anchors = {};
@@ -299,7 +305,8 @@
         }
       } catch (err) {
         console.error("加载主播数据失败：", err);
-        alert("加载主播数据失败，请检查网络或刷新。");
+        // 不再弹出 alert，改为在页面上显示错误
+        document.body.innerHTML = `<div style="padding:40px;text-align:center;color:#999;"><h3>加载失败</h3><p>${err.message || '请检查网络或刷新页面'}</p></div>`;
       }
     }
 
@@ -522,13 +529,18 @@
     async function initCustomOptions() {
       try {
         const resp = await fetch(`${API_BASE}/options`);
+        if (resp.status === 403) {
+          // 用户没有 sop 权限，静默处理（initFromServer 会处理页面显示）
+          console.log("用户没有 SOP 权限 (options)");
+          return;
+        }
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const { options } = await resp.json();
         customOptions = options || [];
         customOptions.forEach(appendCustomOptionToPlan);
       } catch (err) {
         console.error("加载人工选项失败：", err);
-        alert("加载人工选项失败，请检查网络或刷新。");
+        // 不再弹出 alert，静默处理
       }
     }
 
