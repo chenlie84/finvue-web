@@ -820,52 +820,58 @@ def get_calendar(
     _: dict = Depends(security.require_permission("home"))
 ) -> dict:
     """获取直播日历数据."""
-    month_start = datetime(year, month, 1)
-    if month == 12:
-        month_end = datetime(year + 1, 1, 1) - timedelta(seconds=1)
-    else:
-        month_end = datetime(year, month + 1, 1) - timedelta(seconds=1)
-
-    where_clause = "start_time >= %s AND start_time <= %s"
-    params = [month_start.strftime("%Y-%m-%d %H:%M:%S"), month_end.strftime("%Y-%m-%d %H:%M:%S")]
-
-    if account:
-        where_clause += " AND account = %s"
-        params.append(account)
-
-    rows = db.fetch_all(
-        f"""
-        SELECT account, room_id, title, start_time, duration, pcu, acu,
-               watch_ucnt, follow_ucnt, earn_score, notes
-        FROM finvue_operation_live_stats
-        WHERE {where_clause}
-        ORDER BY start_time
-        """,
-        tuple(params)
-    )
-
-    # 按日期分组
-    days = {}
-    for row in rows or []:
-        start_time = row.get("start_time")
-        if start_time:
-            # 处理 datetime 对象或字符串，确保格式为 "YYYY-MM-DD HH:MM:SS"
-            if isinstance(start_time, datetime):
-                start_time_str = start_time.strftime("%Y-%m-%d %H:%M:%S")
-                date_str = start_time.strftime("%Y-%m-%d")
-            else:
-                start_time_str = str(start_time)
-                date_str = start_time_str.split(" ")[0]
-            # 更新 row 中的 start_time 为字符串格式
-            row["start_time"] = start_time_str
+    try:
+        month_start = datetime(year, month, 1)
+        if month == 12:
+            month_end = datetime(year + 1, 1, 1) - timedelta(seconds=1)
         else:
-            continue
-        if date_str not in days:
-            days[date_str] = {"count": 0, "lives": []}
-        days[date_str]["count"] += 1
-        days[date_str]["lives"].append(row)
+            month_end = datetime(year, month + 1, 1) - timedelta(seconds=1)
 
-    return {"ok": True, "year": year, "month": month, "days": days}
+        where_clause = "start_time >= %s AND start_time <= %s"
+        params = [month_start.strftime("%Y-%m-%d %H:%M:%S"), month_end.strftime("%Y-%m-%d %H:%M:%S")]
+
+        if account:
+            where_clause += " AND account = %s"
+            params.append(account)
+
+        rows = db.fetch_all(
+            f"""
+            SELECT account, room_id, title, start_time, duration, pcu, acu,
+                   watch_ucnt, follow_ucnt, earn_score, notes
+            FROM finvue_operation_live_stats
+            WHERE {where_clause}
+            ORDER BY start_time
+            """,
+            tuple(params)
+        )
+
+        # 按日期分组
+        days = {}
+        for row in rows or []:
+            start_time = row.get("start_time")
+            if start_time:
+                # 处理 datetime 对象或字符串，确保格式为 "YYYY-MM-DD HH:MM:SS"
+                if isinstance(start_time, datetime):
+                    start_time_str = start_time.strftime("%Y-%m-%d %H:%M:%S")
+                    date_str = start_time.strftime("%Y-%m-%d")
+                else:
+                    start_time_str = str(start_time)
+                    date_str = start_time_str.split(" ")[0]
+                # 更新 row 中的 start_time 为字符串格式
+                row["start_time"] = start_time_str
+            else:
+                continue
+            if date_str not in days:
+                days[date_str] = {"count": 0, "lives": []}
+            days[date_str]["count"] += 1
+            days[date_str]["lives"].append(row)
+
+        return {"ok": True, "year": year, "month": month, "days": days}
+    except Exception as e:
+        import traceback
+        print(f"[calendar] Error: {e}")
+        traceback.print_exc()
+        return {"ok": False, "error": str(e), "year": year, "month": month, "days": {}}
 
 
 @router.post("/api/operation/add-live")
