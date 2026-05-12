@@ -10,29 +10,12 @@
     if (portraitTitle) portraitTitle.textContent = "主播画像";
   }
 
-  function installShowSecHook() {
-    if (window.__anchorDashboardShowSecPatched || typeof window.showSec !== "function") return;
-    const original = window.showSec;
-    window.showSec = function patchedShowSec(id, btn) {
-      original.call(this, id, btn);
-      if (id === "home") {
-        window.AnchorDashboardOverview?.ensureRendered();
-      } else if (id === "portrait") {
-        window.AnchorPortraitPage?.ensureRendered();
-      }
-    };
-    window.__anchorDashboardShowSecPatched = true;
-  }
-
   function boot() {
     mount();
-    installShowSecHook();
-    window.AnchorDashboardOverview?.ensureRendered();
-    window.AnchorPortraitPage?.ensureRendered();
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot, { once: true });
+    document.addEventListener("DOMContentLoaded", boot);
   } else {
     boot();
   }
