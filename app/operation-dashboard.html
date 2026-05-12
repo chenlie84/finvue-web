@@ -273,6 +273,10 @@ function switchTab(tabId, el) {
 async function loadAccounts() {
   try {
     const res = await fetch('/api/operation/accounts', { credentials: 'include' });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status}: ${text.slice(0,100)}`);
+    }
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || '获取主播列表失败');
 
@@ -406,6 +410,10 @@ async function loadWeeklyReport() {
     params.set('weekStart', weekStartStr);
     
     const res = await fetch('/api/operation/weekly-report?' + params, { credentials: 'include' });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status}: ${text.slice(0,100)}`);
+    }
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || '获取周报失败');
     
@@ -524,6 +532,10 @@ async function loadMonthlyReport() {
     if (account) params.set('account', account);
     
     const res = await fetch('/api/operation/monthly-report?' + params, { credentials: 'include' });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status}: ${text.slice(0,100)}`);
+    }
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || '获取月报失败');
     
@@ -827,19 +839,23 @@ async function loadCalendar() {
   const account = $('calendar-account-filter').value;
   const year = calendarDate.getFullYear();
   const month = calendarDate.getMonth();
-  
+
   $('calendar-month-label').textContent = `${year}年${month + 1}月`;
-  
+
   try {
     const params = new URLSearchParams();
     params.set('year', year);
     params.set('month', month + 1);
     if (account) params.set('account', account);
-    
+
     const res = await fetch('/api/operation/calendar?' + params, { credentials: 'include' });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status}: ${text.slice(0,100)}`);
+    }
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || '获取日历失败');
-    
+
     renderCalendar(data, year, month);
   } catch (e) {
     $('calendar-grid').innerHTML = `<div class="empty" style="grid-column:span 7;">${esc(e.message)}</div>`;
