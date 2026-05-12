@@ -5,9 +5,18 @@ from fastapi import APIRouter, HTTPException, Request, Response
 import config
 import security
 import store
+import logger
 
 
 router = APIRouter()
+
+
+def get_client_ip(request: Request) -> str:
+    """获取客户端IP地址."""
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else ""
 
 
 DEFAULT_REGISTER_PERMISSIONS = {
@@ -27,11 +36,20 @@ async def login(request: Request, response: Response) -> dict:
     body = await request.json()
     username = security.normalize_username(body.get("username"))
     password = str(body.get("password") or "")
+    ip = get_client_ip(request)
+    
     user = store.get_user_by_username(username)
     if not user or not security.verify_password(password, user["passwordSalt"], user["passwordHash"]):
+        # 记录登录失败
+        logger.log_login(username=username, request_ip=ip, status="failed", error_message="账号或密码错误")
         raise HTTPException(status_code=401, detail="账号或密码错误")
+    
     sanitized = security.sanitize_user(user)
     security.set_session_cookie(request, response, sanitized)
+    
+    # 记录登录成功
+    logger.log_login(username=username, user_id=user.get("id"), request_ip=ip, status="success")
+    
     return {"ok": True, "user": sanitized}
 
 
@@ -59,10 +77,33 @@ async def register(request: Request, response: Response) -> dict:
     user = store.save_user(payload)
     sanitized = security.sanitize_user(user)
     security.set_session_cookie(request, response, sanitized)
+    
+    # 记录注册
+    ip = get_client_ip(request)
+    logger.log_create(
+        module="auth",
+        target_type="user",
+        target_id=user.get("id"),
+        title=f"用户注册: {username}",
+        description=f"新用户 {username} 注册成功",
+        username=username,
+        user_id=user.get("id"),
+        request_ip=ip,
+    )
+    
     return {"ok": True, "user": sanitized}
 
 
 @router.post("/api/logout")
 def logout(request: Request, response: Response) -> dict:
+    session = security.get_session(request)
+    username = session.get("username") if session else "未知用户"
+    user_id = session.get("user_id") if session else None
+    ip = get_client_ip(request)
+    
     security.clear_session_cookie(request, response)
+    
+    # 记录登出
+    logger.log_logout(username=username, user_id=user_id, request_ip=ip)
+    
     return {"ok": True}

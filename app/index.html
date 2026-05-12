@@ -1507,12 +1507,35 @@
 
       <div class="asec" id="asec-logs">
         <div class="page-title">操作日志</div>
-        <div class="page-sub">本地沉淀与后台动作时间线，便于回溯管理动作</div>
+        <div class="page-sub">系统所有操作记录，包括登录、导入、删除、错误等</div>
         <div class="panel">
-          <div class="panel-hd"><div class="panel-title">最近操作</div><span class="muted" style="font-size:12px;">本地记录</span></div>
-          <div id="adminLogsList" class="admin-log-list">
-            <div class="admin-log-item"><div class="admin-log-meta"><span>LOG</span><span>--</span></div><div class="admin-log-title">正在汇总最近活动</div><div class="admin-log-desc">将展示最近的人物快照、逐字稿沉淀、合规与案例新增。</div></div>
+          <div class="panel-hd">
+            <div class="panel-title">最近操作</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <select id="log-type-filter" class="sel-sm" onchange="loadActionLogs()">
+                <option value="">全部类型</option>
+                <option value="login">登录</option>
+                <option value="logout">登出</option>
+                <option value="import">导入</option>
+                <option value="delete">删除</option>
+                <option value="create">创建</option>
+                <option value="update">更新</option>
+                <option value="error">错误</option>
+              </select>
+              <select id="log-module-filter" class="sel-sm" onchange="loadActionLogs()">
+                <option value="">全部模块</option>
+                <option value="auth">认证</option>
+                <option value="operation">运营数据</option>
+                <option value="customers">客户</option>
+                <option value="profiles">人物档案</option>
+              </select>
+              <button class="btn btn-outline-sm" onclick="loadActionLogs()">刷新</button>
+            </div>
           </div>
+          <div id="adminLogsList" class="admin-log-list">
+            <div class="admin-log-item"><div class="admin-log-meta"><span>LOG</span><span>--</span></div><div class="admin-log-title">正在加载操作日志</div><div class="admin-log-desc">请稍候...</div></div>
+          </div>
+          <div id="logs-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:12px;"></div>
         </div>
       </div>
 
@@ -3239,6 +3262,7 @@ function showAdminSec(id, btn) {
     target?.classList.add("active");
   }
   if (id === "operation-import") loadOperationImportLogs();
+  if (id === "logs") loadActionLogs();
 }
 
 function loadOperationImportLogs() {
@@ -3274,6 +3298,104 @@ function loadOperationImportLogs() {
     })
     .catch((e) => {
       container.innerHTML = `<div class="muted" style="padding:12px;color:var(--red);">${escapeHtml(e.message)}</div>`;
+    });
+}
+
+// 加载操作日志
+let logsOffset = 0;
+const logsLimit = 50;
+
+function loadActionLogs(offset = 0) {
+  logsOffset = offset;
+  const container = document.getElementById("adminLogsList");
+  const pagination = document.getElementById("logs-pagination");
+  const typeFilter = document.getElementById("log-type-filter")?.value || "";
+  const moduleFilter = document.getElementById("log-module-filter")?.value || "";
+
+  container.innerHTML = '<div class="muted" style="padding:12px;">正在加载...</div>';
+
+  const params = new URLSearchParams();
+  params.set("limit", logsLimit);
+  params.set("offset", offset);
+  if (typeFilter) params.set("action_type", typeFilter);
+  if (moduleFilter) params.set("module", moduleFilter);
+
+  fetch("/api/logs?" + params, { credentials: "include" })
+    .then((r) => r.json())
+    .then((data) => {
+      if (!data.ok) throw new Error(data.error || "加载失败");
+      const logs = data.logs || [];
+      const count = data.count || 0;
+
+      if (!logs.length) {
+        container.innerHTML = '<div class="muted" style="padding:12px;">暂无操作记录</div>';
+        pagination.innerHTML = "";
+        return;
+      }
+
+      // 操作类型标签样式
+      const typeStyles = {
+        login: "background:var(--green);color:#fff;",
+        logout: "background:var(--text2);color:#fff;",
+        import: "background:var(--blue);color:#fff;",
+        delete: "background:var(--red);color:#fff;",
+        create: "background:var(--gold);color:#fff;",
+        update: "background:var(--purple);color:#fff;",
+        error: "background:var(--red);color:#fff;",
+        view: "background:var(--border2);color:var(--text1);",
+      };
+
+      const typeLabels = {
+        login: "登录",
+        logout: "登出",
+        import: "导入",
+        delete: "删除",
+        create: "创建",
+        update: "更新",
+        error: "错误",
+        view: "查看",
+      };
+
+      container.innerHTML = logs.map((log) => {
+        const typeStyle = typeStyles[log.action_type] || "";
+        const typeLabel = typeLabels[log.action_type] || log.action_type;
+        const statusColor = log.status === "success" ? "var(--green)" : log.status === "failed" ? "var(--red)" : "var(--text2)";
+        return `
+          <div class="admin-log-item">
+            <div class="admin-log-meta">
+              <span class="badge" style="${typeStyle}">${typeLabel}</span>
+              <span style="font-size:11px;color:var(--text2);">${log.module || ""}</span>
+              <span>${log.created_at || ""}</span>
+            </div>
+            <div class="admin-log-title">${escapeHtml(log.title || "")}</div>
+            <div class="admin-log-desc">
+              ${log.description ? escapeHtml(log.description) : ""}
+              ${log.username ? `<span style="color:var(--gold);">操作人：${escapeHtml(log.username)}</span>` : ""}
+              ${log.request_ip ? `<span class="muted">IP：${escapeHtml(log.request_ip)}</span>` : ""}
+              ${log.error_message ? `<span style="color:var(--red);">错误：${escapeHtml(log.error_message)}</span>` : ""}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      // 分页
+      if (count > logsLimit) {
+        const totalPages = Math.ceil(count / logsLimit);
+        const currentPage = Math.floor(offset / logsLimit) + 1;
+        pagination.innerHTML = `
+          <button class="btn btn-outline-sm" onclick="loadActionLogs(0)" ${offset === 0 ? "disabled" : ""}>首页</button>
+          <button class="btn btn-outline-sm" onclick="loadActionLogs(${offset - logsLimit})" ${offset === 0 ? "disabled" : ""}>上一页</button>
+          <span class="muted" style="padding:4px 12px;">第 ${currentPage} / ${totalPages} 页（共 ${count} 条）</span>
+          <button class="btn btn-outline-sm" onclick="loadActionLogs(${offset + logsLimit})" ${offset + logsLimit >= count ? "disabled" : ""}>下一页</button>
+          <button class="btn btn-outline-sm" onclick="loadActionLogs(${(totalPages - 1) * logsLimit})" ${offset + logsLimit >= count ? "disabled" : ""}>末页</button>
+        `;
+      } else {
+        pagination.innerHTML = `<span class="muted">共 ${count} 条记录</span>`;
+      }
+    })
+    .catch((e) => {
+      container.innerHTML = `<div class="muted" style="padding:12px;color:var(--red);">${escapeHtml(e.message)}</div>`;
+      pagination.innerHTML = "";
     });
 }
 

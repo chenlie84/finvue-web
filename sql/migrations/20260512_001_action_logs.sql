@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS `finvue_action_logs` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` varchar(191) DEFAULT NULL COMMENT '用户ID',
+  `username` varchar(191) DEFAULT NULL COMMENT '用户名',
+  `action_type` varchar(32) NOT NULL COMMENT '操作类型(login/logout/import/delete/update/error/view)',
+  `module` varchar(64) NOT NULL COMMENT '模块名称',
+  `title` varchar(255) NOT NULL COMMENT '操作标题',
+  `description` text COMMENT '详细描述',
+  `target_id` varchar(191) DEFAULT NULL COMMENT '目标对象ID',
+  `target_type` varchar(64) DEFAULT NULL COMMENT '目标对象类型',
+  `status` varchar(16) NOT NULL DEFAULT 'success' COMMENT '状态(success/failed/warning)',
+  `error_message` text COMMENT '错误信息',
+  `request_ip` varchar(64) DEFAULT NULL COMMENT '请求IP',
+  `request_path` varchar(255) DEFAULT NULL COMMENT '请求路径',
+  `request_method` varchar(16) DEFAULT NULL COMMENT '请求方法',
+  `extra_data` json DEFAULT NULL COMMENT '额外数据',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  INDEX idx_finvue_action_logs_user (`user_id`, `created_at`),
+  INDEX idx_finvue_action_logs_type (`action_type`, `created_at`),
+  INDEX idx_finvue_action_logs_module (`module`, `created_at`),
+  INDEX idx_finvue_action_logs_time (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='操作日志表';

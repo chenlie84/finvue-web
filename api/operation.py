@@ -11,8 +11,18 @@ from fastapi import APIRouter, File, HTTPException, Request, UploadFile, Depends
 
 import db
 import security
+import logger
+
 
 router = APIRouter()
+
+
+def get_client_ip(request: Request) -> str:
+    """获取客户端IP地址."""
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else ""
 
 # 字段映射：CSV 字段名 -> 数据库字段名
 LIVE_FIELD_MAP = {
@@ -367,6 +377,11 @@ async def import_live_data(
 
     result = _import_live_csv(text)
 
+    session = security.require_auth(request)
+    username = session.get("username")
+    user_id = session.get("user_id")
+    ip = get_client_ip(request)
+
     # 记录导入日志
     if result.get("ok"):
         db.execute(
@@ -375,7 +390,30 @@ async def import_live_data(
             (import_type, file_name, record_count, account_count, status, imported_by)
             VALUES ('live', %s, %s, %s, 'success', %s)
             """,
-            (file.filename, result["imported"], result.get("accounts", 0), security.require_auth(request)["username"])
+            (file.filename, result["imported"], result.get("accounts", 0), username)
+        )
+        # 记录操作日志
+        logger.log_import(
+            module="operation",
+            title=f"导入直播数据: {file.filename}",
+            description=f"导入 {result['imported']} 条直播记录，涉及 {result.get('accounts', 0)} 个主播账号",
+            username=username,
+            user_id=user_id,
+            record_count=result["imported"],
+            status="success",
+            request_ip=ip,
+        )
+    else:
+        # 记录导入失败日志
+        logger.log_import(
+            module="operation",
+            title=f"导入直播数据失败: {file.filename}",
+            description=f"导入直播数据失败",
+            username=username,
+            user_id=user_id,
+            status="failed",
+            error_message=result.get("error"),
+            request_ip=ip,
         )
 
     return result
@@ -399,6 +437,11 @@ async def import_video_data(
 
     result = _import_video_csv(text)
 
+    session = security.require_auth(request)
+    username = session.get("username")
+    user_id = session.get("user_id")
+    ip = get_client_ip(request)
+
     if result.get("ok"):
         db.execute(
             """
@@ -406,7 +449,29 @@ async def import_video_data(
             (import_type, file_name, record_count, account_count, status, imported_by)
             VALUES ('video', %s, %s, %s, 'success', %s)
             """,
-            (file.filename, result["imported"], result.get("accounts", 0), security.require_auth(request)["username"])
+            (file.filename, result["imported"], result.get("accounts", 0), username)
+        )
+        # 记录操作日志
+        logger.log_import(
+            module="operation",
+            title=f"导入短视频数据: {file.filename}",
+            description=f"导入 {result['imported']} 条短视频记录，涉及 {result.get('accounts', 0)} 个主播账号",
+            username=username,
+            user_id=user_id,
+            record_count=result["imported"],
+            status="success",
+            request_ip=ip,
+        )
+    else:
+        logger.log_import(
+            module="operation",
+            title=f"导入短视频数据失败: {file.filename}",
+            description=f"导入短视频数据失败",
+            username=username,
+            user_id=user_id,
+            status="failed",
+            error_message=result.get("error"),
+            request_ip=ip,
         )
 
     return result
@@ -415,26 +480,69 @@ async def import_video_data(
 @router.delete("/api/operation/live/{room_id}")
 def delete_live_record(
     room_id: str,
+    request: Request,
     _: dict = Depends(security.require_permission("home"))
 ) -> dict:
     """删除直播记录（仅限手工录入的记录）."""
+    session = security.require_auth(request)
+    username = session.get("username")
+    user_id = session.get("user_id")
+    ip = get_client_ip(request)
+    
     # 检查记录是否存在且为手工录入
     existing = db.fetch_one(
         "SELECT id, account, start_time, notes FROM finvue_operation_live_stats WHERE room_id = %s",
         (room_id,)
     )
     if not existing:
+        logger.log_delete(
+            module="operation",
+            target_type="live_record",
+            target_id=room_id,
+            title="删除直播记录失败",
+            description=f"删除直播记录 {room_id} 失败",
+            username=username,
+            user_id=user_id,
+            status="failed",
+            error_message="记录不存在",
+            request_ip=ip,
+        )
         return {"ok": False, "error": "记录不存在"}
 
     # 检查是否为手工录入（notes字段包含"[手工录入]"）
     notes = existing.get("notes") or ""
     if "[手工录入]" not in notes:
+        logger.log_delete(
+            module="operation",
+            target_type="live_record",
+            target_id=room_id,
+            title="删除直播记录失败",
+            description=f"删除直播记录 {room_id} 失败：非手工录入",
+            username=username,
+            user_id=user_id,
+            status="failed",
+            error_message="只能删除手工录入的记录",
+            request_ip=ip,
+        )
         return {"ok": False, "error": "只能删除手工录入的记录，CSV导入的记录不可删除"}
 
     # 删除记录
     db.execute(
         "DELETE FROM finvue_operation_live_stats WHERE room_id = %s",
         (room_id,)
+    )
+    
+    # 记录删除成功
+    logger.log_delete(
+        module="operation",
+        target_type="live_record",
+        target_id=room_id,
+        title=f"删除直播记录: {existing['account']}",
+        description=f"删除主播 {existing['account']} 的直播记录（开播时间：{existing.get('start_time')}）",
+        username=username,
+        user_id=user_id,
+        status="success",
+        request_ip=ip,
     )
 
     return {"ok": True, "deleted": room_id, "account": existing["account"]}
@@ -802,8 +910,45 @@ async def add_live_record(
             """,
             (account, room_id, title, start_time, duration, notes)
         )
+        
+        # 记录操作日志
+        session = security.require_auth(request)
+        username = session.get("username")
+        user_id = session.get("user_id")
+        ip = get_client_ip(request)
+        
+        logger.log_create(
+            module="operation",
+            target_type="live_record",
+            target_id=room_id,
+            title=f"手工添加直播记录: {account}",
+            description=f"为主播 {account} 手工添加直播记录，开播时间：{start_time}，时长：{duration}分钟",
+            username=username,
+            user_id=user_id,
+            status="success",
+            request_ip=ip,
+        )
+        
         return {"ok": True, "message": "添加成功"}
     except Exception as e:
+        # 记录失败日志
+        session = security.require_auth(request)
+        username = session.get("username") if session else None
+        user_id = session.get("user_id") if session else None
+        ip = get_client_ip(request)
+        
+        logger.log_create(
+            module="operation",
+            target_type="live_record",
+            target_id=room_id,
+            title=f"手工添加直播记录失败: {account}",
+            description=f"为主播 {account} 手工添加直播记录失败",
+            username=username,
+            user_id=user_id,
+            status="failed",
+            error_message=str(e),
+            request_ip=ip,
+        )
         return {"ok": False, "error": str(e)}
 
 
