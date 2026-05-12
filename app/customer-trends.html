@@ -175,15 +175,42 @@ async function main(){
   const params = new URLSearchParams(location.search);
   const selected = params.get("anchor") || "";
   try {
-    const res = await fetch("/api/customer-trends-summary", { credentials:"include" });
+    // 如果已选择主播，直接请求该主播的详细数据
+    const apiUrl = selected 
+      ? `/api/customer-trends-summary?anchorName=${encodeURIComponent(selected)}` 
+      : "/api/customer-trends-summary";
+    const res = await fetch(apiUrl, { credentials:"include" });
     const data = await res.json().catch(()=>({}));
     if (!res.ok) throw new Error(data.error || data.detail || "读取客户趋势摘要失败，请先登录主系统");
+    
+    // 如果有选择主播，返回的是单个主播的详细数据
+    if (selected && data.anchorGroups && data.anchorGroups.length === 1) {
+      $("status").textContent = `${esc(selected)} · ${fmt(data.stats?.customerCount || 0)} 位客户`;
+      $("anchorControls").innerHTML = `<a class="back" href="/customer-trends.html">← 返回主播列表</a>`;
+      renderSummary(data.anchorGroups[0]);
+      return;
+    }
+    
+    // 否则显示主播列表
     const groups = Array.isArray(data.anchorGroups) ? data.anchorGroups : [];
     $("status").textContent = `已读取 ${fmt(data.stats?.customerCount || 0)} 位客户 · ${fmt(data.stats?.anchorCount || groups.length)} 位主播`;
     $("anchorControls").innerHTML = `<select class="select" onchange="location.href='/customer-trends.html?anchor='+encodeURIComponent(this.value)">${groups.map(g=>`<option value="${esc(g.anchorName)}" ${g.anchorName===selected?'selected':''}>${esc(g.anchorName)} · ${fmt(g.stats?.customerCount || 0)}客户</option>`).join("")}</select>`;
     const group = groups.find(g=>g.anchorName===selected) || groups[0];
     if (!group) { $("app").innerHTML = `<div class="empty">客户库暂无数据。</div>`; return; }
-    renderSummary(group);
+    
+    // 对于主播列表中的某个主播，需要单独请求详细数据
+    if (group && group.segmentRows && group.segmentRows.length > 0) {
+      renderSummary(group);
+    } else if (group) {
+      // 没有详细数据时，重新请求该主播的数据
+      const detailRes = await fetch(`/api/customer-trends-summary?anchorName=${encodeURIComponent(group.anchorName)}`, { credentials:"include" });
+      const detailData = await detailRes.json().catch(()=>({}));
+      if (detailData.ok && detailData.anchorGroups && detailData.anchorGroups[0]) {
+        renderSummary(detailData.anchorGroups[0]);
+      } else {
+        $("app").innerHTML = `<div class="empty">该主播暂无客户数据。</div>`;
+      }
+    }
   } catch (err) {
     $("status").textContent = "读取失败";
     $("app").innerHTML = `<div class="empty">${esc(err.message)}</div>`;
