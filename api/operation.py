@@ -1069,9 +1069,9 @@ def get_home_overview(_: dict = Depends(security.require_permission("home"))) ->
             SUM(earn_score) as total_earn,
             MAX(start_time) as last_live_time,
             MIN(start_time) as first_live_time,
-            SUM(CASE WHEN DATE_FORMAT(start_time, '%Y-%m') = %s THEN 1 ELSE 0 END) as month_live_count,
-            SUM(CASE WHEN DATE_FORMAT(start_time, '%Y-%m') = %s THEN watch_ucnt ELSE 0 END) as month_watch,
-            SUM(CASE WHEN DATE_FORMAT(start_time, '%Y-%m') = %s THEN follow_ucnt ELSE 0 END) as month_follow
+            SUM(CASE WHEN DATE_FORMAT(start_time, '%%Y-%%m') = %s THEN 1 ELSE 0 END) as month_live_count,
+            SUM(CASE WHEN DATE_FORMAT(start_time, '%%Y-%%m') = %s THEN watch_ucnt ELSE 0 END) as month_watch,
+            SUM(CASE WHEN DATE_FORMAT(start_time, '%%Y-%%m') = %s THEN follow_ucnt ELSE 0 END) as month_follow
         FROM finvue_operation_live_stats
         GROUP BY account
         ORDER BY live_count DESC
@@ -1090,7 +1090,7 @@ def get_home_overview(_: dict = Depends(security.require_permission("home"))) ->
             SUM(earn_score) as month_earn,
             AVG(acu) as month_avg_acu
         FROM finvue_operation_live_stats
-        WHERE DATE_FORMAT(start_time, '%Y-%m') = %s
+        WHERE DATE_FORMAT(start_time, '%%Y-%%m') = %s
         """,
         (current_month,)
     )

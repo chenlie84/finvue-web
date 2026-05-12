@@ -1117,7 +1117,7 @@ def get_customer_trends_summary(anchor_name: str = "") -> dict[str, Any]:
             MAX(DATE(s.analyzed_at)) as latest_date,
             MIN(s.watch_rank) as best_rank,
             AVG(s.watch_duration_seconds) as avg_watch_seconds,
-            GROUP_CONCAT(DISTINCT DATE_FORMAT(s.analyzed_at, '%Y-%m') ORDER BY s.analyzed_at) as months_str
+            GROUP_CONCAT(DISTINCT DATE_FORMAT(s.analyzed_at, '%%Y-%%m') ORDER BY s.analyzed_at) as months_str
         FROM finvue_customer_sessions s
         WHERE s.anchor_name = %s
         GROUP BY s.customer_id
