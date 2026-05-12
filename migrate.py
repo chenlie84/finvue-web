@@ -34,6 +34,29 @@ def _pending_files(applied: set[str]) -> list[Path]:
     return [path for path in sorted(MIGRATIONS_DIR.glob("*.sql")) if path.name not in applied]
 
 
+def _execute_sql_with_error_handling(cursor, sql: str, filename: str) -> int:
+    """执行SQL语句，处理索引已存在等错误."""
+    statements = [s.strip() for s in sql.split(";") if s.strip() and not s.strip().startswith("--")]
+    executed = 0
+    
+    for stmt in statements:
+        if not stmt:
+            continue
+        try:
+            cursor.execute(stmt)
+            executed += 1
+        except pymysql.err.MySQLError as e:
+            # 跳过索引已存在错误 (1061) 和表已存在错误 (1050)
+            if e.args[0] in (1061, 1050, 1068):  # Duplicate key name, Table exists, Multiple primary key
+                print(f"[migrate] 跳过已存在对象: {stmt[:60]}...")
+                continue
+            # 其他错误需要抛出
+            print(f"[migrate] SQL执行错误 {e.args[0]}: {e.args[1]}")
+            raise
+    
+    return executed
+
+
 def run_migrations() -> list[str]:
     if not config.has_mysql_config():
         print("[migrate] MySQL 未配置，跳过数据库迁移")
@@ -50,12 +73,11 @@ def run_migrations() -> list[str]:
             ran: list[str] = []
             for path in pending:
                 print(f"[migrate] 执行 {path.name} ...")
-                cursor.execute(path.read_text(encoding="utf-8"))
-                while cursor.nextset():
-                    pass
+                sql = path.read_text(encoding="utf-8")
+                executed = _execute_sql_with_error_handling(cursor, sql, path.name)
                 cursor.execute("INSERT INTO finvue_schema_migrations (filename) VALUES (%s)", (path.name,))
                 ran.append(path.name)
-                print(f"[migrate] ✓ {path.name}")
+                print(f"[migrate] ✓ {path.name} ({executed} 语句)")
             print(f"[migrate] 完成，共应用 {len(ran)} 个迁移")
             return ran
     finally:

@@ -19,3 +19,5 @@ coverage/
 import_csv_to_production.py
 create_tables.sql
 *.csv
+export_all_data.js
+
