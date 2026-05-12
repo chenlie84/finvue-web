@@ -21,3 +21,4 @@ create_tables.sql
 *.csv
 export_all_data.js
 
+node_modules/
