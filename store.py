@@ -1239,7 +1239,7 @@ def _compute_anchor_group_stats(anchor_name: str, customers: list) -> dict[str, 
     for name, desc, fn in segment_defs:
         arr = [s for s in customer_stats if fn(s)]
         active_count = sum(1 for s in arr if s["active"])
-        rate = len(arr) * 100 / len(arr) if arr else 0
+        rate = active_count * 100 / len(arr) if arr else 0
         segment_rows.append({
             "name": name,
             "desc": desc,
