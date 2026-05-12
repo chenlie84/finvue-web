@@ -1102,7 +1102,7 @@ def get_customer_trends_summary(anchor_name: str = "") -> dict[str, Any]:
                           "segmentRows": [], "coreCohortRows": [], "allCohortRows": [], "monthlyRows": []}
                          for r in anchor_stats or []]
         
-        return {"anchorGroups": anchor_groups,
+        return {"ok": True, "anchorGroups": anchor_groups,
                 "stats": {"customerCount": sum(r["customer_count"] for r in anchor_stats or []),
                           "anchorCount": len(anchor_groups)}}
 
@@ -1128,7 +1128,7 @@ def get_customer_trends_summary(anchor_name: str = "") -> dict[str, Any]:
     )
     
     if not rows:
-        return {"anchorGroups": [], "stats": {"customerCount": 0, "anchorCount": 0}}
+        return {"ok": True, "anchorGroups": [], "stats": {"customerCount": 0, "anchorCount": 0}}
 
     # 内存计算统计数据
     customer_stats = []
@@ -1225,6 +1225,7 @@ def get_customer_trends_summary(anchor_name: str = "") -> dict[str, Any]:
                              "added": added, "retained": len(curr & prev), "lost": len(prev - curr)})
 
     return {
+        "ok": True,
         "anchorGroups": [{
             "anchorName": anchor_name,
             "stats": {"customerCount": len(customer_stats),

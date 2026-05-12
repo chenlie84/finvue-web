@@ -180,8 +180,26 @@ async function main(){
       ? `/api/customer-trends-summary?anchorName=${encodeURIComponent(selected)}` 
       : "/api/customer-trends-summary";
     const res = await fetch(apiUrl, { credentials:"include" });
+    
+    // 先检查HTTP状态
+    if (!res.ok) {
+      if (res.status === 401) {
+        $("status").textContent = "未登录";
+        $("app").innerHTML = `<div class="empty">请先<a href="/index.html" style="color:var(--gold);">登录主系统</a>后再访问此页面。</div>`;
+        return;
+      }
+      // 尝试解析错误信息
+      let errorMsg = "读取数据失败";
+      try {
+        const errData = await res.json();
+        errorMsg = errData.error || errData.detail || errorMsg;
+      } catch (e) {
+        errorMsg = res.statusText || errorMsg;
+      }
+      throw new Error(errorMsg);
+    }
+    
     const data = await res.json().catch(()=>({}));
-    if (!res.ok) throw new Error(data.error || data.detail || "读取客户趋势摘要失败，请先登录主系统");
     
     // 如果有选择主播，返回的是单个主播的详细数据
     if (selected && data.anchorGroups && data.anchorGroups.length === 1) {
