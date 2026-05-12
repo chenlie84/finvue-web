@@ -5107,6 +5107,11 @@ function rmHot(index) {
   renderHot();
 }
 
+// 数字格式化函数
+function fmt(n) {
+  return Number(n || 0).toLocaleString('zh-CN');
+}
+
 function escapeHtml(text) {
   return String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
