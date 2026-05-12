@@ -1171,6 +1171,3 @@ def get_home_overview(_: dict = Depends(security.require_permission("home"))) ->
         print(f"[home-overview] Error: {e}")
         traceback.print_exc()
         return {"ok": False, "error": str(e), "anchors": [], "month_summary": {}, "week_summary": {}, "total_info": {}, "daily_trend": [], "active_anchors": []}
-
-
-@router.post("/api/operation/add-live")
