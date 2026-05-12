@@ -5876,89 +5876,100 @@ async function afterAuth() {
 
 async function loadHomeOverview() {
   try {
-    // 获取主播列表和统计数据
-    const accountsRes = await fetch('/api/operation/accounts', { credentials: 'include' });
-    const accountsData = await accountsRes.json();
-    
-    if (!accountsData.ok) {
+    // 使用新的综合API一次性获取所有数据
+    const res = await fetch('/api/operation/home-overview', { credentials: 'include' });
+    const data = await res.json();
+
+    if (!data.ok) {
       document.getElementById('homeSubtitle').textContent = '运营数据加载失败';
-      document.getElementById('homeAnchorList').innerHTML = `<div class="muted">${accountsData.error || '请先在运营数据中心导入数据'}</div>`;
+      document.getElementById('homeAnchorList').innerHTML = `<div class="muted">${data.error || '请先在运营数据中心导入数据'}</div>`;
       return;
     }
-    
-    const accounts = accountsData.accounts || [];
-    const totalCount = accountsData.total_count || 0;
-    const range = accountsData.data_range || {};
-    
-    // 计算本月数据
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    
-    let monthLiveCount = 0;
-    let monthWatchCount = 0;
-    let monthFollowCount = 0;
-    
-    // 获取本月报表数据
-    const monthlyRes = await fetch(`/api/operation/monthly-report?month=${currentMonth}`, { credentials: 'include' });
-    const monthlyData = await monthlyRes.json();
-    
-    if (monthlyData.ok && monthlyData.live) {
-      for (const row of monthlyData.live) {
-        monthLiveCount++;
-        monthWatchCount += Number(row.watch_ucnt || 0);
-        monthFollowCount += Number(row.follow_ucnt || 0);
-      }
-    }
-    
+
+    const anchors = data.anchors || [];
+    const monthSummary = data.month_summary || {};
+    const weekSummary = data.week_summary || {};
+    const totalInfo = data.total_info || {};
+    const dailyTrend = data.daily_trend || [];
+    const activeAnchors = data.active_anchors || [];
+    const currentMonth = data.current_month || '';
+
     // 更新统计卡片
-    document.getElementById('homeAnchorCount').textContent = accounts.length || 0;
-    document.getElementById('homeLiveCount').textContent = monthLiveCount || 0;
-    document.getElementById('homeWatchCount').textContent = fmt(monthWatchCount);
-    document.getElementById('homeFollowCount').textContent = fmt(monthFollowCount);
-    
+    document.getElementById('homeAnchorCount').textContent = totalInfo.anchor_count || anchors.length || 0;
+    document.getElementById('homeLiveCount').textContent = monthSummary.month_live_count || 0;
+    document.getElementById('homeWatchCount').textContent = fmt(monthSummary.month_watch || 0);
+    document.getElementById('homeFollowCount').textContent = fmt(monthSummary.month_follow || 0);
+
     // 更新副标题
-    if (totalCount > 0 && range.min && range.max) {
-      document.getElementById('homeSubtitle').textContent = `运营数据中心 · ${totalCount} 条直播数据 · ${range.min.split(' ')[0]} ~ ${range.max.split(' ')[0]}`;
+    if (totalInfo.total_count > 0 && totalInfo.min_time && totalInfo.max_time) {
+      const minDate = totalInfo.min_time.split(' ')[0];
+      const maxDate = totalInfo.max_time.split(' ')[0];
+      document.getElementById('homeSubtitle').textContent = `运营数据中心 · ${totalInfo.total_count} 条直播数据 · ${minDate} ~ ${maxDate}`;
     } else {
       document.getElementById('homeSubtitle').textContent = '运营数据中心 · 暂无数据，请先导入';
     }
-    
+
     document.getElementById('homeLiveCountDelta').textContent = currentMonth;
-    document.getElementById('homeAnchorMeta').textContent = `${accounts.length} 位主播`;
-    
-    // 渲染主播列表
-    if (accounts.length === 0) {
-      document.getElementById('homeAnchorList').innerHTML = '<div class="muted">暂无主播数据，请在运营数据中心导入</div>';
+    document.getElementById('homeAnchorMeta').textContent = `${anchors.length} 位主播 · 本周 ${weekSummary.week_live_count || 0} 场`;
+
+    // 渲染主播列表（带进度条）
+    if (anchors.length === 0) {
+      document.getElementById('homeAnchorList').innerHTML = `
+        <div style="text-align:center;padding:40px;">
+          <div style="font-size:48px;color:var(--text2);margin-bottom:16px;">📊</div>
+          <div style="color:var(--text1);margin-bottom:12px;">暂无主播数据</div>
+          <div style="color:var(--text2);font-size:13px;">请在 <a href="/operation-dashboard.html" style="color:var(--gold);">运营数据中心</a> 导入直播数据 CSV</div>
+        </div>`;
       return;
     }
-    
-    // 获取每个主播的汇总数据
-    const anchorHtml = await Promise.all(accounts.slice(0, 10).map(async (a) => {
-      try {
-        const summaryRes = await fetch(`/api/operation/anchor-summary?account=${encodeURIComponent(a.account)}`, { credentials: 'include' });
-        const summaryData = await summaryRes.json();
-        const summary = summaryData.summary || {};
-        
-        return `
-          <div style="display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);margin-bottom:8px;">
-            <div class="a-avatar" style="width:32px;height:32px;background:var(--gold-dim);color:var(--gold);font-size:14px;">${(a.account || '?')[0]}</div>
-            <div style="flex:1;">
-              <div style="font-weight:500;">${escapeHtml(a.account)}</div>
-              <div style="font-size:11px;color:var(--text1);">${summary.total_lives || 0}场 · ${Math.round((summary.total_duration || 0) / 60)}小时 · ${fmt(summary.total_watch || 0)}观看</div>
+
+    // 计算最大场次（用于进度条）
+    const maxLives = Math.max(...anchors.map(a => a.live_count || 0));
+
+    const anchorHtml = anchors.slice(0, 10).map((a) => {
+      const liveCount = a.live_count || 0;
+      const totalWatch = a.total_watch || 0;
+      const totalFollow = a.total_follow || 0;
+      const totalEarn = a.total_earn || 0;
+      const avgAcu = a.avg_acu || 0;
+      const lastLive = a.last_live_time ? a.last_live_time.split(' ')[0] : '未知';
+      const monthLives = a.month_live_count || 0;
+      const progress = Math.min(100, (liveCount / maxLives) * 100);
+      
+      // 判断活跃状态（7天内）
+      const isActive = activeAnchors.some(aa => aa.account === a.account);
+      const statusBadge = isActive 
+        ? '<span class="badge green" style="font-size:10px;padding:2px 6px;">活跃</span>'
+        : '<span class="badge" style="font-size:10px;padding:2px 6px;background:var(--text2);color:#fff;">待观察</span>';
+
+      return `
+        <div class="anchor-card" style="display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);margin-bottom:8px;">
+          <div class="a-avatar" style="width:36px;height:36px;background:var(--gold-dim);color:var(--gold);font-size:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;">${(a.account || '?')[0]}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-weight:500;font-size:14px;">${escapeHtml(a.account)}</span>
+              ${statusBadge}
             </div>
-            <div style="text-align:right;">
-              <div class="mono green" style="font-size:14px;">${fmt(summary.total_follow || 0)}</div>
-              <div style="font-size:10px;color:var(--text2);">总涨粉</div>
+            <div style="font-size:11px;color:var(--text1);margin-top:4px;">
+              ${liveCount}场 · ${fmt(totalWatch)}观看 · ${fmt(totalFollow)}涨粉 · 最近 ${lastLive}
+            </div>
+            <div class="progress" style="height:4px;background:var(--bg1);border-radius:4px;margin-top:6px;">
+              <div class="fill" style="width:${progress}%;height:100%;background:var(--gold);border-radius:4px;"></div>
             </div>
           </div>
-        `;
-      } catch (e) {
-        return `<div style="padding:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);margin-bottom:8px;"><span class="muted">${escapeHtml(a.account)}</span></div>`;
-      }
-    }));
-    
+          <div style="text-align:right;min-width:80px;">
+            <div class="mono" style="font-size:16px;font-weight:500;color:${monthLives > 0 ? 'var(--green)' : 'var(--text2)'};">${monthLives}</div>
+            <div style="font-size:10px;color:var(--text2);">本月场次</div>
+          </div>
+          <div style="text-align:right;min-width:80px;">
+            <div class="mono" style="font-size:16px;font-weight:500;">${Math.round(avgAcu)}</div>
+            <div style="font-size:10px;color:var(--text2);">场均人数</div>
+          </div>
+        </div>`;
+    });
+
     document.getElementById('homeAnchorList').innerHTML = anchorHtml.join('');
-    
+
   } catch (e) {
     document.getElementById('homeSubtitle').textContent = '数据加载失败';
     document.getElementById('homeAnchorList').innerHTML = `<div class="muted">错误: ${escapeHtml(e.message)}</div>`;
