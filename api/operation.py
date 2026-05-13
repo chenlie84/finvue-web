@@ -601,9 +601,10 @@ def get_weekly_report(
     else:
         week_start = datetime.strptime(weekStart, "%Y-%m-%d")
 
-    week_end = week_start + timedelta(days=6)
+    # 周结束时间：下周一0点（包含完整一周数据）
+    week_end = week_start + timedelta(days=7)
 
-    where_clause = "start_time >= %s AND start_time <= %s"
+    where_clause = "start_time >= %s AND start_time < %s"
     params = [week_start.strftime("%Y-%m-%d %H:%M:%S"), week_end.strftime("%Y-%m-%d %H:%M:%S")]
 
     if account:
@@ -633,7 +634,7 @@ def get_weekly_report(
                `2s_exit_rate` as two_s_exit_rate,
                interaction_rate, follow_count
         FROM finvue_operation_video_stats
-        WHERE publish_time >= %s AND publish_time <= %s
+        WHERE publish_time >= %s AND publish_time < %s
         {f"AND account = %s" if account else ""}
         ORDER BY account, publish_time
         """,
@@ -665,7 +666,7 @@ def get_weekly_report(
     return {
         "ok": True,
         "weekStart": week_start.strftime("%Y-%m-%d"),
-        "weekEnd": week_end.strftime("%Y-%m-%d"),
+        "weekEnd": (week_start + timedelta(days=6)).strftime("%Y-%m-%d"),  # 显示周日
         "accounts": list(accounts_data.values())
     }
 
@@ -717,7 +718,7 @@ def get_monthly_report(
                `2s_exit_rate` as two_s_exit_rate,
                interaction_rate, follow_count
         FROM finvue_operation_video_stats
-        WHERE publish_time >= %s AND publish_time <= %s
+        WHERE publish_time >= %s AND publish_time < %s
         {f"AND account = %s" if account else ""}
         ORDER BY account, publish_time
         """,
