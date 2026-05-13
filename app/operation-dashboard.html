@@ -555,7 +555,7 @@ function renderWeeklyReport(data) {
               const followRate = l.follow_u_rate || ((l.follow_ucnt / l.watch_ucnt) * 100) || 0;
               return `
               <tr>
-                <td>${(l.start_time || '').slice(5,16) || '-'}</td>
+                <td>${(l.start_time || '').slice(5,17) || '-'}</td>
                 <td class="mono">${l.duration || 0}分</td>
                 <td class="mono">${fmt(l.pcu)}/${fmt(l.acu)}</td>
                 <td class="mono">${fmt(l.watch_ucnt)}<span style="color:var(--gold)">(${fmt(l.fans_watch_ucnt)}/${fmt(l.non_fans_watch_ucnt)})</span></td>
@@ -854,7 +854,7 @@ function renderMonthlyReport(data) {
                 const followRate = l.follow_u_rate || ((l.follow_ucnt / l.watch_ucnt) * 100) || 0;
                 return `
                 <tr>
-                  <td>${(l.start_time || '').slice(5,16) || '-'}</td>
+                  <td>${(l.start_time || '').slice(5,17) || '-'}</td>
                   <td class="mono">${l.duration || 0}分</td>
                   <td class="mono">${fmt(l.pcu)}/${fmt(l.acu)}</td>
                   <td class="mono">${fmt(l.watch_ucnt)}<span style="color:var(--gold)">(${fmt(l.fans_watch_ucnt)}/${fmt(l.non_fans_watch_ucnt)})</span></td>
