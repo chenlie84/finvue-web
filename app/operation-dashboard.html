@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <style>
+  /* 深色主题（默认） */
   :root {
     --bg0:#0A0B0E; --bg1:#11131A; --bg2:#181B24; --bg3:#1E2230;
     --border:#252836; --border2:#2E3347;
@@ -17,7 +18,19 @@
     --font-display:'Playfair Display',Georgia,serif;
     --font-body:'Outfit',sans-serif;
     --font-mono:'JetBrains Mono',monospace;
+    --chart-bg:#181B24;
   }
+  
+  /* 浅色主题 */
+  [data-theme="light"] {
+    --bg0:#F8FAFC; --bg1:#FFFFFF; --bg2:#F1F5F9; --bg3:#E2E8F0;
+    --border:#E2E8F0; --border2:#CBD5E1;
+    --gold:#D97706; --gold2:#F59E0B; --gold-dim:rgba(217,119,6,0.08);
+    --text0:#1E293B; --text1:#64748B; --text2:#94A3B8;
+    --green:#059669; --red:#DC2626; --blue:#2563EB; --purple:#7C3AED;
+    --chart-bg:#F1F5F9;
+  }
+  
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;background:var(--bg0);color:var(--text0);font-family:var(--font-body);font-size:14px;line-height:1.6;}
   a{color:inherit;text-decoration:none;}
@@ -28,8 +41,16 @@
   .gold{color:var(--gold);} .green{color:var(--green);} .red{color:var(--red);} .blue{color:var(--blue);} .muted{color:var(--text1);} .mono{font-family:var(--font-mono);}
   .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;}
   .badge.green{background:rgba(45,189,133,0.12);color:var(--green);}
+  [data-theme="light"] .badge.green{background:rgba(5,150,105,0.12);}
   .badge.gold{background:var(--gold-dim);color:var(--gold);}
   .badge.blue{background:rgba(74,144,217,0.12);color:var(--blue);}
+  [data-theme="light"] .badge.blue{background:rgba(37,99,235,0.12);}
+
+  /* 主题切换按钮 */
+  .theme-toggle{position:fixed;top:16px;right:16px;z-index:1000;display:flex;gap:8px;}
+  .theme-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--bg1);color:var(--text1);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s;}
+  .theme-btn:hover{background:var(--bg2);color:var(--gold);}
+  .theme-btn.active{background:var(--gold-dim);color:var(--gold);border-color:var(--gold);}
 
   .app-shell{display:flex;height:100vh;overflow:hidden;}
   .sidebar{width:200px;background:var(--bg1);border-right:1px solid var(--border);padding:16px 10px;display:flex;flex-direction:column;gap:1px;flex-shrink:0;}
@@ -138,6 +159,11 @@
 </style>
 </head>
 <body>
+<!-- 主题切换按钮 -->
+<div class="theme-toggle">
+  <button class="theme-btn active" id="theme-dark" onclick="setTheme('dark')" title="深色主题">🌙</button>
+  <button class="theme-btn" id="theme-light" onclick="setTheme('light')" title="浅色主题">☀️</button>
+</div>
 <div class="app-shell">
   <!-- 侧边栏 -->
   <nav class="sidebar">
@@ -283,6 +309,53 @@
 const $ = id => document.getElementById(id);
 const esc = v => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const fmt = n => Number(n || 0).toLocaleString('zh-CN');
+
+// 主题切换
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  // 更新按钮状态
+  $('theme-dark').classList.toggle('active', theme === 'dark');
+  $('theme-light').classList.toggle('active', theme === 'light');
+  // 刷新图表以适应新主题
+  if (typeof refreshCharts === 'function') refreshCharts();
+}
+
+// 初始化主题（从localStorage读取）
+function initTheme() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  setTheme(saved);
+}
+
+// 获取当前主题的颜色（用于ECharts）
+function getThemeColors() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  return {
+    bg: isLight ? '#FFFFFF' : '#181B24',
+    border: isLight ? '#E2E8F0' : '#252836',
+    text: isLight ? '#1E293B' : '#EAE6DD',
+    textMuted: isLight ? '#64748B' : '#9B97A0',
+    textDim: isLight ? '#94A3B8' : '#5A566A',
+    gold: isLight ? '#D97706' : '#C8922A',
+    gold2: isLight ? '#F59E0B' : '#E5B84A',
+    blue: isLight ? '#2563EB' : '#4A90D9',
+    green: isLight ? '#059669' : '#2DBD85'
+  };
+}
+
+// 刷新所有图表
+function refreshCharts() {
+  Object.keys(chartInstances).forEach(id => {
+    if (chartInstances[id]) {
+      // 重新渲染图表（需要重新获取数据，这里简化处理）
+      chartInstances[id].resize();
+    }
+  });
+  // 如果当前是月报，重新加载以更新图表颜色
+  if (document.querySelector('#tab-monthly.active')) {
+    loadMonthlyReport();
+  }
+}
 
 // 格式化时间：将 ISO 或 datetime 格式转为 "MM-DD HH:mm"
 const fmtTime = t => {
@@ -629,37 +702,38 @@ async function loadMonthlyReport() {
 let chartInstances = {};
 function renderAnchorChart(containerId, daily) {
   if (!daily.length || typeof echarts === 'undefined') return;
-  
+
   // 销毁旧实例
   if (chartInstances[containerId]) {
     chartInstances[containerId].dispose();
   }
-  
+
+  const colors = getThemeColors();
   const dates = daily.map(d => d.day?.slice(5) || '');
   const acuData = daily.map(d => Math.round(d.avg_acu || 0));
   const fansDurData = daily.map(d => d.fans_avg_duration || 0);
   const nonFansDurData = daily.map(d => d.non_fans_avg_duration || 0);
-  
+
   const chart = echarts.init(document.getElementById(containerId));
   chartInstances[containerId] = chart;
-  
+
   const option = {
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      backgroundColor: '#181B24',
-      borderColor: '#252836',
-      textStyle: { color: '#EAE6DD' },
+      backgroundColor: colors.bg,
+      borderColor: colors.border,
+      textStyle: { color: colors.text },
       formatter: function(params) {
         let result = params[0].axisValue + '<br/>';
         params.forEach(p => {
           if (p.seriesName === '在线人数') {
-            result += '<span style="color:#C8922A">● 在线人数: ' + p.value + ' 人</span><br/>';
+            result += `<span style="color:${colors.gold}">● 在线人数: ${p.value} 人</span><br/>`;
           } else if (p.seriesName === '粉丝停留') {
-            result += '<span style="color:#C8922A">▌ 粉丝停留: ' + p.value + ' 分钟</span><br/>';
+            result += `<span style="color:${colors.gold}">▌ 粉丝停留: ${p.value} 分钟</span><br/>`;
           } else if (p.seriesName === '非粉停留') {
-            result += '<span style="color:#4A90D9">▌ 非粉停留: ' + p.value + ' 分钟</span><br/>';
+            result += `<span style="color:${colors.blue}">▌ 非粉停留: ${p.value} 分钟</span><br/>`;
           }
         });
         return result;
@@ -668,7 +742,7 @@ function renderAnchorChart(containerId, daily) {
     legend: {
       data: ['在线人数', '粉丝停留', '非粉停留'],
       top: 5,
-      textStyle: { color: '#9B97A0', fontSize: 11 },
+      textStyle: { color: colors.textMuted, fontSize: 11 },
       itemWidth: 12,
       itemHeight: 12
     },
@@ -681,25 +755,25 @@ function renderAnchorChart(containerId, daily) {
     xAxis: {
       type: 'category',
       data: dates,
-      axisLine: { lineStyle: { color: '#252836' } },
-      axisLabel: { color: '#5A566A', fontSize: 10 },
+      axisLine: { lineStyle: { color: colors.border } },
+      axisLabel: { color: colors.textDim, fontSize: 10 },
       axisTick: { show: false }
     },
     yAxis: [
       {
         type: 'value',
         name: '在线人数',
-        nameTextStyle: { color: '#C8922A', fontSize: 10 },
-        axisLine: { show: true, lineStyle: { color: '#C8922A' } },
-        axisLabel: { color: '#C8922A', fontSize: 10 },
-        splitLine: { lineStyle: { color: '#252836', type: 'dashed' } }
+        nameTextStyle: { color: colors.gold, fontSize: 10 },
+        axisLine: { show: true, lineStyle: { color: colors.gold } },
+        axisLabel: { color: colors.gold, fontSize: 10 },
+        splitLine: { lineStyle: { color: colors.border, type: 'dashed' } }
       },
       {
         type: 'value',
         name: '停留时长(分)',
-        nameTextStyle: { color: '#4A90D9', fontSize: 10 },
-        axisLine: { show: true, lineStyle: { color: '#4A90D9' } },
-        axisLabel: { color: '#4A90D9', fontSize: 10 },
+        nameTextStyle: { color: colors.blue, fontSize: 10 },
+        axisLine: { show: true, lineStyle: { color: colors.blue } },
+        axisLabel: { color: colors.blue, fontSize: 10 },
         splitLine: { show: false }
       }
     ],
@@ -712,9 +786,9 @@ function renderAnchorChart(containerId, daily) {
         smooth: true,
         symbol: 'circle',
         symbolSize: 6,
-        lineStyle: { color: '#C8922A', width: 2 },
-        itemStyle: { color: '#C8922A' },
-        emphasis: { itemStyle: { color: '#E5B84A' } }
+        lineStyle: { color: colors.gold, width: 2 },
+        itemStyle: { color: colors.gold },
+        emphasis: { itemStyle: { color: colors.gold2 } }
       },
       {
         name: '粉丝停留',
@@ -722,7 +796,7 @@ function renderAnchorChart(containerId, daily) {
         yAxisIndex: 1,
         data: fansDurData,
         barWidth: '30%',
-        itemStyle: { color: '#C8922A', opacity: 0.6, borderRadius: [2, 2, 0, 0] }
+        itemStyle: { color: colors.gold, opacity: 0.6, borderRadius: [2, 2, 0, 0] }
       },
       {
         name: '非粉停留',
@@ -730,20 +804,11 @@ function renderAnchorChart(containerId, daily) {
         yAxisIndex: 1,
         data: nonFansDurData,
         barWidth: '30%',
-        itemStyle: { color: '#4A90D9', opacity: 0.6, borderRadius: [2, 2, 0, 0] }
+        itemStyle: { color: colors.blue, opacity: 0.6, borderRadius: [2, 2, 0, 0] }
       }
     ]
   };
-  
-  chart.setOption(option);
-  
-  // 响应窗口大小变化
-  window.addEventListener('resize', () => {
-    if (chartInstances[containerId]) {
-      chartInstances[containerId].resize();
-    }
-  });
-}
+        type: 'value',
 
 function renderMonthlyReport(data) {
   const live = data.live || [];
@@ -1304,6 +1369,7 @@ function exportFansTrendHTML() {
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
   initWeekSelector();
   initMonthSelector();
   loadAccounts();
