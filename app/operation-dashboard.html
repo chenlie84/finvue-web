@@ -527,7 +527,7 @@ function renderWeeklyReport(data) {
             <tr><th>发布时间</th><th>体裁</th><th>作品名称</th><th>播放量</th><th>点赞</th><th>完播率</th><th>5s完播</th><th>2s跳出</th><th>互动率</th><th>涨粉</th></tr>
             ${acc.video.map(v => `
               <tr>
-                <td>${(v.publish_time || '').slice(5,16) || '-'}</td>
+                <td>${(v.publish_time || '').replace('T', ' ').slice(5,16) || '-'}</td>
                 <td>${esc(v.duration_type) || '-'}</td>
                 <td class="video-title">${esc(v.title) || '-'}</td>
                 <td class="mono">${fmt(v.play_count)}</td>
@@ -555,7 +555,7 @@ function renderWeeklyReport(data) {
               const followRate = l.follow_u_rate || ((l.follow_ucnt / l.watch_ucnt) * 100) || 0;
               return `
               <tr>
-                <td>${(l.start_time || '').slice(5,17) || '-'}</td>
+                <td>${(l.start_time || '').replace('T', ' ').slice(5,16) || '-'}</td>
                 <td class="mono">${l.duration || 0}分</td>
                 <td class="mono">${fmt(l.pcu)}/${fmt(l.acu)}</td>
                 <td class="mono">${fmt(l.watch_ucnt)}<span style="color:var(--gold)">(${fmt(l.fans_watch_ucnt)}/${fmt(l.non_fans_watch_ucnt)})</span></td>
@@ -854,7 +854,7 @@ function renderMonthlyReport(data) {
                 const followRate = l.follow_u_rate || ((l.follow_ucnt / l.watch_ucnt) * 100) || 0;
                 return `
                 <tr>
-                  <td>${(l.start_time || '').slice(5,17) || '-'}</td>
+                  <td>${(l.start_time || '').replace('T', ' ').slice(5,16) || '-'}</td>
                   <td class="mono">${l.duration || 0}分</td>
                   <td class="mono">${fmt(l.pcu)}/${fmt(l.acu)}</td>
                   <td class="mono">${fmt(l.watch_ucnt)}<span style="color:var(--gold)">(${fmt(l.fans_watch_ucnt)}/${fmt(l.non_fans_watch_ucnt)})</span></td>
@@ -873,7 +873,7 @@ function renderMonthlyReport(data) {
               <tr><th>发布时间</th><th>体裁</th><th>作品名称</th><th>播放量</th><th>点赞</th><th>完播率</th><th>5s完播</th><th>2s跳出</th><th>互动率</th><th>涨粉</th></tr>
               ${accData.video.slice(0, 30).map(v => `
                 <tr>
-                  <td>${(v.publish_time || '').slice(5,16) || '-'}</td>
+                  <td>${(v.publish_time || '').replace('T', ' ').slice(5,16) || '-'}</td>
                   <td>${esc(v.duration_type) || '-'}</td>
                   <td class="video-title">${esc(v.title) || '-'}</td>
                   <td class="mono">${fmt(v.play_count)}</td>
