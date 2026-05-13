@@ -59,8 +59,15 @@ TABLE_NAMES = {
 # ============== 工具函数 ==============
 
 def format_beijing_time(dt):
+    """将时间转换为北京时间 (UTC+8)"""
     if not dt: return ""
-    if isinstance(dt, str): return dt
+    # 如果是字符串，先解析成 datetime
+    if isinstance(dt, str):
+        try:
+            dt = datetime.strptime(dt.strip(), "%Y-%m-%d %H:%M:%S")
+        except:
+            return dt  # 解析失败直接返回
+    # 加8小时转换为北京时间
     beijing = dt + timedelta(hours=8)
     return beijing.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -364,8 +371,8 @@ def main():
         print("\n导入结果:")
         ip = results['import_profiles']
         print(f"  客户档案: 成功 {ip['imported']} 条, 跳过 {ip['skipped']} 条")
-        is = results['import_sessions']
-        print(f"  客户会话: 成功 {is['imported']} 条, 跳过 {is['skipped']} 条")
+        iss = results['import_sessions']
+        print(f"  客户会话: 成功 {iss['imported']} 条, 跳过 {iss['skipped']} 条")
         il = results['import_live']
         print(f"  直播数据: 成功 {il['imported']} 条, 跳过 {il['skipped']} 条")
 
