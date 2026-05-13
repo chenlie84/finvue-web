@@ -36,6 +36,18 @@ def get_customer_trends(anchorName: str = "", _: dict = Depends(security.require
         return {"ok": False, "error": str(e), "anchorGroups": [], "stats": {"customerCount": 0, "anchorCount": 0}}
 
 
+@router.get("/api/fans-trend/top200")
+def get_fans_trend_top200(anchorName: str, _: dict = Depends(security.require_permission("home"))) -> dict:
+    """TOP200粉丝全员趋势看板API - 复刻top200报告的计算逻辑."""
+    try:
+        return store.get_fans_trend_top200(anchorName)
+    except Exception as e:
+        import traceback
+        print(f"[fans-trend-top200] Error: {e}")
+        traceback.print_exc()
+        return {"ok": False, "error": str(e)}
+
+
 @router.post("/api/customer-library/import-profiles")
 async def import_customer_profiles(
     file: UploadFile = File(...),

@@ -1246,6 +1246,184 @@ def get_customer_trends_summary(anchor_name: str = "") -> dict[str, Any]:
     }
 
 
+def get_fans_trend_top200(anchor_name: str) -> dict[str, Any]:
+    """TOP200粉丝全员趋势看板 - 复刻top200报告的计算逻辑.
+    
+    核心粉丝定义: ≥10场 (死忠粉+高频粉)
+    三层同期群: 核心(≥10场)、中频(≥4场)、全量
+    """
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+
+    if not anchor_name:
+        return {"ok": False, "error": "请指定主播名称"}
+
+    ref_date = datetime.now()
+
+    # 从 customer_sessions 表查询该主播的客户数据
+    rows = db.fetch_all(
+        """
+        SELECT 
+            s.customer_id,
+            COUNT(DISTINCT s.room_id) as session_count,
+            MIN(DATE(s.analyzed_at)) as first_date,
+            MAX(DATE(s.analyzed_at)) as latest_date,
+            GROUP_CONCAT(DISTINCT DATE_FORMAT(s.analyzed_at, '%%Y-%%m') ORDER BY s.analyzed_at) as months_str
+        FROM finvue_customer_sessions s
+        WHERE s.anchor_name = %s
+        GROUP BY s.customer_id
+        """,
+        (anchor_name,)
+    )
+
+    if not rows:
+        return {"ok": True, "stats": {}, "segments": [], "core_cohort": [], "mid_cohort": [], "all_cohort": [], "monthly_stats": []}
+
+    # 计算每个客户的统计
+    customer_stats = []
+    for r in rows:
+        count = r.get("session_count", 0) or 0
+        latest_date = r.get("latest_date")
+        months_str = r.get("months_str") or ""
+        months = [m.strip() for m in months_str.split(",") if m.strip()] if months_str else []
+        first_month = min(months) if months else ""
+
+        # 近30天活跃判断
+        active = False
+        if latest_date:
+            try:
+                if isinstance(latest_date, datetime):
+                    latest_dt = latest_date
+                elif hasattr(latest_date, 'year'):
+                    latest_dt = datetime.combine(latest_date, datetime.min.time())
+                else:
+                    latest_dt = datetime.strptime(str(latest_date).split()[0], "%Y-%m-%d")
+                active = (ref_date - latest_dt).days <= 30
+            except:
+                pass
+
+        customer_stats.append({
+            "customerId": r["customer_id"],
+            "count": count,
+            "firstMonth": first_month,
+            "months": months,
+            "active": active
+        })
+
+    # ===== 统计指标 =====
+    # 核心粉丝 (≥10场) = 死忠粉(≥20) + 高频粉(10-19)
+    core_fans = [s for s in customer_stats if s["count"] >= 10]
+    active_core = sum(1 for s in core_fans if s["active"])
+    churned_core = len(core_fans) - active_core
+    
+    # 新晋活跃粉 (1-3场且活跃)
+    new_active = sum(1 for s in customer_stats if s["active"] and 1 <= s["count"] <= 3)
+
+    # ===== 粉丝层级活跃透视 =====
+    segment_defs = [
+        ("死忠粉", "≥ 20 场", lambda x: x["count"] >= 20),
+        ("高频粉", "10–19 场", lambda x: 10 <= x["count"] <= 19),
+        ("中频粉", "4–9 场", lambda x: 4 <= x["count"] <= 9),
+        ("偶发粉", "1–3 场", lambda x: 1 <= x["count"] <= 3),
+    ]
+    segments = []
+    for name, desc, fn in segment_defs:
+        arr = [s for s in customer_stats if fn(s)]
+        active_cnt = sum(1 for s in arr if s["active"])
+        rate = active_cnt * 100 / len(arr) if arr else 0
+        segments.append({"name": name, "desc": desc, "total": len(arr), "active": active_cnt, "rate": round(rate, 1)})
+
+    # ===== 同期群计算 =====
+    all_months = sorted(set(m for s in customer_stats for m in s["months"]))
+
+    def compute_cohort(filter_fn):
+        """计算同期群数据."""
+        filtered = [s for s in customer_stats if filter_fn(s) and s["firstMonth"]]
+        cohort_map = defaultdict(list)
+        for s in filtered:
+            cohort_map[s["firstMonth"]].append(s)
+
+        cohorts = []
+        for cohort in sorted(cohort_map.keys()):
+            base = cohort_map[cohort]
+            max_cells = min(8, len(all_months) - all_months.index(cohort) if cohort in all_months else 8)
+            cells = []
+            for i in range(max_cells):
+                target_month = _add_months(cohort, i)
+                has_data = target_month in all_months
+                retained = sum(1 for s in base if target_month in s["months"])
+                value = retained * 100 / len(base) if base else 0
+                cells.append({"month": target_month, "hasData": has_data, "value": round(value, 1)})
+            cohorts.append({"cohort": cohort, "base": len(base), "cells": cells})
+        return cohorts
+
+    # 核心(≥10场)
+    core_cohort = compute_cohort(lambda x: x["count"] >= 10)
+    
+    # 中频(≥4场)
+    mid_cohort = compute_cohort(lambda x: x["count"] >= 4)
+    
+    # 全量
+    all_cohort = compute_cohort(lambda x: x["count"] >= 1)
+
+    # ===== 月度统计明细 =====
+    # 查询每个月的直播场次
+    monthly_lives = db.fetch_all(
+        """
+        SELECT DATE_FORMAT(analyzed_at, '%%Y-%%m') as month, COUNT(DISTINCT room_id) as live_count
+        FROM finvue_customer_sessions
+        WHERE anchor_name = %s
+        GROUP BY DATE_FORMAT(analyzed_at, '%%Y-%%m')
+        ORDER BY month
+        """,
+        (anchor_name,)
+    )
+    live_count_map = {r["month"]: r["live_count"] for r in monthly_lives or []}
+
+    monthly_stats = []
+    for i, month in enumerate(all_months):
+        prev_month = all_months[i - 1] if i > 0 else ""
+        
+        # 该月活跃的客户
+        curr_customers = set(s["customerId"] for s in customer_stats if month in s["months"])
+        prev_customers = set(s["customerId"] for s in customer_stats if prev_month in s["months"]) if prev_month else set()
+        
+        # 新增客户 (首次出现月份 = 当前月)
+        new_customers = sum(1 for s in customer_stats if s["firstMonth"] == month)
+        
+        # 留存客户 (上月也在,本月也在)
+        retained = len(curr_customers & prev_customers)
+        
+        # 流失客户 (上月有,本月没有)
+        churned = len(prev_customers - curr_customers) if prev_month else 0
+        
+        monthly_stats.append({
+            "month": month,
+            "live_count": live_count_map.get(month, 0),
+            "unique_customers": len(curr_customers),
+            "new_customers": new_customers,
+            "retained": retained,
+            "churned": churned
+        })
+
+    return {
+        "ok": True,
+        "stats": {
+            "total_customers": len(customer_stats),
+            "total_sessions": sum(s["count"] for s in customer_stats),
+            "core_count": len(core_fans),
+            "active_core": active_core,
+            "churned_core": churned_core,
+            "new_active": new_active
+        },
+        "segments": segments,
+        "core_cohort": core_cohort,
+        "mid_cohort": mid_cohort,
+        "all_cohort": all_cohort,
+        "monthly_stats": monthly_stats
+    }
+
+
 def _compute_anchor_group_stats(anchor_name: str, customers: list) -> dict[str, Any]:
     """计算单个主播的客户群统计数据."""
     from datetime import datetime, timedelta

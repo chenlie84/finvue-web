@@ -97,6 +97,16 @@
   
   .tab-content{display:none;}
   .tab-content.active{display:block;}
+
+  /* 粉丝趋势样式 */
+  .cohort-table{width:100%;border-collapse:collapse;}
+  .cohort-table th{text-align:center;padding:9px 6px;font-size:11px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);}
+  .cohort-table td{text-align:center;padding:9px 6px;border:1px solid var(--border);font-size:12px;min-width:70px;}
+  .cohort-table td:first-child{text-align:left;}
+  .heat-cell{font-family:var(--font-mono);font-size:11px;}
+  .progress-sm{height:4px;background:rgba(255,255,255,0.05);border-radius:2px;margin-top:4px;overflow:hidden;}
+  .progress-sm-fill{height:100%;background:var(--gold);border-radius:2px;}
+  .fans-chart{width:100%;height:300px;margin-bottom:20px;}
   
   .month-stats-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px;}
   .month-stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px;}
@@ -139,6 +149,10 @@
     <div class="nav-item" onclick="switchTab('monthly', this)">
       <span class="ni">📈</span>
       <span>主播月报</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('fans-trend', this)">
+      <span class="ni">👥</span>
+      <span>粉丝趋势</span>
     </div>
     <div class="nav-item" onclick="switchTab('calendar', this)">
       <span class="ni">📅</span>
@@ -247,6 +261,21 @@
         </div>
       </div>
     </div>
+
+    <!-- 粉丝趋势 -->
+    <div id="tab-fans-trend" class="tab-content">
+      <h1 class="page-title">粉丝趋势分析</h1>
+      <div class="page-sub" id="fans-trend-subtitle">TOP200 粉丝全员趋势看板</div>
+      <div class="filter-bar">
+        <select id="fans-trend-anchor" class="sel" onchange="loadFansTrend()">
+          <option value="">选择主播</option>
+        </select>
+        <button class="btn btn-outline" onclick="exportFansTrendHTML()">导出 HTML</button>
+      </div>
+      <div id="fans-trend-content">
+        <div class="empty">请选择主播查看粉丝趋势分析</div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -263,10 +292,11 @@ function switchTab(tabId, el) {
   el.classList.add('active');
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   $('tab-' + tabId).classList.add('active');
-  
+
   if (tabId === 'weekly') loadWeeklyReport();
   if (tabId === 'monthly') loadMonthlyReport();
   if (tabId === 'calendar') loadCalendar();
+  if (tabId === 'fans-trend') loadFansTrend();
 }
 
 // 加载主播列表
@@ -288,6 +318,9 @@ async function loadAccounts() {
     $('calendar-account-filter').innerHTML = '<option value="">全部主播</option>' + options;
     $('add-live-account').innerHTML = '<option value="">选择主播</option>' + options;
 
+    // 加载粉丝趋势主播列表（从客户会话表获取）
+    loadFansTrendAnchors();
+
     const total = data.total_count || 0;
     const range = data.data_range || {};
     if (total > 0 && range.min && range.max) {
@@ -297,6 +330,20 @@ async function loadAccounts() {
     }
   } catch (e) {
     $('dataStatus').textContent = '加载失败: ' + e.message;
+  }
+}
+
+// 加载粉丝趋势主播列表（从客户会话表）
+async function loadFansTrendAnchors() {
+  try {
+    const res = await fetch('/api/customer-trends-summary', { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const groups = data.anchorGroups || [];
+    const options = groups.map(g => `<option value="${esc(g.anchorName)}">${esc(g.anchorName)} (${fmt(g.stats?.customerCount || 0)}客户)</option>`).join('');
+    $('fans-trend-anchor').innerHTML = '<option value="">选择主播</option>' + options;
+  } catch (e) {
+    console.warn('加载粉丝趋势主播失败', e);
   }
 }
 
@@ -472,17 +519,23 @@ function renderWeeklyReport(data) {
       const totalVideoFollow = acc.video.reduce((s, v) => s + (v.follow_count || 0), 0);
       html += `
         <div style="margin-bottom:16px;">
-          <div class="muted" style="font-size:12px;margin-bottom:8px;">短视频 · 发布 ${acc.video.length} 条 · 播放 ${fmt(totalPlay)} · 涨粉 ${fmt(totalVideoFollow)}</div>
-          <table class="tbl">
-            <tr><th>发布时间</th><th>体裁</th><th>作品名称</th><th>播放量</th><th>点赞</th><th>完播率</th><th>涨粉</th></tr>
+          <div style="margin-bottom:12px;">
+            <span class="badge blue">短视频 · 发布 ${acc.video.length} 条</span>
+            <span class="muted" style="margin-left:12px;">播放 ${fmt(totalPlay)} · 涨粉 ${fmt(totalVideoFollow)}</span>
+          </div>
+          <table class="tbl" style="font-size:12px;">
+            <tr><th>发布时间</th><th>体裁</th><th>作品名称</th><th>播放量</th><th>点赞</th><th>完播率</th><th>5s完播</th><th>2s跳出</th><th>互动率</th><th>涨粉</th></tr>
             ${acc.video.map(v => `
               <tr>
-                <td>${(v.publish_time || '').split(' ')[0].slice(5) || '-'}</td>
+                <td>${(v.publish_time || '').slice(5,16) || '-'}</td>
                 <td>${esc(v.duration_type) || '-'}</td>
                 <td class="video-title">${esc(v.title) || '-'}</td>
                 <td class="mono">${fmt(v.play_count)}</td>
                 <td class="mono">${fmt(v.like_count)}</td>
-                <td>${Number(v.completion_rate || 0).toFixed(1)}%</td>
+                <td class="mono">${Number(v.completion_rate || 0).toFixed(1)}%</td>
+                <td class="mono">${Number(v.five_s_completion_rate || 0).toFixed(1)}%</td>
+                <td class="mono">${Number(v.two_s_exit_rate || 0).toFixed(1)}%</td>
+                <td class="mono">${Number(v.interaction_rate || 0).toFixed(1)}%</td>
                 <td class="green mono">${fmt(v.follow_count)}</td>
               </tr>
             `).join('')}
@@ -495,21 +548,23 @@ function renderWeeklyReport(data) {
     if (acc.live && acc.live.length) {
       html += `
         <div>
-          <div class="muted" style="font-size:12px;margin-bottom:8px;">直播明细</div>
+          <div class="muted" style="font-size:12px;margin-bottom:8px;">直播明细 · ${acc.live.length} 场 · 涨粉 ${fmt(acc.stats?.totalFollow || 0)}</div>
           <table class="tbl" style="font-size:12px;">
-            <tr><th>开播时间</th><th>时长</th><th>峰值/平均</th><th>观看(粉/非粉)</th><th>停留(粉/非粉)</th><th>涨粉</th><th>涨粉率</th></tr>
-            ${acc.live.map(l => `
+            <tr><th>开播时间</th><th>时长</th><th>峰值/平均</th><th>观看(粉/非粉)</th><th>停留(粉/非粉)</th><th>涨粉</th><th>涨粉率</th><th>来源</th></tr>
+            ${acc.live.map(l => {
+              const followRate = l.follow_u_rate || ((l.follow_ucnt / l.watch_ucnt) * 100) || 0;
+              return `
               <tr>
                 <td>${(l.start_time || '').slice(5,16) || '-'}</td>
                 <td class="mono">${l.duration || 0}分</td>
                 <td class="mono">${fmt(l.pcu)}/${fmt(l.acu)}</td>
                 <td class="mono">${fmt(l.watch_ucnt)}<span style="color:var(--gold)">(${fmt(l.fans_watch_ucnt)}/${fmt(l.non_fans_watch_ucnt)})</span></td>
-                <td class="mono"><span style="color:var(--gold)">${l.fans_avg_watch_duration?.toFixed(1) || 0}</span>/<span style="color:var(--blue)">${l.non_fans_avg_watch_duration?.toFixed(1) || 0}</span>分</td>
+                <td class="mono"><span style="color:var(--gold)">${(l.fans_avg_watch_duration || 0).toFixed(1)}</span>/<span style="color:var(--blue)">${(l.non_fans_avg_watch_duration || 0).toFixed(1)}</span>分</td>
                 <td class="green mono">${fmt(l.follow_ucnt)}</td>
-          <td>${l.notes && l.notes.includes("[手工录入]") ? "<button onclick=deleteLiveRecord('" + l.room_id + "') style=font-size:10px;padding:2px 6px;background:var(--red);border:none;color:#fff;border-radius:4px;cursor:pointer;>删除</button>" : "<span class=muted style=font-size:10px;>CSV导入</span>"}</td>
-                <td>${((l.follow_ucnt / l.watch_ucnt) * 100 || 0).toFixed(2)}%</td>
+                <td class="mono">${followRate.toFixed(2)}%</td>
+                <td>${l.notes && l.notes.includes("[手工录入]") ? "<button onclick=deleteWeeklyLive('" + l.room_id + "') style=font-size:10px;padding:2px 6px;background:var(--red);border:none;color:#fff;border-radius:4px;cursor:pointer;>删除</button>" : "<span class=muted style=font-size:10px;>CSV</span>"}</td>
               </tr>
-            `).join('')}
+            `}).join('')}
           </table>
         </div>
       `;
@@ -519,6 +574,22 @@ function renderWeeklyReport(data) {
   }
   
   $('weekly-content').innerHTML = html;
+}
+
+// 删除周报中的直播记录（调用删除API后刷新周报）
+async function deleteWeeklyLive(roomId) {
+  if (!confirm('确定删除该直播记录？')) return;
+  try {
+    const res = await fetch('/api/operation/live/' + roomId, {
+      method: 'DELETE',
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || '删除失败');
+    loadWeeklyReport();
+  } catch (e) {
+    alert('删除失败: ' + e.message);
+  }
 }
 
 // 加载月报
@@ -779,15 +850,39 @@ function renderMonthlyReport(data) {
             <summary>直播明细 (${accData.live.length} 场)</summary>
             <table class="tbl" style="margin-top:12px;font-size:12px;">
               <tr><th>开播时间</th><th>时长</th><th>峰值/平均</th><th>观看(粉/非粉)</th><th>停留(粉/非粉)</th><th>涨粉</th><th>涨粉率</th></tr>
-              ${accData.live.slice(0, 30).map(l => `
+              ${accData.live.slice(0, 30).map(l => {
+                const followRate = l.follow_u_rate || ((l.follow_ucnt / l.watch_ucnt) * 100) || 0;
+                return `
                 <tr>
                   <td>${(l.start_time || '').slice(5,16) || '-'}</td>
                   <td class="mono">${l.duration || 0}分</td>
                   <td class="mono">${fmt(l.pcu)}/${fmt(l.acu)}</td>
                   <td class="mono">${fmt(l.watch_ucnt)}<span style="color:var(--gold)">(${fmt(l.fans_watch_ucnt)}/${fmt(l.non_fans_watch_ucnt)})</span></td>
-                  <td class="mono"><span style="color:var(--gold)">${l.fans_avg_watch_duration?.toFixed(1) || 0}</span>/<span style="color:var(--blue)">${l.non_fans_avg_watch_duration?.toFixed(1) || 0}</span>分</td>
+                  <td class="mono"><span style="color:var(--gold)">${(l.fans_avg_watch_duration || 0).toFixed(1)}</span>/<span style="color:var(--blue)">${(l.non_fans_avg_watch_duration || 0).toFixed(1)}</span>分</td>
                   <td class="green mono">${fmt(l.follow_ucnt)}</td>
-                  <td>${((l.follow_ucnt / l.watch_ucnt) * 100 || 0).toFixed(2)}%</td>
+                  <td class="mono">${followRate.toFixed(2)}%</td>
+                </tr>
+              `}).join('')}
+            </table>
+          </details>
+        ` : ''}
+        ${accData.video.length ? `
+          <details class="prompt-detail">
+            <summary>短视频明细 (${accData.video.length} 条)</summary>
+            <table class="tbl" style="margin-top:12px;font-size:12px;">
+              <tr><th>发布时间</th><th>体裁</th><th>作品名称</th><th>播放量</th><th>点赞</th><th>完播率</th><th>5s完播</th><th>2s跳出</th><th>互动率</th><th>涨粉</th></tr>
+              ${accData.video.slice(0, 30).map(v => `
+                <tr>
+                  <td>${(v.publish_time || '').slice(5,16) || '-'}</td>
+                  <td>${esc(v.duration_type) || '-'}</td>
+                  <td class="video-title">${esc(v.title) || '-'}</td>
+                  <td class="mono">${fmt(v.play_count)}</td>
+                  <td class="mono">${fmt(v.like_count)}</td>
+                  <td class="mono">${Number(v.completion_rate || 0).toFixed(1)}%</td>
+                  <td class="mono">${Number(v.five_s_completion_rate || 0).toFixed(1)}%</td>
+                  <td class="mono">${Number(v.two_s_exit_rate || 0).toFixed(1)}%</td>
+                  <td class="mono">${Number(v.interaction_rate || 0).toFixed(1)}%</td>
+                  <td class="green mono">${fmt(v.follow_count)}</td>
                 </tr>
               `).join('')}
             </table>
@@ -975,7 +1070,7 @@ function showDayDetail(event, dateStr, dayData) {
 // 删除直播记录
 async function deleteLiveRecord(roomId) {
   if (!confirm('确定删除该直播记录？')) return;
-  
+
   try {
     const res = await fetch('/api/operation/live/' + roomId, {
       method: 'DELETE',
@@ -983,13 +1078,219 @@ async function deleteLiveRecord(roomId) {
     });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || '删除失败');
-    
+
     // 刷新日历
     loadCalendar();
     $('calendar-detail').innerHTML = '<div style="color:var(--green);padding:8px;">已删除</div>';
   } catch (e) {
     alert('删除失败: ' + e.message);
   }
+}
+
+// ============ 粉丝趋势分析 ============
+
+// 热力图颜色计算 (复刻top200的紫色系)
+function heatColor(value) {
+  if (value <= 0) return '';
+  const alpha = Math.max(0.05, Math.min(0.82, value / 100 * 0.82));
+  const textColor = value >= 45 ? 'var(--text0)' : 'var(--text1)';
+  return `background: rgba(99,102,241,${alpha}); color: ${textColor}`;
+}
+
+// 加载粉丝趋势数据
+async function loadFansTrend() {
+  const anchor = $('fans-trend-anchor').value;
+  if (!anchor) {
+    $('fans-trend-content').innerHTML = '<div class="empty">请选择主播查看粉丝趋势分析</div>';
+    return;
+  }
+
+  $('fans-trend-content').innerHTML = '<div class="muted">正在加载...</div>';
+
+  try {
+    const res = await fetch(`/api/fans-trend/top200?anchorName=${encodeURIComponent(anchor)}`, { credentials: 'include' });
+    if (!res.ok) {
+      if (res.status === 401) {
+        $('fans-trend-content').innerHTML = '<div class="empty">请先<a href="/index.html" style="color:var(--gold);">登录</a></div>';
+        return;
+      }
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || '加载失败');
+    }
+    const data = await res.json();
+    renderFansTrend(data);
+  } catch (e) {
+    $('fans-trend-content').innerHTML = `<div class="empty">加载失败: ${esc(e.message)}</div>`;
+  }
+}
+
+// 渲染粉丝趋势
+function renderFansTrend(data) {
+  const stats = data.stats || {};
+  const segments = data.segments || [];
+  const coreCohort = data.core_cohort || [];   // ≥10场
+  const midCohort = data.mid_cohort || [];      // ≥4场
+  const allCohort = data.all_cohort || [];      // 全量
+  const monthlyStats = data.monthly_stats || [];
+
+  $('fans-trend-subtitle').textContent = `${fmt(stats.total_customers || 0)} 位客户 · ${fmt(stats.total_sessions || 0)} 条观看记录`;
+
+  let html = `
+    <!-- 统计卡片 -->
+    <div class="g4 mb">
+      <div class="kpi" style="--accent:var(--blue)">
+        <div class="kpi-lbl">核心粉丝总量 (≥10场)</div>
+        <div class="kpi-val mono">${fmt(stats.core_count || 0)}</div>
+        <div class="kpi-delta muted">死忠粉+高频粉</div>
+      </div>
+      <div class="kpi" style="--accent:var(--green)">
+        <div class="kpi-lbl">核心追随粉 (Active)</div>
+        <div class="kpi-val mono green">${fmt(stats.active_core || 0)}</div>
+        <div class="kpi-delta">近30天活跃</div>
+      </div>
+      <div class="kpi" style="--accent:var(--red)">
+        <div class="kpi-lbl">核心流失粉 (Churned)</div>
+        <div class="kpi-val mono red">${fmt(stats.churned_core || 0)}</div>
+        <div class="kpi-delta">超30天未活跃</div>
+      </div>
+      <div class="kpi" style="--accent:var(--gold)">
+        <div class="kpi-lbl">新晋活跃粉 (New)</div>
+        <div class="kpi-val mono gold">${fmt(stats.new_active || 0)}</div>
+        <div class="kpi-delta">1-3场且活跃</div>
+      </div>
+    </div>
+
+    <!-- 粉丝层级活跃透视 -->
+    <div class="panel mb">
+      <div class="panel-hd"><div class="panel-title">1. 粉丝层级活跃透视</div></div>
+      <table class="tbl">
+        <tr><th>粉丝层级</th><th>总基数</th><th>近30天活跃</th><th>活跃率</th></tr>
+        ${segments.map(s => `
+          <tr>
+            <td><strong>${esc(s.name)}</strong><br><small class="muted">${esc(s.desc)}</small></td>
+            <td class="mono">${fmt(s.total)}</td>
+            <td class="mono green">${fmt(s.active)}</td>
+            <td>
+              <span class="mono">${(s.rate || 0).toFixed(1)}%</span>
+              <div class="progress-sm"><div class="progress-sm-fill" style="width:${Math.min(100, s.rate || 0)}%"></div></div>
+            </td>
+          </tr>
+        `).join('')}
+      </table>
+    </div>
+
+    <!-- 核心粉丝同期群 (≥10场) -->
+    <div class="panel mb">
+      <div class="panel-hd"><div class="panel-title">2. 核心粉丝同期群 (≥10场)</div><span class="muted">死忠粉+高频粉的留存分析</span></div>
+      ${renderCohortTable(coreCohort, 6)}
+    </div>
+
+    <!-- 中频以上粉丝同期群 (≥4场) -->
+    <div class="panel mb">
+      <div class="panel-hd"><div class="panel-title">3. 中频以上粉丝同期群 (≥4场)</div><span class="muted">中频+高频+死忠的留存分析</span></div>
+      ${renderCohortTable(midCohort, 7)}
+    </div>
+
+    <!-- 全量用户同期群 -->
+    <div class="panel mb">
+      <div class="panel-hd"><div class="panel-title">4. 全量用户同期群</div><span class="muted">所有观看用户的留存分析</span></div>
+      ${renderCohortTable(allCohort, 7)}
+    </div>
+
+    <!-- 月度统计明细 -->
+    <div class="panel mb">
+      <div class="panel-hd"><div class="panel-title">5. 月度统计明细</div></div>
+      <table class="tbl">
+        <tr><th>月份</th><th>直播场次</th><th>去重ID</th><th>新增</th><th>留存</th><th>流失</th></tr>
+        ${monthlyStats.map(m => `
+          <tr>
+            <td class="mono">${esc(m.month)}</td>
+            <td class="mono">${fmt(m.live_count)}</td>
+            <td class="mono">${fmt(m.unique_customers)}</td>
+            <td class="gold mono">+${fmt(m.new_customers)}</td>
+            <td class="green mono">${fmt(m.retained)}</td>
+            <td class="red mono">-${fmt(m.churned)}</td>
+          </tr>
+        `).join('')}
+      </table>
+    </div>
+  `;
+
+  $('fans-trend-content').innerHTML = html;
+}
+
+// 渲染同期群表格
+function renderCohortTable(rows, maxMonths) {
+  if (!rows || rows.length === 0) {
+    return '<div class="empty">暂无足够数据</div>';
+  }
+
+  // 计算最大月份数
+  const monthCount = maxMonths;
+
+  let html = `
+    <div style="overflow-x:auto;">
+      <table class="cohort-table">
+        <tr>
+          <th>Cohort</th>
+          <th>基数</th>
+          ${Array.from({length: monthCount}, (_, i) => `<th>T+${i}M</th>`).join('')}
+        </tr>
+        ${rows.map(row => `
+          <tr>
+            <td class="mono">${esc(row.cohort)}</td>
+            <td class="mono" style="color:var(--gold2);font-weight:600">${fmt(row.base)}</td>
+            ${(row.cells || []).slice(0, monthCount).map(cell => {
+              const style = heatColor(cell.value || 0);
+              return `<td class="heat-cell" ${style ? `style="${style}"` : ''}>${(cell.value || 0).toFixed(1)}%</td>`;
+            }).join('')}
+          </tr>
+        `).join('')}
+      </table>
+    </div>
+  `;
+  return html;
+}
+
+// 导出粉丝趋势HTML
+function exportFansTrendHTML() {
+  const anchor = $('fans-trend-anchor').value;
+  if (!anchor) {
+    alert('请先选择主播');
+    return;
+  }
+
+  const title = `${anchor} - TOP200粉丝全员趋势看板`;
+  const content = $('fans-trend-content').innerHTML;
+  const styles = document.querySelector('style').innerHTML;
+
+  const htmlContent = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>${esc(title)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"><\/script>
+<style>${styles}</style>
+</head>
+<body style="padding:30px;">
+<div style="max-width:1400px;margin:0 auto;">
+  <h1 style="font-family:'Playfair Display';font-size:28px;text-align:center;margin-bottom:30px;color:var(--text0);">${esc(title)}</h1>
+  <div style="text-align:center;color:var(--text1);margin-bottom:30px;" id="fans-trend-subtitle">${$('fans-trend-subtitle').textContent}</div>
+  ${content}
+</div>
+</body>
+</html>`;
+
+  const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${anchor}-粉丝趋势看板.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // 初始化

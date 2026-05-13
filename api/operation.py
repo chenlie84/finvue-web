@@ -628,7 +628,9 @@ def get_weekly_report(
     video_rows = db.fetch_all(
         f"""
         SELECT account, title, publish_time, duration_type, play_count,
-               like_count, completion_rate, 5s_completion_rate, 2s_exit_rate,
+               like_count, completion_rate,
+               `5s_completion_rate` as five_s_completion_rate,
+               `2s_exit_rate` as two_s_exit_rate,
                interaction_rate, follow_count
         FROM finvue_operation_video_stats
         WHERE publish_time >= %s AND publish_time <= %s
@@ -710,7 +712,9 @@ def get_monthly_report(
     video_rows = db.fetch_all(
         f"""
         SELECT account, title, publish_time, duration_type, play_count,
-               like_count, completion_rate, 5s_completion_rate, 2s_exit_rate,
+               like_count, completion_rate,
+               `5s_completion_rate` as five_s_completion_rate,
+               `2s_exit_rate` as two_s_exit_rate,
                interaction_rate, follow_count
         FROM finvue_operation_video_stats
         WHERE publish_time >= %s AND publish_time <= %s
