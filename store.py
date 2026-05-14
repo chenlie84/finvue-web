@@ -2,15 +2,103 @@
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import db
 
 
+# ============================================
+# 提示词文件加载
+# ============================================
+
+PROMPTS_DIR = Path(__file__).parent / "prompts"
+
+PROMPT_PRESETS = {
+    "strict": {
+        "name": "严格版（上线前审稿）",
+        "file": "主播分析提示词-去 AI 味的-v2-严格版.md",
+        "description": "适合发布、投流、切片复用，合规尺度最严",
+    },
+    "standard": {
+        "name": "标准版",
+        "file": "主播分析提示词-去 AI 味的-v2-标准版.md",
+        "description": "适合日常直播复盘，平衡合规与内容",
+    },
+    "loose": {
+        "name": "宽松版",
+        "file": "主播分析提示词-去 AI 味的-v2-宽松版.md",
+        "description": "适合内部评估、培训反馈，尺度较宽",
+    },
+    "compliance-strict": {
+        "name": "合规检测-严格版",
+        "file": "财经直播合规检测提示词-v1-严格版.md",
+        "description": "专注合规风险检测，上线前审稿口径",
+    },
+    "compliance-standard": {
+        "name": "合规检测-标准版",
+        "file": "财经直播合规检测提示词-v1-标准版.md",
+        "description": "合规风险检测，日常复盘口径",
+    },
+    "compliance-loose": {
+        "name": "合规检测-宽松版",
+        "file": "财经直播合规检测提示词-v1-宽松版.md",
+        "description": "合规风险检测，培训反馈口径",
+    },
+    "six-dimension": {
+        "name": "六维评分",
+        "file": "六维评分提示词.md",
+        "description": "六维度评分框架分析",
+    },
+}
+
+
+def _load_prompt_file(filename: str) -> str:
+    """从 prompts 目录加载提示词文件内容."""
+    filepath = PROMPTS_DIR / filename
+    if filepath.exists():
+        return filepath.read_text(encoding="utf-8")
+    return ""
+
+
+def get_available_prompts() -> list[dict[str, Any]]:
+    """获取所有可用的提示词预设列表."""
+    result = []
+    for key, preset in PROMPT_PRESETS.items():
+        content = _load_prompt_file(preset["file"])
+        result.append({
+            "id": key,
+            "name": preset["name"],
+            "description": preset["description"],
+            "file": preset["file"],
+            "hasContent": bool(content),
+        })
+    return result
+
+
+def get_prompt_by_id(prompt_id: str) -> dict[str, Any]:
+    """根据 ID 获取提示词内容."""
+    preset = PROMPT_PRESETS.get(prompt_id)
+    if not preset:
+        return {}
+    content = _load_prompt_file(preset["file"])
+    return {
+        "id": prompt_id,
+        "name": preset["name"],
+        "description": preset["description"],
+        "content": content,
+    }
+
+
+# 加载默认提示词（严格版）
+_DEFAULT_PROMPT_CONTENT = _load_prompt_file(PROMPT_PRESETS["strict"]["file"])
+
+
 DEFAULT_SETTINGS: dict[str, Any] = {
-    "promptPreset": "custom",
+    "promptPreset": "strict",
     "liveType": "advisory",
     "aiProviders": [
         {
@@ -190,6 +278,15 @@ def get_settings() -> dict[str, Any]:
     saved = get_kv("settings", {})
     settings = {**DEFAULT_SETTINGS, **safe_object(saved)}
     settings["aiProviders"] = merge_ai_providers(settings.get("aiProviders"))
+    
+    # 动态加载提示词：如果选择了预设，则从文件加载内容
+    preset_id = settings.get("promptPreset", "strict")
+    if preset_id != "custom" and preset_id in PROMPT_PRESETS:
+        prompt_data = get_prompt_by_id(preset_id)
+        if prompt_data.get("content"):
+            settings["systemPrompt"] = prompt_data["content"]
+            settings["promptPresetName"] = prompt_data.get("name", "")
+    
     return settings
 
 
