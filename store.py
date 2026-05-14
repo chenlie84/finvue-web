@@ -65,32 +65,65 @@ def _load_prompt_file(filename: str) -> str:
 
 
 def get_available_prompts() -> list[dict[str, Any]]:
-    """获取所有可用的提示词预设列表."""
+    """获取所有可用的提示词预设列表（扫描prompts目录下所有md文件）."""
     result = []
+    # 先添加 PROMPT_PRESETS 中定义的预设
     for key, preset in PROMPT_PRESETS.items():
         content = _load_prompt_file(preset["file"])
         result.append({
             "id": key,
             "name": preset["name"],
-            "description": preset["description"],
+            "description": preset.get("description", ""),
             "file": preset["file"],
             "hasContent": bool(content),
         })
+    
+    # 再扫描 prompts 目录下所有 .md 文件，添加未在 PROMPT_PRESETS 中定义的
+    if PROMPTS_DIR.exists():
+        for md_file in PROMPTS_DIR.glob("*.md"):
+            filename = md_file.name
+            # 检查是否已在 PROMPT_PRESETS 中定义
+            already_defined = any(p.get("file") == filename for p in PROMPT_PRESETS.values())
+            if not already_defined:
+                content = _load_prompt_file(filename)
+                # 使用文件名作为显示名称（去掉 .md 后缀）
+                display_name = filename.replace(".md", "")
+                result.append({
+                    "id": filename,  # 用文件名作为 ID
+                    "name": display_name,
+                    "description": "",
+                    "file": filename,
+                    "hasContent": bool(content),
+                })
     return result
 
 
 def get_prompt_by_id(prompt_id: str) -> dict[str, Any]:
     """根据 ID 获取提示词内容."""
+    # 先从 PROMPT_PRESETS 查找
     preset = PROMPT_PRESETS.get(prompt_id)
-    if not preset:
-        return {}
-    content = _load_prompt_file(preset["file"])
-    return {
-        "id": prompt_id,
-        "name": preset["name"],
-        "description": preset["description"],
-        "content": content,
-    }
+    if preset:
+        content = _load_prompt_file(preset["file"])
+        return {
+            "id": prompt_id,
+            "name": preset["name"],
+            "description": preset.get("description", ""),
+            "content": content,
+        }
+    
+    # 如果不是预设 ID，尝试作为文件名直接加载
+    if prompt_id.endswith(".md"):
+        content = _load_prompt_file(prompt_id)
+        if content:
+            display_name = prompt_id.replace(".md", "")
+            return {
+                "id": prompt_id,
+                "name": display_name,
+                "description": "",
+                "content": content,
+            }
+    
+    return {}
 
 
 # 加载默认提示词（严格版）
