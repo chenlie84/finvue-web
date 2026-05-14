@@ -553,36 +553,50 @@ def delete_live_record(
 @router.get("/api/operation/accounts")
 def get_accounts(_: dict = Depends(security.require_permission("home"))) -> dict:
     """获取所有主播账号列表."""
-    rows = db.fetch_all(
-        """
-        SELECT DISTINCT account, COUNT(*) as live_count,
-               MAX(start_time) as last_live_time,
-               MIN(start_time) as first_live_time
-        FROM finvue_operation_live_stats
-        GROUP BY account
-        ORDER BY live_count DESC
-        """
-    )
+    try:
+        rows = db.fetch_all(
+            """
+            SELECT DISTINCT account, COUNT(*) as live_count,
+                   MAX(start_time) as last_live_time,
+                   MIN(start_time) as first_live_time
+            FROM finvue_operation_live_stats
+            GROUP BY account
+            ORDER BY live_count DESC
+            """
+        )
 
-    # 获取整体数据时间范围
-    total_info = db.fetch_one(
-        """
-        SELECT COUNT(*) as total_count,
-               MAX(start_time) as max_time,
-               MIN(start_time) as min_time
-        FROM finvue_operation_live_stats
-        """
-    )
+        # 获取整体数据时间范围
+        total_info = db.fetch_one(
+            """
+            SELECT COUNT(*) as total_count,
+                   MAX(start_time) as max_time,
+                   MIN(start_time) as min_time
+            FROM finvue_operation_live_stats
+            """
+        )
 
-    return {
-        "ok": True,
-        "accounts": rows or [],
-        "total_count": total_info.get("total_count", 0) if total_info else 0,
-        "data_range": {
-            "min": total_info.get("min_time") if total_info else None,
-            "max": total_info.get("max_time") if total_info else None
+        return {
+            "ok": True,
+            "accounts": rows or [],
+            "total_count": total_info.get("total_count", 0) if total_info else 0,
+            "data_range": {
+                "min": total_info.get("min_time") if total_info else None,
+                "max": total_info.get("max_time") if total_info else None
+            }
         }
-    }
+    except Exception as e:
+        # 检查是否是表不存在错误
+        err_msg = str(e)
+        if "doesn't exist" in err_msg.lower() or "1146" in err_msg:
+            return {
+                "ok": True,
+                "accounts": [],
+                "total_count": 0,
+                "data_range": {"min": None, "max": None},
+                "warning": "数据库表尚未初始化，请检查迁移是否执行"
+            }
+        # 其他数据库错误
+        raise HTTPException(status_code=500, detail=f"数据库查询失败: {err_msg}")
 
 
 @router.get("/api/operation/weekly-report")

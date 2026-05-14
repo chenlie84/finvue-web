@@ -381,16 +381,62 @@ function switchTab(tabId, el) {
   if (tabId === 'fans-trend') loadFansTrend();
 }
 
+// 带超时的 fetch 封装
+async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timeoutId);
+    return res;
+  } catch (e) {
+    clearTimeout(timeoutId);
+    if (e.name === 'AbortError') {
+      throw new Error('请求超时（15秒），请检查网络或服务状态');
+    }
+    throw e;
+  }
+}
+
 // 加载主播列表
 async function loadAccounts() {
   try {
-    const res = await fetch('/api/operation/accounts', { credentials: 'include' });
+    $('dataStatus').textContent = '正在连接服务器...';
+    const res = await fetchWithTimeout('/api/operation/accounts', { credentials: 'include' }, 15000);
+    
+    // 处理 HTTP 错误
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`HTTP ${res.status}: ${text.slice(0,100)}`);
+      let errMsg = `HTTP ${res.status}`;
+      try {
+        const text = await res.text();
+        const json = JSON.parse(text);
+        errMsg = json.detail || json.error || errMsg;
+      } catch {}
+      
+      // 未登录跳转
+      if (res.status === 401) {
+        $('dataStatus').innerHTML = '未登录或登录已失效，<a href="/index.html" style="color:var(--gold);">点击登录</a>';
+        return;
+      }
+      
+      // 权限不足
+      if (res.status === 403) {
+        $('dataStatus').textContent = '权限不足，无法访问运营数据中心';
+        return;
+      }
+      
+      throw new Error(errMsg);
     }
+    
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || '获取主播列表失败');
+
+    // 显示警告信息（如表不存在）
+    if (data.warning) {
+      $('dataStatus').innerHTML = `<span style="color:var(--gold);">${esc(data.warning)}</span>`;
+      $('weekly-content').innerHTML = `<div class="panel"><div class="empty">${esc(data.warning)}</div></div>`;
+      return;
+    }
 
     const accounts = data.accounts || [];
     const options = accounts.map(a => `<option value="${esc(a.account)}">${esc(a.account)} (${a.live_count || 0}场)</option>`).join('');
@@ -411,7 +457,13 @@ async function loadAccounts() {
       $('dataStatus').textContent = '暂无数据，请先导入';
     }
   } catch (e) {
-    $('dataStatus').textContent = '加载失败: ' + e.message;
+    // 更详细的错误信息
+    let errMsg = e.message || '未知错误';
+    if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
+      errMsg = '网络连接失败，请检查服务器是否正常运行';
+    }
+    $('dataStatus').innerHTML = `<span style="color:var(--red);">加载失败: ${esc(errMsg)}</span> <a href="/index.html" style="color:var(--gold);margin-left:8px;">返回首页</a>`;
+    $('weekly-content').innerHTML = `<div class="panel"><div class="empty">${esc(errMsg)}</div></div>`;
   }
 }
 
