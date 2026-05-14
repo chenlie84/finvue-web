@@ -8,8 +8,7 @@
 <style>
 :root{--bg0:#0A0B0E;--bg1:#11131A;--bg2:#181B24;--bg3:#1E2230;--border:#252836;--border2:#2E3347;--gold:#C8922A;--gold2:#E5B84A;--gold-dim:rgba(200,146,42,.12);--text0:#EAE6DD;--text1:#9B97A0;--text2:#5A566A;--green:#2DBD85;--red:#E05252;--blue:#4A90D9;--purple:#9B7FE8;--primary:var(--gold);--primary-light:var(--gold2);--bg:var(--bg0);--card:var(--bg1);--text:var(--text0);--dim:var(--text1);--muted:var(--text2);--accent:var(--green);--danger:var(--red);--warning:var(--gold2)}
 [data-theme="light"]{--bg0:#F8FAFC;--bg1:#FFFFFF;--bg2:#F1F5F9;--bg3:#E2E8F0;--border:#E2E8F0;--border2:#CBD5E1;--gold:#D97706;--gold2:#F59E0B;--gold-dim:rgba(217,119,6,.08);--text0:#1E293B;--text1:#64748B;--text2:#94A3B8;--green:#059669;--red:#DC2626;--blue:#2563EB;--purple:#7C3AED;--bg:var(--bg0);--card:var(--bg1);--text:var(--text0);--dim:var(--text1);--muted:var(--text2)}
-.theme-toggle{position:fixed;top:16px;right:16px;z-index:1000;display:flex;gap:8px}
-.theme-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--bg1);color:var(--text1);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s}
+.theme-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--bg1);color:var(--text1);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s}
 .theme-btn:hover{background:var(--bg2);color:var(--gold)}
 .theme-btn.active{background:var(--gold-dim);color:var(--gold);border-color:var(--gold)}
 *{box-sizing:border-box}body{font-family:Outfit,"Noto Sans SC",sans-serif;background:var(--bg);color:var(--text);margin:0;padding:38px;line-height:1.65;background-image:linear-gradient(rgba(200,146,42,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(200,146,42,.035) 1px,transparent 1px);background-size:48px 48px}.container{max-width:1420px;margin:0 auto}.topbar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:34px}.back{color:var(--dim);text-decoration:none;border:1px solid var(--border2);border-radius:8px;padding:8px 14px;background:var(--bg1)}.back:hover{color:var(--gold);border-color:var(--gold)}header{text-align:center;margin-bottom:34px}h1{font-family:"Playfair Display",Georgia,serif;font-size:42px;font-weight:600;line-height:1.1;margin:0;color:var(--text0)}.subtitle{color:var(--dim);margin-top:10px}.dashboard{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:28px}.stat{background:rgba(17,19,26,.92);padding:22px;border-radius:12px;border:1px solid var(--border);border-top:2px solid var(--gold)}.stat-label{color:var(--dim);font-size:13px;margin-bottom:8px}.stat-value{font-family:"JetBrains Mono",monospace;font-size:32px;font-weight:500;color:var(--gold2)}.active{color:var(--green)}.lost{color:var(--red)}.warn{color:var(--gold2)}section{background:rgba(17,19,26,.92);padding:28px;border-radius:12px;margin-bottom:24px;border:1px solid var(--border)}h2{font-family:Outfit,sans-serif;font-size:20px;font-weight:600;margin:0 0 20px;display:flex;align-items:center;gap:12px}h2:before{content:"";width:4px;height:24px;border-radius:2px;background:var(--gold)}.note{color:var(--dim);font-size:13px;margin:-8px 0 14px}.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:8px}table{width:100%;border-collapse:collapse;font-size:13px;min-width:760px}th{padding:12px 14px;text-align:left;color:var(--text1);background:var(--bg2);border-bottom:1px solid var(--border);white-space:nowrap}td{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:top}tr:last-child td{border-bottom:none}.progress{height:7px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden;margin-top:8px}.fill{height:100%;background:var(--gold)}.fill.good{background:var(--green)}.heat{text-align:center;font-family:"JetBrains Mono",monospace;border-left:1px solid rgba(255,255,255,.04)}.empty{color:var(--dim);padding:30px;text-align:center}.pill{display:inline-flex;padding:4px 10px;border-radius:999px;background:var(--gold-dim);color:var(--gold2);font-size:12px;margin:3px}.controls{display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap}.select{background:var(--bg2);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;min-width:260px}
@@ -19,16 +18,15 @@
 </style>
 </head>
 <body>
-<!-- 主题切换按钮 -->
-<div class="theme-toggle">
-  <button class="theme-btn active" id="theme-dark" onclick="setTheme('dark')" title="深色主题">🌙</button>
-  <button class="theme-btn" id="theme-light" onclick="setTheme('light')" title="浅色主题">☀️</button>
-</div>
 <div class="container">
   <div class="topbar">
     <a class="back" href="/">返回客户库</a>
     <button class="export-btn" onclick="exportHTML()">导出 HTML</button>
     <div id="status" class="subtitle">读取客户库...</div>
+    <div style="display:flex;gap:6px;">
+      <button class="theme-btn active" id="theme-dark" onclick="setTheme('dark')" title="深色主题">🌙</button>
+      <button class="theme-btn" id="theme-light" onclick="setTheme('light')" title="浅色主题">☀️</button>
+    </div>
   </div>
   <header>
     <h1 id="pageTitle">核心用户运营趋势深度看板</h1>
