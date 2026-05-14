@@ -4249,13 +4249,18 @@ async function setTaskByKey(key) {
       const data = await response.json();
       if (data.ok) {
         const prompt = data.prompt;
-        // 填充系统提示词和任务提示词
-        if (els.systemPrompt && prompt.content) {
-          els.systemPrompt.value = prompt.content;
-          els.liveSystemPromptMirror.value = prompt.content;
-        }
-        if (els.taskPrompt && prompt.taskPrompt) {
-          els.taskPrompt.value = prompt.taskPrompt;
+        // 填充系统提示词和任务提示词（预设的content同时填充到两个位置）
+        if (prompt.content) {
+          if (els.systemPrompt) {
+            els.systemPrompt.value = prompt.content;
+          }
+          if (els.liveSystemPromptMirror) {
+            els.liveSystemPromptMirror.value = prompt.content;
+          }
+          // 预设没有单独的taskPrompt，用content作为任务提示词
+          if (els.taskPrompt) {
+            els.taskPrompt.value = prompt.taskPrompt || prompt.content;
+          }
         }
         // 显示预设名称
         const presetNameEl = document.getElementById('promptPresetName');
@@ -6207,9 +6212,9 @@ async function loadPromptPreset() {
       els.systemPrompt.value = prompt.content;
       els.liveSystemPromptMirror.value = prompt.content;
     }
-    // 填充任务提示词
-    if (els.taskPrompt && prompt.taskPrompt) {
-      els.taskPrompt.value = prompt.taskPrompt;
+    // 填充任务提示词（预设没有单独的taskPrompt，用content作为任务提示词）
+    if (els.taskPrompt) {
+      els.taskPrompt.value = prompt.taskPrompt || prompt.content;
     }
 
     // 更新当前任务为预设
