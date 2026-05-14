@@ -3846,6 +3846,7 @@ function btChip(el) {
 }
 
 function toggleAdvancedPromptSettings(forceExpanded) {
+  if (!els.advancedPromptBody || !els.advancedPromptSummary || !els.advancedPromptToggle) return;
   const nextExpanded = typeof forceExpanded === "boolean"
     ? forceExpanded
     : els.advancedPromptBody.classList.contains("panel-body-collapsed");
@@ -4530,7 +4531,7 @@ function selectRolePreset(button, key) {
 function selectRolePresetByKey(key) {
   state.currentRoleKey = key;
   const roleDefinition = getRoleDefinition(key);
-  els.rolePrompt.value = roleDefinition.prompt || ROLE_PRESETS.expert;
+  if (els.rolePrompt) els.rolePrompt.value = roleDefinition.prompt || ROLE_PRESETS.expert;
   refreshPromptSourcePanels();
   renderRolePresetButtons();
 }
@@ -4547,6 +4548,7 @@ function syncReportModeUi() {
 }
 
 function syncLiveInputCopy() {
+  if (!els.taskPrompt) return;
   const reportType = getSelectedReportType();
   const isNewbieInterview = reportType === "newbieInterview";
   const isAnchorEvaluation = reportType === "anchorEvaluation";
@@ -5181,7 +5183,7 @@ function updateUploadedFileUi(key) {
     if (els.metricsUploadActions) {
       els.metricsUploadActions.style.display = hasMetricsFile ? "flex" : "none";
     }
-    if (!state.fileMeta.metrics && !state.fileLoading.metrics) {
+    if (els.metricsFileName && !state.fileMeta.metrics && !state.fileLoading.metrics) {
       els.metricsFileName.textContent = "";
     }
     return;
@@ -6236,6 +6238,20 @@ async function loadHealth() {
 async function afterAuth() {
   showPage("dashboard");
   applyDashboardPermissions();
+
+  // Dashboard 初始化（仅在登录后执行）
+  if (els.apiKey) els.apiKey.value = "";
+  if (els.model) els.model.value = "";
+  toggleAdvancedPromptSettings(false);
+  refreshPromptSourcePanels();
+  syncLiveInputCopy();
+  renderLibraryExtractPromptOptions("compliance");
+  renderLibraryExtractPromptOptions("case");
+  updateUploadedFileUi("ts");
+  updateUploadedFileUi("metrics");
+  updateUploadedFileUi("metricsSupplement");
+  drawSpark("homeChart");
+
   const firstAllowedSection = getFirstAllowedSection();
   if (firstAllowedSection) {
     showSec(firstAllowedSection, document.querySelector(`#pg-dashboard .sidebar .nav-item[data-sec="${firstAllowedSection}"]`));
@@ -6841,7 +6857,7 @@ function buildLivePrompt() {
         `六维评分定义：\n${evaluationDimensionText}`,
         `画像与标签输出要求：${ANCHOR_TAG_OUTPUT_GUIDE}`,
         "输出结构固定为：1. 主播画像归类；2. 六维评分总表；3. 关键证据摘录；4. 合规风险清单；5. 结构与节奏分析；6. 互动与转化归因；7. 优先优化建议；8. 下次直播训练动作。",
-        "六维评分总表表头固定为"维度｜分数（满分10）｜评分依据｜关键问题｜优化建议"。",
+        "六维评分总表表头固定为「维度｜分数（满分10）｜评分依据｜关键问题｜优化建议」。",
         "必须引用逐字稿原话作为证据；如果给了直播数据，必须结合数据解释互动和转化表现；不要空泛夸奖。"
       ].join("\n\n")
     : "";
@@ -10952,8 +10968,8 @@ document.getElementById("inp-p").addEventListener("keydown", (e) => {
   if (e.key === "Enter") doLogin();
 });
 
-els.rolePrompt.addEventListener("input", refreshPromptSourcePanels);
-els.systemPrompt.addEventListener("input", refreshPromptSourcePanels);
+els.rolePrompt?.addEventListener("input", refreshPromptSourcePanels);
+els.systemPrompt?.addEventListener("input", refreshPromptSourcePanels);
 els.liveSystemPromptMirror?.addEventListener("input", () => {
   els.systemPrompt.value = els.liveSystemPromptMirror.value;
 });
@@ -10966,7 +10982,7 @@ els.metricsAnchorEnd?.addEventListener("change", () => {
 els.metricsAnchorSelect?.addEventListener("change", (event) => {
   loadMetricsAnchorHistory(event.target.value);
 });
-els.optimizePromptLibraryBtn.addEventListener("click", optimizePromptLibraryWithAi);
+els.optimizePromptLibraryBtn?.addEventListener("click", optimizePromptLibraryWithAi);
 els.rolePresetSelect?.addEventListener("change", (event) => {
   selectRolePresetByKey(event.target.value);
 });
@@ -10986,15 +11002,15 @@ els.caseExtractPromptSelect?.addEventListener("change", (event) => {
   setLibraryExtractPrompt("case", event.target.value);
 });
 
-els.hotInp.addEventListener("keydown", (event) => {
+els.hotInp?.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
     addHot();
   }
 });
 
-els.saveSettingsBtn.addEventListener("click", saveSettings);
-els.refreshUsersBtn.addEventListener("click", loadAdminUsers);
+els.saveSettingsBtn?.addEventListener("click", saveSettings);
+els.refreshUsersBtn?.addEventListener("click", loadAdminUsers);
 els.permissionModalClose?.addEventListener("click", closePermissionModal);
 els.permissionModal?.addEventListener("click", (event) => {
   if (event.target === els.permissionModal) closePermissionModal();
@@ -11032,7 +11048,7 @@ els.adminAiProviders?.addEventListener("change", () => {
   updateAdminDashboardSummary();
 });
 els.aiRewriteComplianceBtn?.addEventListener("click", generateComplianceReplacementWithAi);
-els.adminUsersTable.addEventListener("click", async (event) => {
+els.adminUsersTable?.addEventListener("click", async (event) => {
   const permissionButton = event.target.closest("[data-perm-user]");
   if (permissionButton) {
     await editAdminUserPermissions(permissionButton.dataset.permUser);
@@ -11046,17 +11062,6 @@ document.querySelectorAll('input[name="liveReportType"]').forEach((input) => inp
 
 window.addEventListener("load", async () => {
   initTheme(); // 初始化主题
-  els.apiKey.value = "";
-  els.model.value = "";
-  toggleAdvancedPromptSettings(false);
-  refreshPromptSourcePanels();
-  syncLiveInputCopy();
-  renderLibraryExtractPromptOptions("compliance");
-  renderLibraryExtractPromptOptions("case");
-  updateUploadedFileUi("ts");
-  updateUploadedFileUi("metrics");
-  updateUploadedFileUi("metricsSupplement");
-  drawSpark("homeChart");
   document.querySelectorAll(".toggle").forEach((t) => t.addEventListener("click", () => {
     t.classList.toggle("on");
     showToast(t.classList.contains("on") ? "已开启" : "已关闭");
