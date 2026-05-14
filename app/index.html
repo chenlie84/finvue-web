@@ -347,6 +347,69 @@
   .progress-fill-lg{height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:999px;transition:width .35s ease;}
   .progress-note{margin-top:8px;font-size:12px;color:var(--text2);}
   .score-lbl{font-size:11px;color:var(--text1);margin-top:3px;}
+
+  /* ══ 评分对比报告样式 ══ */
+  .report-shell.style-compare{background:linear-gradient(180deg, rgba(17,19,26,0.98), rgba(13,15,20,0.98));border-radius:24px;padding:36px 40px;}
+  .report-shell.style-compare .report-shell-header{border-bottom-color:#10b981;}
+  .report-shell.style-compare .report-shell-header::after{background:linear-gradient(90deg, transparent, #10b981, transparent);width:96px;}
+  .report-shell.style-compare .report-shell-header h1{border-left:5px solid #10b981;padding-left:20px;text-align:left;}
+  .report-shell.style-compare .report-shell-body{background:rgba(248,250,252,.92);border-radius:14px;padding:26px 24px;}
+  .report-shell.style-compare .report-shell-body h2{border-bottom:2px solid #eef2f7;color:#1e293b;padding-bottom:6px;border-left:none;padding-left:0;}
+  .report-shell.style-compare .report-shell-body h3{color:#2c3e50;}
+  .report-shell.style-compare .report-shell-body p{color:#1a1e2b;line-height:1.6;}
+  .report-shell.style-compare .report-shell-body strong{color:#10b981;}
+  .report-shell.style-compare .report-shell-body table{border-radius:12px;overflow:hidden;border:1px solid #d1fae5;}
+  .report-shell.style-compare .report-shell-body thead th{background:linear-gradient(135deg, #d1fae5, #a7f3d0);color:#065f46;border-bottom:1px solid #a7f3d0;}
+  .report-shell.style-compare .report-shell-body tbody td{border-bottom:1px solid #d1fae5;}
+  .report-shell.style-compare .report-shell-body tbody tr:nth-child(even){background:rgba(209,250,229,.04);}
+  .report-shell.style-compare .report-shell-body tbody tr:hover{background:rgba(209,250,229,.08);}
+  .report-shell.style-compare .insight-box{background:#d1fae5;border-radius:16px;padding:20px 24px;margin:24px 0;border-left:4px solid #10b981;box-shadow:0 2px 8px rgba(16,163,70,0.06);}
+  .report-shell.style-compare .insight-box.warning{background:#fef3c7;border-left-color:#d97706;}
+  .report-shell.style-compare .insight-box.danger{background:#fee2e2;border-left-color:#ef4444;}
+  .report-shell.style-compare .insight-box.progress{background:#e9d5ff;border-left-color:#8b5cf6;}
+  .report-shell.style-compare .quote{background:#fff;border-radius:10px;padding:12px 16px;margin:10px 0;border:1px solid #e3ecf7;font-size:14px;line-height:1.7;}
+  .report-shell.style-compare .quote-good{border-left:3px solid #10b981;}
+  .report-shell.style-compare .quote-bad{border-left:3px solid #ef4444;}
+  .report-shell.style-compare .quote-neutral{border-left:3px solid #94a3b8;}
+  .report-shell.style-compare .stat-card{background:#f8faff;border-radius:14px;padding:16px 20px;margin:12px 0;display:flex;align-items:center;gap:16px;border:1px solid #e2e8f0;}
+  .report-shell.style-compare .stat-number{font-size:32px;font-weight:700;min-width:80px;text-align:center;}
+  .report-shell.style-compare .stat-card.success{background:#d1fae5;border-color:#a7f3d0;}
+  .report-shell.style-compare .stat-card.success .stat-number{color:#10b981;}
+  .report-shell.style-compare .stat-card.danger{background:#fee2e2;border-color:#fecaca;}
+  .report-shell.style-compare .stat-card.danger .stat-number{color:#ef4444;}
+  .report-shell.style-compare .stat-card.purple{background:#e9d5ff;border-color:#d8b4fe;}
+  .report-shell.style-compare .stat-card.purple .stat-number{color:#8b5cf6;}
+  .report-shell.style-compare .stat-card.blue{background:#dbeafe;border-color:#bfdbfe;}
+  .report-shell.style-compare .stat-card.blue .stat-number{color:#1e40af;}
+  .report-shell.style-compare .badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;}
+  .report-shell.style-compare .badge-green{background:#d1fae5;color:#065f46;}
+  .report-shell.style-compare .badge-yellow{background:#fef3c7;color:#92400e;}
+  .report-shell.style-compare .badge-red{background:#fee2e2;color:#991b1b;}
+  .report-shell.style-compare .badge-blue{background:#dbeafe;color:#1e40af;}
+  .report-shell.style-compare .badge-purple{background:#e9d5ff;color:#7c3aed;}
+  .report-shell.style-compare .timeline{display:flex;gap:12px;margin:20px 0;flex-wrap:wrap;}
+  .report-shell.style-compare .timeline-item{flex:1;min-width:140px;background:#f8fafc;border-radius:12px;padding:14px;border:1px solid #e2e8f0;}
+  .report-shell.style-compare .timeline-date{font-size:12px;color:#64748b;margin-bottom:6px;}
+  .report-shell.style-compare .timeline-title{font-weight:600;font-size:14px;margin-bottom:8px;}
+  .report-shell.style-compare .timeline-score{font-size:18px;font-weight:700;}
+  .report-shell.style-compare .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0 24px;}
+  .report-shell.style-compare .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0 24px;}
+  .report-shell.style-compare .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:18px 0 24px;}
+  .report-shell.style-compare .card{background:#f8fafc;border:1px solid #e9edf4;border-radius:12px;padding:15px;}
+  .report-shell.style-compare .card .num{font-size:24px;font-weight:900;color:#10b981;margin-top:4px;}
+  .report-shell.style-compare .card .label{color:#5b6778;font-size:13px;}
+  .report-shell.style-compare .section-box{background:#f8fafc;border-radius:12px;padding:16px;margin:16px 0;border:1px solid #e2e8f0;}
+  .report-shell.style-compare .comparison-box{display:flex;gap:20px;margin:16px 0;}
+  .report-shell.style-compare .comparison-col{flex:1;border-radius:12px;padding:16px;}
+  .report-shell.style-compare .comparison-col.best{background:#d1fae5;border:1px solid #a7f3d0;}
+  .report-shell.style-compare .comparison-col.current{background:#fef3c7;border:1px solid #fde68a;}
+  .report-shell.style-compare .comparison-col.neutral{background:#f8fafc;border:1px solid #e2e8f0;}
+  .report-shell.style-compare .arrow-up{color:#10b981;font-weight:700;}
+  .report-shell.style-compare .arrow-down{color:#ef4444;font-weight:700;}
+  .report-shell.style-compare .arrow-same{color:#64748b;font-weight:700;}
+  .report-shell.style-compare .highlight-green{background:#bbf7d0;padding:2px 6px;border-radius:4px;}
+  .report-shell.style-compare .highlight-purple{background:#e9d5ff;padding:2px 6px;border-radius:4px;}
+  .report-shell.style-compare .highlight-yellow{background:#fef08a;padding:2px 6px;border-radius:4px;}
 </style>
   <link rel="stylesheet" href="/static/modules/anchor-dashboard.css">
 </head>
@@ -469,6 +532,24 @@
               <input type="radio" name="liveReportType" value="newbieInterview" style="accent-color:var(--gold);margin-top:2px;">
               <div><div style="font-size:13px;font-weight:500;">🧑‍💼 新人面试分析</div><div style="font-size:11px;color:var(--text1);">结合简历与面试逐字稿评估胜任力</div></div>
             </label>
+          </div>
+        </div>
+
+        <!-- ══ 报告风格 ══ -->
+        <div class="panel mb">
+          <div class="panel-hd"><div class="panel-title">报告风格</div><div class="muted" style="font-size:12px;">选择输出报告的结构和样式风格</div></div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <select class="sel" id="reportStyleSelect" style="width:100%;" onchange="handleReportStyleChange()">
+              <option value="evaluation">📊 六维评分体系</option>
+              <option value="compare">📈 评分对比报告</option>
+              <option value="comprehensive">📝 综合拆解报告</option>
+              <option value="incubation">🧬 主播孵化报告</option>
+              <option value="compliance">⚠️ 合规专项检测</option>
+              <option value="newbie">🧑‍💼 新人面试分析</option>
+            </select>
+            <div id="reportStyleDesc" class="muted" style="font-size:12px;padding:10px 12px;border:1px solid var(--border2);border-radius:12px;background:var(--bg2);">
+              六维评分、主播画像标签、合规与转化归因三层结果
+            </div>
           </div>
         </div>
 
@@ -2184,7 +2265,146 @@ const TASK_SOURCE_DOCS = {
 - 判断克制、专业、像业务主管和培训负责人联合评估
 - 不要空泛夸奖
 - 不要只写理论，必须能落到训练和带教动作
-- 如果候选人专业基础尚可但直播能力弱，要明确区分“硬技能”和“直播技能”`
+- 如果候选人专业基础尚可但直播能力弱，要明确区分"硬技能"和"直播技能"`
+};
+
+// ══════════════ 报告风格配置 ══════════════
+const REPORT_STYLE_PRESETS = {
+  evaluation: {
+    label: "六维评分体系",
+    description: "六维评分、主播画像标签、合规与转化归因三层结果",
+    styleClass: "", // 默认深色风格
+    taskKey: "evaluation",
+    icon: "📊"
+  },
+  compare: {
+    label: "评分对比报告",
+    description: "历史评分对比、改进轨迹、核心改进分析、可执行性评估",
+    styleClass: "style-compare",
+    taskKey: "evaluation",
+    icon: "📈",
+    extraPrompt: `请按照"评分对比报告"格式输出，包含以下模块：
+
+## 一、历史评分轨迹
+使用 timeline 样式展示历史版本评分变化
+
+## 二、六维度评分对比
+输出对比表格，包含历史版本和当前版本的评分变化
+
+## 三、核心改进
+逐项分析改进点，使用 grid-2 展示对比
+
+## 四、综合评价
+使用 stat-card 展示最终评分和评价
+
+## 五、可执行性评估
+输出可执行性评估表格
+
+输出风格要求：
+- 使用短句，一句话不超过25字
+- 每句判断后面跟原文证据
+- 禁止"首先、其次、最后"、"综上所述"等AI味表达`
+  },
+  comprehensive: {
+    label: "综合拆解报告",
+    description: "六层递进拆解：骨架层→血肉层→价值层→表达层→灵魂层→迁移层",
+    styleClass: "",
+    taskKey: "comprehensive",
+    icon: "📝",
+    extraPrompt: `请按照"财经直播六层递进拆解框架"输出完整分析报告：
+
+### 第一层：骨架层 · 结构拆解
+- 整体结构模型（树干隐喻）
+- 时间分配表
+- 发散-收束节奏分析
+
+### 第二层：血肉层 · 内容拆解
+- 逐段拆解表（时间段|内容标签|原话引用|拆解分析）
+- 话题清单表
+- 论证结构分析
+
+### 第三层：价值层 · 策略拆解
+- 板块扫描模板发现
+- 可执行建议表
+
+### 第四层：表达层 · 话术拆解
+- 四类话术矩阵（互动/情绪/风险/钩子）
+- 高光话术提取
+
+### 第五层：灵魂层 · 风格拆解
+- 风格三标签
+- 人设信号分析
+- 合规边界分析
+
+### 第六层：迁移层 · 模板提取
+- 直播结构SOP
+- 可复用原则
+- 改进建议`
+  },
+  incubation: {
+    label: "主播孵化报告",
+    description: "新人主播深度分析、竞品对标、复制难度排序、起号流程",
+    styleClass: "style-compare",
+    taskKey: "evaluation",
+    icon: "🧬",
+    extraPrompt: `请输出一份"主播孵化分析报告"，严格按照以下七章结构：
+
+### 第一章：新人主播风格深度分析
+- 语速节奏分析（字/分钟数据）
+- 情绪基调分析
+- 内容逻辑结构
+- 互动能力分析
+- 口头禅/高频词汇盘点
+- 优势亮点与核心问题
+
+### 第二章：竞品主播逐字稿深度拆解
+每位竞品主播提供：开场话术/内容结构模板/互动节点/转化引导话术
+
+### 第三章：对标主播匹配与复制难度排序
+从易到难排序，给出"本周可执行任务"
+
+### 第四章：新人主播人设打造方案
+人设定位、账号简介文案、直播间布置建议
+
+### 第五章：起号流程与第一场直播脚本
+第一场直播完整脚本框架（开场词→内容段落→互动节点→结尾引导）
+
+### 第六章：转化效率提升方案
+转化话术模板库
+
+### 第七章：总结与行动优先级
+
+报告规则：
+- 所有分析必须有逐字稿原文佐证
+- 禁止出现没有原文支撑的定性描述`
+  },
+  compliance: {
+    label: "合规专项检测",
+    description: "合规边界专项分析、风险定级、合规改进建议",
+    styleClass: "",
+    taskKey: "risk",
+    icon: "⚠️",
+    extraPrompt: `请对本场直播话术进行合规性审查，按"投顾口径"标准检查。
+
+重点检查：
+- 个股推荐风险
+- 方向推荐风险
+- 操作指令风险
+- 收益承诺风险
+- 市场预测风险
+
+输出格式：
+| 原表达 | 风险类型 | 风险定级 | 说明 | 改进建议 |
+
+风险定级：高风险（明确违规）/ 中风险（灰色地带）/ 低风险（基本安全）/ 安全（完全合规）`
+  },
+  newbie: {
+    label: "新人面试分析",
+    description: "结合简历与面试逐字稿评估胜任力、7天训练计划",
+    styleClass: "",
+    taskKey: "newbie",
+    icon: "🧑‍💼"
+  }
 };
 
 const REPORT_TYPE_META = {
@@ -2225,6 +2445,7 @@ const state = {
   registrationEnabled: false,
   currentRoleKey: "expert",
   currentTaskKey: "evaluation",
+  currentReportStyle: "evaluation", // 当前报告风格
   currentPromptPresetId: "", // 当前选择的预设提示词ID
   promptPresets: [], // 预设提示词列表
   currentCaseEntryId: "",
@@ -3005,6 +3226,8 @@ const els = {
   dashboardHealth: document.getElementById("dashboardHealth"),
   rolePrompt: document.getElementById("rolePrompt"),
   taskPrompt: document.getElementById("taskPrompt"),
+  reportStyleSelect: document.getElementById("reportStyleSelect"),
+  reportStyleDesc: document.getElementById("reportStyleDesc"),
   hotInp: document.getElementById("hotInp"),
   hotTags: document.getElementById("hotTags"),
   tsText: document.getElementById("tsText"),
@@ -5549,9 +5772,12 @@ function buildReportShellHtml(markdown, options = {}) {
   const model = options.model || state.lastAiMeta?.model || "后台路由";
   const footer = options.footer || "报告结构参考抖音插件版式，视觉主题已切换为当前 FinVue 深色稿";
   const badges = Array.isArray(options.badges) ? options.badges.filter(Boolean) : ["本地开发预览", `生成时间 ${stamp}`, `模型 ${model}`];
+  // 获取当前报告风格的样式类
+  const stylePreset = REPORT_STYLE_PRESETS[state.currentReportStyle] || REPORT_STYLE_PRESETS.evaluation;
+  const styleClass = options.styleClass || stylePreset.styleClass || "";
   const bodyHtml = markdownToReportHtml(stripLeadingDuplicateReportTitle(markdown));
   return `
-    <div class="report-shell">
+    <div class="report-shell ${styleClass}">
       <div class="report-shell-header">
         <h1>${escapeInlineHtml(title)}</h1>
         <div class="report-shell-meta">
@@ -5562,6 +5788,46 @@ function buildReportShellHtml(markdown, options = {}) {
       <div class="report-shell-footer">${escapeInlineHtml(footer)}</div>
     </div>
   `;
+}
+
+// ══════════════ 报告风格切换处理 ══════════════
+function handleReportStyleChange() {
+  const styleKey = els.reportStyleSelect?.value || "evaluation";
+  state.currentReportStyle = styleKey;
+  const preset = REPORT_STYLE_PRESETS[styleKey] || REPORT_STYLE_PRESETS.evaluation;
+  // 更新风格描述
+  if (els.reportStyleDesc) {
+    els.reportStyleDesc.textContent = preset.description;
+  }
+  // 同步更新任务类型
+  if (preset.taskKey && preset.taskKey !== state.currentTaskKey) {
+    state.currentTaskKey = preset.taskKey;
+    // 更新任务提示词预设选择
+    const taskSelect = document.getElementById("taskPresetSelect");
+    if (taskSelect) {
+      const matchingOption = taskSelect.querySelector(`option[value="${preset.taskKey}"]`);
+      if (matchingOption) {
+        taskSelect.value = preset.taskKey;
+      }
+    }
+  }
+  // 如果有额外提示词，更新任务提示词内容
+  if (preset.extraPrompt && els.taskPrompt) {
+    const basePrompt = TASK_SOURCE_DOCS[preset.taskKey] || TASK_SOURCE_DOCS.evaluation;
+    els.taskPrompt.value = `${basePrompt}\n\n${preset.extraPrompt}`;
+  }
+  // 更新分析模式（如果风格切换影响分析模式）
+  const reportTypeRadio = document.querySelector(`input[name="liveReportType"][value="${preset.taskKey === "newbie" ? "newbieInterview" : "anchorEvaluation"}"]`);
+  if (reportTypeRadio) {
+    reportTypeRadio.checked = true;
+    // 触发UI更新
+    const options = document.querySelectorAll(".report-mode-option");
+    options.forEach((opt) => {
+      const radio = opt.querySelector("input[type='radio']");
+      opt.classList.toggle("active", radio && radio.checked);
+    });
+  }
+  showToast(`已切换为「${preset.icon} ${preset.label}」风格`);
 }
 
 function sanitizeProgressInsightMarkdown(markdown) {
@@ -6575,10 +6841,13 @@ function buildLivePrompt() {
         `六维评分定义：\n${evaluationDimensionText}`,
         `画像与标签输出要求：${ANCHOR_TAG_OUTPUT_GUIDE}`,
         "输出结构固定为：1. 主播画像归类；2. 六维评分总表；3. 关键证据摘录；4. 合规风险清单；5. 结构与节奏分析；6. 互动与转化归因；7. 优先优化建议；8. 下次直播训练动作。",
-        "六维评分总表表头固定为“维度｜分数（满分10）｜评分依据｜关键问题｜优化建议”。",
+        "六维评分总表表头固定为"维度｜分数（满分10）｜评分依据｜关键问题｜优化建议"。",
         "必须引用逐字稿原话作为证据；如果给了直播数据，必须结合数据解释互动和转化表现；不要空泛夸奖。"
       ].join("\n\n")
     : "";
+  // 获取当前报告风格的额外提示词
+  const stylePreset = REPORT_STYLE_PRESETS[state.currentReportStyle] || REPORT_STYLE_PRESETS.evaluation;
+  const styleExtraPrompt = stylePreset.extraPrompt || "";
 
   return [
     "请严格根据以下唯一提示生成结果，只输出一份最终完整报告，不要重复输出，不要生成第二版，不要在正文后再次重写整份报告。",
@@ -6588,6 +6857,7 @@ function buildLivePrompt() {
     taskPrompt ? `【核心任务】\n${taskPrompt}` : "",
     roleTaskGuidance ? `【角色专项要求】\n${roleTaskGuidance}` : "",
     taskModeHint ? `【任务模式补充】\n${taskModeHint}` : "",
+    styleExtraPrompt ? `【报告风格要求】\n${styleExtraPrompt}` : "",
     anchorEvaluationInstructions ? `【主播评价体系要求】\n${anchorEvaluationInstructions}` : "",
     reportFormat ? `【输出说明】\n${reportFormat}` : "",
     hotTopics ? `【外部热点】\n${hotTopics}` : "",
