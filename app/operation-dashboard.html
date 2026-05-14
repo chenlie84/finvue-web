@@ -306,9 +306,12 @@
 </div>
 
 <script>
-const $ = id => document.getElementById(id);
-const esc = v => String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-const fmt = n => Number(n || 0).toLocaleString('zh-CN');
+function $(id) { return document.getElementById(id); }
+function esc(v) {
+  if (!v) return "";
+  return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+}
+function fmt(n) { return Number(n || 0).toLocaleString("zh-CN"); }
 
 // 主题切换
 function setTheme(theme) {
@@ -900,7 +903,8 @@ function renderAnchorChart(containerId, daily) {
       }
     ]
   };
-        type: 'value',
+  chart.setOption(option);
+}
 
 function renderMonthlyReport(data) {
   const live = data.live || [];
