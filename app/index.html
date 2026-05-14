@@ -4207,17 +4207,14 @@ async function renderTaskPresetButtons() {
   }
 
   if (els.taskPresetSelect) {
-    let options = definitions.map((item) => `
-      <option value="${escapeHtml(item.key)}" ${item.key === state.currentTaskKey ? "selected" : ""}>${escapeHtml(item.label)}${item.builtin ? "" : " · 自定义"}</option>
-    `).join("");
-
-    // 添加预设提示词选项
+    // 只显示预设提示词
+    let options = '<option value="">选择预设提示词...</option>';
     if (state.promptPresets.length > 0) {
-      options += '<optgroup label="预设提示词">';
       options += state.promptPresets.map(p => `
-        <option value="preset:${escapeHtml(p.id)}" ${'preset:' + p.id === state.currentTaskKey ? "selected" : ""}>${escapeHtml(p.name)} · 预设</option>
+        <option value="preset:${escapeHtml(p.id)}" ${'preset:' + p.id === state.currentTaskKey ? "selected" : ""}>${escapeHtml(p.name)}</option>
       `).join("");
-      options += '</optgroup>';
+    } else {
+      options += '<option value="" disabled>暂无预设提示词</option>';
     }
 
     els.taskPresetSelect.innerHTML = options;
