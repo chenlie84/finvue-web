@@ -19,6 +19,15 @@ def _provider_label(provider: dict[str, Any]) -> str:
 
 
 def _extract_text(data: dict[str, Any]) -> str:
+    # 处理 Anthropic 协议响应（非流式）
+    if isinstance(data.get("content"), list):
+        parts: list[str] = []
+        for block in data.get("content") or []:
+            if isinstance(block, dict) and block.get("type") == "text":
+                parts.append(str(block.get("text") or ""))
+        if parts:
+            return "".join(parts)
+
     if isinstance(data.get("output_text"), str):
         return data["output_text"]
     choices = data.get("choices")
@@ -31,23 +40,44 @@ def _extract_text(data: dict[str, Any]) -> str:
             return "".join(str(item.get("text") or "") for item in content if isinstance(item, dict))
     output = data.get("output")
     if isinstance(output, list):
-        parts: list[str] = []
+        parts2: list[str] = []
         for item in output:
             for block in (item or {}).get("content") or []:
                 if isinstance(block, dict):
-                    parts.append(str(block.get("text") or ""))
-        if parts:
-            return "".join(parts)
+                    parts2.append(str(block.get("text") or ""))
+        if parts2:
+            return "".join(parts2)
     return ""
 
 
-def _build_request(provider: dict[str, Any], system_prompt: str, user_prompt: str) -> tuple[str, dict[str, Any]]:
+def _is_anthropic_endpoint(url: str) -> bool:
+    """检测是否是 Anthropic 协议端点."""
+    return "/v1/messages" in url
+
+
+def _build_request(provider: dict[str, Any], system_prompt: str, user_prompt: str) -> tuple[str, dict[str, Any], dict[str, str]]:
     base_url = _text(provider.get("baseUrl") or provider.get("url")).rstrip("/")
     model = _text(provider.get("model"))
     if not base_url:
         raise ValueError("AI 路由缺少 baseUrl")
     if not model:
         raise ValueError("AI 路由缺少 model")
+
+    headers = {"Content-Type": "application/json"}
+
+    # Anthropic 协议（Claude）
+    if _is_anthropic_endpoint(base_url):
+        headers["anthropic-version"] = "2023-06-01"
+        payload = {
+            "model": model,
+            "max_tokens": 4096,
+            "messages": [
+                {"role": "user", "content": f"{system_prompt}\n\n{user_prompt}"},
+            ],
+        }
+        return base_url, payload, headers
+
+    # OpenAI 协议
     if base_url.endswith("/chat/completions"):
         payload = {
             "model": model,
@@ -66,7 +96,7 @@ def _build_request(provider: dict[str, Any], system_prompt: str, user_prompt: st
             ],
             "stream": False,
         }
-    return base_url, payload
+    return base_url, payload, headers
 
 
 def _should_use_proxy(provider: dict[str, Any], url: str) -> bool:
@@ -79,8 +109,7 @@ def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: st
     api_key = _text(provider.get("apiKey") or provider.get("key"))
     if not api_key:
         raise ValueError("AI 路由缺少 API Key")
-    url, payload = _build_request(provider, system_prompt, user_prompt)
-    headers = {"Content-Type": "application/json"}
+    url, payload, headers = _build_request(provider, system_prompt, user_prompt)
     if _text(provider.get("apiKeyPlacement") or "header") == "body":
         payload["api_key"] = api_key
     else:
