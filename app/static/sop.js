@@ -1,3 +1,15 @@
+    // 主题切换
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+      document.getElementById('theme-dark').classList.toggle('active', theme === 'dark');
+      document.getElementById('theme-light').classList.toggle('active', theme === 'light');
+    }
+    function initTheme() {
+      const saved = localStorage.getItem('theme') || 'dark';
+      setTheme(saved);
+    }
+
     const STORE_KEY = "anchor_onboarding_sop_v2";
     const DRAFT_KEY = "anchor_onboarding_sop_draft_v2";
     const DIRTY_KEY = "anchor_onboarding_sop_dirty_v2";  // 未保存的 textarea 脏值（Task 14 用）
@@ -1880,6 +1892,7 @@
     }
 
     window.addEventListener("DOMContentLoaded", async () => {
+      initTheme(); // 初始化主题
       await initCustomOptions();
       await initFromServer();
       loadDraft();

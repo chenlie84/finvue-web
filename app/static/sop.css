@@ -22,6 +22,94 @@
   --shadow: 0 26px 80px rgba(0, 0, 0, 0.34);
 }
 
+/* 浅色主题 */
+[data-theme="light"] {
+  --bg: #F8FAFC;
+  --panel: rgba(255, 255, 255, 0.92);
+  --panel-2: rgba(241, 245, 249, 0.92);
+  --panel-3: rgba(226, 232, 240, 0.72);
+  --line: #E2E8F0;
+  --line-2: #CBD5E1;
+  --text: #1E293B;
+  --muted: #64748B;
+  --muted-2: #94A3B8;
+  --gold: #D97706;
+  --gold-2: #F59E0B;
+  --green: #059669;
+  --blue: #2563EB;
+  --red: #DC2626;
+  --purple: #7C3AED;
+}
+
+[data-theme="light"] body {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(217, 119, 6, 0.08), transparent 24%),
+    radial-gradient(circle at 78% 18%, rgba(37, 99, 235, 0.05), transparent 26%),
+    linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
+}
+
+[data-theme="light"] body::before {
+  background-image:
+    linear-gradient(rgba(217, 119, 6, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(217, 119, 6, 0.02) 1px, transparent 1px);
+}
+
+[data-theme="light"] .sidebar {
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom-color: var(--line);
+}
+
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] .step-note,
+[data-theme="light"] .date-box,
+[data-theme="light"] .anchor-state-box,
+[data-theme="light"] .status-text,
+[data-theme="light"] .summary-cell {
+  background: rgba(241, 245, 249, 0.88);
+  color: var(--text);
+}
+
+[data-theme="light"] .phase-status.current,
+[data-theme="light"] .nav-item:hover,
+[data-theme="light"] .nav-item.active {
+  background: rgba(217, 119, 6, 0.12);
+  border-color: rgba(217, 119, 6, 0.28);
+}
+
+/* 主题切换按钮 */
+.theme-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  display: flex;
+  gap: 8px;
+}
+.theme-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all .2s;
+}
+.theme-btn:hover {
+  background: var(--panel-2);
+  color: var(--gold);
+}
+.theme-btn.active {
+  background: rgba(217, 154, 0, 0.12);
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {

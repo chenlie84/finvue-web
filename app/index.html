@@ -21,6 +21,19 @@
     --font-body:'Outfit',sans-serif;
     --font-mono:'JetBrains Mono',monospace;
   }
+  /* 浅色主题 */
+  [data-theme="light"] {
+    --bg0:#F8FAFC; --bg1:#FFFFFF; --bg2:#F1F5F9; --bg3:#E2E8F0;
+    --border:#E2E8F0; --border2:#CBD5E1;
+    --gold:#D97706; --gold2:#F59E0B; --gold-dim:rgba(217,119,6,0.08);
+    --text0:#1E293B; --text1:#64748B; --text2:#94A3B8;
+    --green:#059669; --red:#DC2626; --blue:#2563EB; --purple:#7C3AED;
+  }
+  /* 主题切换按钮 */
+  .theme-toggle{position:fixed;top:16px;right:16px;z-index:1000;display:flex;gap:8px;}
+  .theme-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--bg1);color:var(--text1);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s;}
+  .theme-btn:hover{background:var(--bg2);color:var(--gold);}
+  .theme-btn.active{background:var(--gold-dim);color:var(--gold);border-color:var(--gold);}
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;background:var(--bg0);color:var(--text0);font-family:var(--font-body);font-size:14px;line-height:1.6;}
   a{color:inherit;text-decoration:none;}
@@ -339,6 +352,11 @@
   <link rel="stylesheet" href="/static/modules/anchor-dashboard.css">
 </head>
 <body>
+<!-- 主题切换按钮 -->
+<div class="theme-toggle">
+  <button class="theme-btn active" id="theme-dark" onclick="setTheme('dark')" title="深色主题">🌙</button>
+  <button class="theme-btn" id="theme-light" onclick="setTheme('light')" title="浅色主题">☀️</button>
+</div>
 
 <!-- ══════════════ LOGIN ══════════════ -->
 <div id="pg-login" class="app-page active" style="align-items:center;justify-content:center;background:var(--bg0);position:relative;overflow:hidden;">
@@ -1708,6 +1726,18 @@
 <div id="toast"></div>
 
 <script>
+// 主题切换
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  document.getElementById('theme-dark').classList.toggle('active', theme === 'dark');
+  document.getElementById('theme-light').classList.toggle('active', theme === 'light');
+}
+function initTheme() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  setTheme(saved);
+}
+
 const PROMPT_PRESETS = {
   risk: "识别直播中所有合规风险点，包括承诺收益、诱导交易、夸大能力等，标注严重程度并提供修改方案。",
   score: "以打分报告输出：总分（100分制）、各维度子项分、亮点3条、优先改进清单，一句话总评。",
@@ -10660,6 +10690,7 @@ els.adminUsersTable.addEventListener("click", async (event) => {
 document.querySelectorAll('input[name="liveReportType"]').forEach((input) => input.addEventListener("change", syncLiveInputCopy));
 
 window.addEventListener("load", async () => {
+  initTheme(); // 初始化主题
   els.apiKey.value = "";
   els.model.value = "";
   toggleAdvancedPromptSettings(false);
