@@ -4199,7 +4199,8 @@ async function renderTaskPresetButtons() {
       const response = await apiFetch("/api/prompts");
       const data = await response.json();
       if (data.ok) {
-        state.promptPresets = data.prompts.filter(p => p.hasContent);
+        // 显示所有 md 文件，不做 hasContent 过滤
+        state.promptPresets = data.prompts || [];
       }
     } catch (e) {
       console.error("获取预设提示词列表失败:", e);
@@ -6170,23 +6171,21 @@ async function fetchPromptPresets() {
     const response = await apiFetch("/api/prompts");
     const data = await response.json();
     if (!data.ok) throw new Error(data.error || "获取预设失败");
-    
+
     const select = document.getElementById('promptPresetSelect');
     if (!select) return;
-    
-    // 清空并重建选项
+
+    // 清空并重建选项（显示所有 md 文件）
     select.innerHTML = '<option value="">加载预设...</option>';
     data.prompts.forEach(p => {
-      if (p.hasContent) {
-        const option = document.createElement('option');
-        option.value = p.id;
-        option.textContent = p.name;
-        select.appendChild(option);
-      }
+      const option = document.createElement('option');
+      option.value = p.id;
+      option.textContent = p.name;
+      select.appendChild(option);
     });
 
     // 更新 state 并重新渲染任务下拉框
-    state.promptPresets = data.prompts.filter(p => p.hasContent);
+    state.promptPresets = data.prompts || [];
     renderTaskPresetButtons();
   } catch (e) {
     console.error("获取提示词预设失败:", e);
