@@ -606,83 +606,89 @@ def get_weekly_report(
     _: dict = Depends(security.require_permission("home"))
 ) -> dict:
     """获取周报数据."""
-    # 默认本周
-    today = datetime.now()
-    if not weekStart:
-        # 计算本周周一
-        week_start = today - timedelta(days=today.weekday())
-        week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
-    else:
-        week_start = datetime.strptime(weekStart, "%Y-%m-%d")
+    try:
+        # 默认本周
+        today = datetime.now()
+        if not weekStart:
+            # 计算本周周一
+            week_start = today - timedelta(days=today.weekday())
+            week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        else:
+            week_start = datetime.strptime(weekStart, "%Y-%m-%d")
 
-    # 周结束时间：下周一0点（包含完整一周数据）
-    week_end = week_start + timedelta(days=7)
+        # 周结束时间：下周一0点（包含完整一周数据）
+        week_end = week_start + timedelta(days=7)
 
-    where_clause = "start_time >= %s AND start_time < %s"
-    params = [week_start.strftime("%Y-%m-%d %H:%M:%S"), week_end.strftime("%Y-%m-%d %H:%M:%S")]
+        where_clause = "start_time >= %s AND start_time < %s"
+        params = [week_start.strftime("%Y-%m-%d %H:%M:%S"), week_end.strftime("%Y-%m-%d %H:%M:%S")]
 
-    if account:
-        where_clause += " AND account = %s"
-        params.append(account)
+        if account:
+            where_clause += " AND account = %s"
+            params.append(account)
 
-    # 直播数据
-    live_rows = db.fetch_all(
-        f"""
-        SELECT account, room_id, title, start_time, duration, pcu, acu,
-               show_ucnt, watch_ucnt, fans_watch_ucnt, non_fans_watch_ucnt,
-               avg_watch_duration, fans_avg_watch_duration, non_fans_avg_watch_duration,
-               follow_ucnt, follow_u_rate
-        FROM finvue_operation_live_stats
-        WHERE {where_clause}
-        ORDER BY account, start_time
-        """,
-        tuple(params)
-    )
+        # 直播数据
+        live_rows = db.fetch_all(
+            f"""
+            SELECT account, room_id, title, start_time, duration, pcu, acu,
+                   show_ucnt, watch_ucnt, fans_watch_ucnt, non_fans_watch_ucnt,
+                   avg_watch_duration, fans_avg_watch_duration, non_fans_avg_watch_duration,
+                   follow_ucnt, follow_u_rate
+            FROM finvue_operation_live_stats
+            WHERE {where_clause}
+            ORDER BY account, start_time
+            """,
+            tuple(params)
+        )
 
-    # 短视频数据
-    video_rows = db.fetch_all(
-        f"""
-        SELECT account, title, publish_time, duration_type, play_count,
-               like_count, completion_rate,
-               `5s_completion_rate` as five_s_completion_rate,
-               `2s_exit_rate` as two_s_exit_rate,
-               interaction_rate, follow_count
-        FROM finvue_operation_video_stats
-        WHERE publish_time >= %s AND publish_time < %s
-        {f"AND account = %s" if account else ""}
-        ORDER BY account, publish_time
-        """,
-        tuple(params)
-    )
+        # 短视频数据
+        video_rows = db.fetch_all(
+            f"""
+            SELECT account, title, publish_time, duration_type, play_count,
+                   like_count, completion_rate,
+                   `5s_completion_rate` as five_s_completion_rate,
+                   `2s_exit_rate` as two_s_exit_rate,
+                   interaction_rate, follow_count
+            FROM finvue_operation_video_stats
+            WHERE publish_time >= %s AND publish_time < %s
+            {f"AND account = %s" if account else ""}
+            ORDER BY account, publish_time
+            """,
+            tuple(params)
+        )
 
-    # 按账号分组
-    accounts_data = {}
-    for row in live_rows or []:
-        acc = row["account"]
-        if acc not in accounts_data:
-            accounts_data[acc] = {"account": acc, "live": [], "video": [], "stats": {"liveCount": 0, "totalFollow": 0}}
-        # 转换 datetime 为字符串
-        if row.get("start_time"):
-            if isinstance(row["start_time"], datetime):
-                row["start_time"] = row["start_time"].strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                row["start_time"] = str(row["start_time"])
-        accounts_data[acc]["live"].append(row)
-        accounts_data[acc]["stats"]["liveCount"] += 1
-        accounts_data[acc]["stats"]["totalFollow"] += int(row.get("follow_ucnt") or 0)
+        # 按账号分组
+        accounts_data = {}
+        for row in live_rows or []:
+            acc = row["account"]
+            if acc not in accounts_data:
+                accounts_data[acc] = {"account": acc, "live": [], "video": [], "stats": {"liveCount": 0, "totalFollow": 0}}
+            # 转换 datetime 为字符串
+            if row.get("start_time"):
+                if isinstance(row["start_time"], datetime):
+                    row["start_time"] = row["start_time"].strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    row["start_time"] = str(row["start_time"])
+            accounts_data[acc]["live"].append(row)
+            accounts_data[acc]["stats"]["liveCount"] += 1
+            accounts_data[acc]["stats"]["totalFollow"] += int(row.get("follow_ucnt") or 0)
 
-    for row in video_rows or []:
-        acc = row["account"]
-        if acc not in accounts_data:
-            accounts_data[acc] = {"account": acc, "live": [], "video": [], "stats": {"liveCount": 0, "totalFollow": 0}}
-        accounts_data[acc]["video"].append(row)
+        for row in video_rows or []:
+            acc = row["account"]
+            if acc not in accounts_data:
+                accounts_data[acc] = {"account": acc, "live": [], "video": [], "stats": {"liveCount": 0, "totalFollow": 0}}
+            accounts_data[acc]["video"].append(row)
 
-    return {
-        "ok": True,
-        "weekStart": week_start.strftime("%Y-%m-%d"),
-        "weekEnd": (week_start + timedelta(days=6)).strftime("%Y-%m-%d"),  # 显示周日
-        "accounts": list(accounts_data.values())
-    }
+        return {
+            "ok": True,
+            "weekStart": week_start.strftime("%Y-%m-%d"),
+            "weekEnd": (week_start + timedelta(days=6)).strftime("%Y-%m-%d"),
+            "accounts": list(accounts_data.values())
+        }
+    except Exception as e:
+        err_msg = str(e)
+        if "doesn't exist" in err_msg.lower() or "1146" in err_msg:
+            return {"ok": True, "accounts": [], "warning": "数据库表尚未初始化"}
+        raise HTTPException(status_code=500, detail=f"查询失败: {err_msg}")
 
 
 @router.get("/api/operation/monthly-report")
@@ -692,143 +698,149 @@ def get_monthly_report(
     _: dict = Depends(security.require_permission("home"))
 ) -> dict:
     """获取月报数据."""
-    if not month:
-        month = datetime.now().strftime("%Y-%m")
+    try:
+        if not month:
+            month = datetime.now().strftime("%Y-%m")
 
-    year, mon = month.split("-")
-    month_start = datetime(int(year), int(mon), 1)
-    if int(mon) == 12:
-        month_end = datetime(int(year) + 1, 1, 1) - timedelta(seconds=1)
-    else:
-        month_end = datetime(int(year), int(mon) + 1, 1) - timedelta(seconds=1)
+        year, mon = month.split("-")
+        month_start = datetime(int(year), int(mon), 1)
+        if int(mon) == 12:
+            month_end = datetime(int(year) + 1, 1, 1) - timedelta(seconds=1)
+        else:
+            month_end = datetime(int(year), int(mon) + 1, 1) - timedelta(seconds=1)
 
-    where_clause = "start_time >= %s AND start_time <= %s"
-    params = [month_start.strftime("%Y-%m-%d %H:%M:%S"), month_end.strftime("%Y-%m-%d %H:%M:%S")]
+        where_clause = "start_time >= %s AND start_time <= %s"
+        params = [month_start.strftime("%Y-%m-%d %H:%M:%S"), month_end.strftime("%Y-%m-%d %H:%M:%S")]
 
-    if account:
-        where_clause += " AND account = %s"
-        params.append(account)
+        if account:
+            where_clause += " AND account = %s"
+            params.append(account)
 
-    # 直播数据
-    live_rows = db.fetch_all(
-        f"""
-        SELECT account, room_id, title, start_time, duration, pcu, acu,
-               show_ucnt, watch_ucnt, fans_watch_ucnt, non_fans_watch_ucnt,
-               avg_watch_duration, fans_avg_watch_duration, non_fans_avg_watch_duration,
-               follow_ucnt, follow_u_rate, earn_score, consume_ucnt
-        FROM finvue_operation_live_stats
-        WHERE {where_clause}
-        ORDER BY account, start_time
-        """,
-        tuple(params)
-    )
+        # 直播数据
+        live_rows = db.fetch_all(
+            f"""
+            SELECT account, room_id, title, start_time, duration, pcu, acu,
+                   show_ucnt, watch_ucnt, fans_watch_ucnt, non_fans_watch_ucnt,
+                   avg_watch_duration, fans_avg_watch_duration, non_fans_avg_watch_duration,
+                   follow_ucnt, follow_u_rate, earn_score, consume_ucnt
+            FROM finvue_operation_live_stats
+            WHERE {where_clause}
+            ORDER BY account, start_time
+            """,
+            tuple(params)
+        )
 
-    # 短视频数据
-    video_rows = db.fetch_all(
-        f"""
-        SELECT account, title, publish_time, duration_type, play_count,
-               like_count, completion_rate,
-               `5s_completion_rate` as five_s_completion_rate,
-               `2s_exit_rate` as two_s_exit_rate,
-               interaction_rate, follow_count
-        FROM finvue_operation_video_stats
-        WHERE publish_time >= %s AND publish_time < %s
-        {f"AND account = %s" if account else ""}
-        ORDER BY account, publish_time
-        """,
-        tuple(params)
-    )
+        # 短视频数据
+        video_rows = db.fetch_all(
+            f"""
+            SELECT account, title, publish_time, duration_type, play_count,
+                   like_count, completion_rate,
+                   `5s_completion_rate` as five_s_completion_rate,
+                   `2s_exit_rate` as two_s_exit_rate,
+                   interaction_rate, follow_count
+            FROM finvue_operation_video_stats
+            WHERE publish_time >= %s AND publish_time < %s
+            {f"AND account = %s" if account else ""}
+            ORDER BY account, publish_time
+            """,
+            tuple(params)
+        )
 
-    # 转换 datetime 为字符串
-    for row in live_rows or []:
-        if row.get("start_time"):
-            if isinstance(row["start_time"], datetime):
-                row["start_time"] = row["start_time"].strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                row["start_time"] = str(row["start_time"])
+        # 转换 datetime 为字符串
+        for row in live_rows or []:
+            if row.get("start_time"):
+                if isinstance(row["start_time"], datetime):
+                    row["start_time"] = row["start_time"].strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    row["start_time"] = str(row["start_time"])
 
-    for row in video_rows or []:
-        if row.get("publish_time"):
-            if isinstance(row["publish_time"], datetime):
-                row["publish_time"] = row["publish_time"].strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                row["publish_time"] = str(row["publish_time"])
+        for row in video_rows or []:
+            if row.get("publish_time"):
+                if isinstance(row["publish_time"], datetime):
+                    row["publish_time"] = row["publish_time"].strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    row["publish_time"] = str(row["publish_time"])
 
-    # 历史分月统计
-    history_rows = db.fetch_all(
-        f"""
-        SELECT account, DATE_FORMAT(start_time, '%%Y-%%m') as month,
-               COUNT(*) as live_count,
-               AVG(acu) as avg_acu,
-               AVG(watch_ucnt) as avg_watch,
-               AVG(fans_watch_ucnt) as avg_fans_watch,
-               AVG(non_fans_watch_ucnt) as avg_non_fans_watch,
-               AVG(avg_watch_duration) as avg_duration,
-               AVG(fans_avg_watch_duration) as avg_fans_duration,
-               AVG(non_fans_avg_watch_duration) as avg_non_fans_duration,
-               SUM(follow_ucnt) as total_follow
-        FROM finvue_operation_live_stats
-        {f"WHERE account = %s" if account else ""}
-        GROUP BY account, DATE_FORMAT(start_time, '%%Y-%%m')
-        ORDER BY account, month DESC
-        """,
-        tuple([account] if account else [])
-    )
+        # 历史分月统计
+        history_rows = db.fetch_all(
+            f"""
+            SELECT account, DATE_FORMAT(start_time, '%%Y-%%m') as month,
+                   COUNT(*) as live_count,
+                   AVG(acu) as avg_acu,
+                   AVG(watch_ucnt) as avg_watch,
+                   AVG(fans_watch_ucnt) as avg_fans_watch,
+                   AVG(non_fans_watch_ucnt) as avg_non_fans_watch,
+                   AVG(avg_watch_duration) as avg_duration,
+                   AVG(fans_avg_watch_duration) as avg_fans_duration,
+                   AVG(non_fans_avg_watch_duration) as avg_non_fans_duration,
+                   SUM(follow_ucnt) as total_follow
+            FROM finvue_operation_live_stats
+            {f"WHERE account = %s" if account else ""}
+            GROUP BY account, DATE_FORMAT(start_time, '%%Y-%%m')
+            ORDER BY account, month DESC
+            """,
+            tuple([account] if account else [])
+        )
 
-    # 累计场次统计
-    total_rows = db.fetch_all(
-        f"""
-        SELECT account, COUNT(*) as total_live_count
-        FROM finvue_operation_live_stats
-        {f"WHERE account = %s" if account else ""}
-        GROUP BY account
-        """,
-        tuple([account] if account else [])
-    )
+        # 累计场次统计
+        total_rows = db.fetch_all(
+            f"""
+            SELECT account, COUNT(*) as total_live_count
+            FROM finvue_operation_live_stats
+            {f"WHERE account = %s" if account else ""}
+            GROUP BY account
+            """,
+            tuple([account] if account else [])
+        )
 
-    # 当月每日在线人数统计（按主播分组，用于折线图）
-    daily_rows_by_anchor = db.fetch_all(
-        f"""
-        SELECT account, DATE(start_time) as day,
-               AVG(acu) as avg_acu,
-               MAX(pcu) as max_pcu,
-               COUNT(*) as live_count,
-               AVG(avg_watch_duration) as avg_duration,
-               AVG(fans_avg_watch_duration) as fans_avg_duration,
-               AVG(non_fans_avg_watch_duration) as non_fans_avg_duration
-        FROM finvue_operation_live_stats
-        WHERE {where_clause}
-        GROUP BY account, DATE(start_time)
-        ORDER BY account, day
-        """,
-        tuple(params)
-    )
+        # 当月每日在线人数统计（按主播分组，用于折线图）
+        daily_rows_by_anchor = db.fetch_all(
+            f"""
+            SELECT account, DATE(start_time) as day,
+                   AVG(acu) as avg_acu,
+                   MAX(pcu) as max_pcu,
+                   COUNT(*) as live_count,
+                   AVG(avg_watch_duration) as avg_duration,
+                   AVG(fans_avg_watch_duration) as fans_avg_duration,
+                   AVG(non_fans_avg_watch_duration) as non_fans_avg_duration
+            FROM finvue_operation_live_stats
+            WHERE {where_clause}
+            GROUP BY account, DATE(start_time)
+            ORDER BY account, day
+            """,
+            tuple(params)
+        )
 
-    # 按主播组织每日数据（包含在线人数和停留时长）
-    daily_by_anchor = {}
-    for row in daily_rows_by_anchor or []:
-        acc = row["account"] or "未知主播"
-        if acc not in daily_by_anchor:
-            daily_by_anchor[acc] = []
-        daily_by_anchor[acc].append({
-            "day": str(row["day"]),
-            "avg_acu": float(row["avg_acu"] or 0),
-            "max_pcu": int(row["max_pcu"] or 0),
-            "live_count": int(row["live_count"] or 0),
-            "avg_duration": round(float(row["avg_duration"] or 0), 1),
-            "fans_avg_duration": round(float(row["fans_avg_duration"] or 0), 1),
-            "non_fans_avg_duration": round(float(row["non_fans_avg_duration"] or 0), 1)
-        })
+        # 按主播组织每日数据（包含在线人数和停留时长）
+        daily_by_anchor = {}
+        for row in daily_rows_by_anchor or []:
+            acc = row["account"] or "未知主播"
+            if acc not in daily_by_anchor:
+                daily_by_anchor[acc] = []
+            daily_by_anchor[acc].append({
+                "day": str(row["day"]),
+                "avg_acu": float(row["avg_acu"] or 0),
+                "max_pcu": int(row["max_pcu"] or 0),
+                "live_count": int(row["live_count"] or 0),
+                "avg_duration": round(float(row["avg_duration"] or 0), 1),
+                "fans_avg_duration": round(float(row["fans_avg_duration"] or 0), 1),
+                "non_fans_avg_duration": round(float(row["non_fans_avg_duration"] or 0), 1)
+            })
 
-    return {
-        "ok": True,
-        "month": month,
-        "live": live_rows or [],
-        "video": video_rows or [],
-        "history": history_rows or [],
-        "totals": total_rows or [],
-        "daily_by_anchor": daily_by_anchor
-    }
+        return {
+            "ok": True,
+            "month": month,
+            "live": live_rows or [],
+            "video": video_rows or [],
+            "history": history_rows or [],
+            "totals": total_rows or [],
+            "daily_by_anchor": daily_by_anchor
+        }
+    except Exception as e:
+        err_msg = str(e)
+        if "doesn't exist" in err_msg.lower() or "1146" in err_msg:
+            return {"ok": True, "live": [], "video": [], "warning": "数据库表尚未初始化"}
+        raise HTTPException(status_code=500, detail=f"查询失败: {err_msg}")
 
 
 @router.get("/api/operation/calendar")

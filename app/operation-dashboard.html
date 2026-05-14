@@ -579,28 +579,45 @@ function initMonthSelector() {
 async function loadWeeklyReport() {
   const weekOffset = $('week-selector').value || '0';
   const account = $('weekly-account-filter').value;
-  
+
   const today = new Date();
   const weekStart = new Date(today);
   weekStart.setDate(today.getDate() - today.getDay() + 1 + parseInt(weekOffset));
   const weekStartStr = weekStart.toISOString().split('T')[0];
-  
+
+  $('weekly-content').innerHTML = '<div class="panel"><div class="empty">正在加载周报数据...</div></div>';
+
   try {
     const params = new URLSearchParams();
     if (account) params.set('account', account);
     params.set('weekStart', weekStartStr);
+
+    const res = await fetchWithTimeout('/api/operation/weekly-report?' + params, { credentials: 'include' }, 15000);
     
-    const res = await fetch('/api/operation/weekly-report?' + params, { credentials: 'include' });
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`HTTP ${res.status}: ${text.slice(0,100)}`);
+      let errMsg = `HTTP ${res.status}`;
+      try {
+        const text = await res.text();
+        const json = JSON.parse(text);
+        errMsg = json.detail || json.error || errMsg;
+      } catch {}
+      if (res.status === 401) {
+        $('weekly-content').innerHTML = '<div class="panel"><div class="empty">未登录，<a href="/index.html" style="color:var(--gold);">点击登录</a></div></div>';
+        return;
+      }
+      throw new Error(errMsg);
     }
+    
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || '获取周报失败');
-    
+
     renderWeeklyReport(data);
   } catch (e) {
-    $('weekly-content').innerHTML = `<div class="panel"><div class="empty">${esc(e.message)}</div></div>`;
+    let errMsg = e.message || '未知错误';
+    if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
+      errMsg = '网络连接失败';
+    }
+    $('weekly-content').innerHTML = `<div class="panel"><div class="empty" style="color:var(--red);">${esc(errMsg)}</div></div>`;
   }
 }
 
@@ -730,23 +747,46 @@ async function deleteWeeklyLive(roomId) {
 async function loadMonthlyReport() {
   const month = $('month-selector').value;
   const account = $('monthly-account-filter').value;
-  
+
+  $('monthly-content').innerHTML = '<div class="panel"><div class="empty">正在加载月报数据...</div></div>';
+
   try {
     const params = new URLSearchParams();
     params.set('month', month);
     if (account) params.set('account', account);
+
+    const res = await fetchWithTimeout('/api/operation/monthly-report?' + params, { credentials: 'include' }, 15000);
     
-    const res = await fetch('/api/operation/monthly-report?' + params, { credentials: 'include' });
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`HTTP ${res.status}: ${text.slice(0,100)}`);
+      let errMsg = `HTTP ${res.status}`;
+      try {
+        const text = await res.text();
+        const json = JSON.parse(text);
+        errMsg = json.detail || json.error || errMsg;
+      } catch {}
+      if (res.status === 401) {
+        $('monthly-content').innerHTML = '<div class="panel"><div class="empty">未登录，<a href="/index.html" style="color:var(--gold);">点击登录</a></div></div>';
+        return;
+      }
+      throw new Error(errMsg);
     }
+    
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || '获取月报失败');
-    
+
+    // 显示警告信息
+    if (data.warning) {
+      $('monthly-content').innerHTML = `<div class="panel"><div class="empty">${esc(data.warning)}</div></div>`;
+      return;
+    }
+
     renderMonthlyReport(data);
   } catch (e) {
-    $('monthly-content').innerHTML = `<div class="panel"><div class="empty">${esc(e.message)}</div></div>`;
+    let errMsg = e.message || '未知错误';
+    if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
+      errMsg = '网络连接失败';
+    }
+    $('monthly-content').innerHTML = `<div class="panel"><div class="empty" style="color:var(--red);">${esc(errMsg)}</div></div>`;
   }
 }
 
@@ -1062,6 +1102,7 @@ async function loadCalendar() {
   const month = calendarDate.getMonth();
 
   $('calendar-month-label').textContent = `${year}年${month + 1}月`;
+  $('calendar-grid').innerHTML = '<div class="empty" style="grid-column:span 7;">正在加载日历数据...</div>';
 
   try {
     const params = new URLSearchParams();
@@ -1069,17 +1110,32 @@ async function loadCalendar() {
     params.set('month', month + 1);
     if (account) params.set('account', account);
 
-    const res = await fetch('/api/operation/calendar?' + params, { credentials: 'include' });
+    const res = await fetchWithTimeout('/api/operation/calendar?' + params, { credentials: 'include' }, 15000);
+    
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`HTTP ${res.status}: ${text.slice(0,100)}`);
+      let errMsg = `HTTP ${res.status}`;
+      try {
+        const text = await res.text();
+        const json = JSON.parse(text);
+        errMsg = json.detail || json.error || errMsg;
+      } catch {}
+      if (res.status === 401) {
+        $('calendar-grid').innerHTML = '<div class="empty" style="grid-column:span 7;">未登录，<a href="/index.html" style="color:var(--gold);">点击登录</a></div>';
+        return;
+      }
+      throw new Error(errMsg);
     }
+    
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || '获取日历失败');
 
     renderCalendar(data, year, month);
   } catch (e) {
-    $('calendar-grid').innerHTML = `<div class="empty" style="grid-column:span 7;">${esc(e.message)}</div>`;
+    let errMsg = e.message || '未知错误';
+    if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
+      errMsg = '网络连接失败';
+    }
+    $('calendar-grid').innerHTML = `<div class="empty" style="grid-column:span 7;color:var(--red);">${esc(errMsg)}</div>`;
   }
 }
 
