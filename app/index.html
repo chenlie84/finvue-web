@@ -2225,6 +2225,8 @@ const state = {
   registrationEnabled: false,
   currentRoleKey: "expert",
   currentTaskKey: "evaluation",
+  currentPromptPresetId: "", // 当前选择的预设提示词ID
+  promptPresets: [], // 预设提示词列表
   currentCaseEntryId: "",
   currentComplianceEntryId: "",
   currentTranscriptEntryId: "",
@@ -4188,12 +4190,37 @@ function renderRolePresetButtons() {
   }
 }
 
-function renderTaskPresetButtons() {
+async function renderTaskPresetButtons() {
   const definitions = Object.values(getTaskDefinitions());
+
+  // 如果没有预设数据，先获取
+  if (state.promptPresets.length === 0) {
+    try {
+      const response = await apiFetch("/api/prompts");
+      const data = await response.json();
+      if (data.ok) {
+        state.promptPresets = data.prompts.filter(p => p.hasContent);
+      }
+    } catch (e) {
+      console.error("获取预设提示词列表失败:", e);
+    }
+  }
+
   if (els.taskPresetSelect) {
-    els.taskPresetSelect.innerHTML = definitions.map((item) => `
+    let options = definitions.map((item) => `
       <option value="${escapeHtml(item.key)}" ${item.key === state.currentTaskKey ? "selected" : ""}>${escapeHtml(item.label)}${item.builtin ? "" : " · 自定义"}</option>
     `).join("");
+
+    // 添加预设提示词选项
+    if (state.promptPresets.length > 0) {
+      options += '<optgroup label="预设提示词">';
+      options += state.promptPresets.map(p => `
+        <option value="preset:${escapeHtml(p.id)}" ${'preset:' + p.id === state.currentTaskKey ? "selected" : ""}>${escapeHtml(p.name)} · 预设</option>
+      `).join("");
+      options += '</optgroup>';
+    }
+
+    els.taskPresetSelect.innerHTML = options;
   }
   if (els.taskPresetList) {
     els.taskPresetList.innerHTML = definitions.map((item) => `
@@ -4209,10 +4236,53 @@ function setTask(key, button) {
   setTaskByKey(key);
 }
 
-function setTaskByKey(key) {
+async function setTaskByKey(key) {
+  // 处理预设提示词选择
+  if (key.startsWith('preset:')) {
+    const presetId = key.replace('preset:', '');
+    state.currentTaskKey = key;
+    state.currentPromptPresetId = presetId;
+
+    // 加载预设提示词内容
+    try {
+      const response = await apiFetch(`/api/prompts/${presetId}`);
+      const data = await response.json();
+      if (data.ok) {
+        const prompt = data.prompt;
+        // 填充系统提示词和任务提示词
+        if (els.systemPrompt && prompt.content) {
+          els.systemPrompt.value = prompt.content;
+          els.liveSystemPromptMirror.value = prompt.content;
+        }
+        if (els.taskPrompt && prompt.taskPrompt) {
+          els.taskPrompt.value = prompt.taskPrompt;
+        }
+        // 显示预设名称
+        const presetNameEl = document.getElementById('promptPresetName');
+        if (presetNameEl) {
+          presetNameEl.textContent = prompt.name;
+          presetNameEl.style.display = 'inline-flex';
+        }
+        showToast(`已加载预设：${prompt.name}`);
+      }
+    } catch (e) {
+      showToast("加载预设失败: " + e.message);
+    }
+
+    renderTaskPresetButtons();
+    return;
+  }
+
+  // 处理普通任务类型选择
   state.currentTaskKey = key;
+  state.currentPromptPresetId = "";
   const taskDefinition = getTaskDefinition(key);
   els.taskPrompt.value = taskDefinition.prompt || TASK_SOURCE_DOCS.evaluation;
+
+  // 清除预设名称显示
+  const presetNameEl = document.getElementById('promptPresetName');
+  if (presetNameEl) presetNameEl.style.display = 'none';
+
   refreshPromptSourcePanels();
   renderTaskPresetButtons();
   if (key === "evaluation") {
@@ -6112,6 +6182,10 @@ async function fetchPromptPresets() {
         select.appendChild(option);
       }
     });
+
+    // 更新 state 并重新渲染任务下拉框
+    state.promptPresets = data.prompts.filter(p => p.hasContent);
+    renderTaskPresetButtons();
   } catch (e) {
     console.error("获取提示词预设失败:", e);
   }
@@ -6121,19 +6195,27 @@ async function loadPromptPreset() {
   const select = document.getElementById('promptPresetSelect');
   const presetId = select?.value;
   if (!presetId) return;
-  
+
   try {
     const response = await apiFetch(`/api/prompts/${presetId}`);
     const data = await response.json();
     if (!data.ok) throw new Error(data.error || "获取提示词失败");
-    
+
     const prompt = data.prompt;
     // 填充系统提示词
     if (els.systemPrompt && prompt.content) {
       els.systemPrompt.value = prompt.content;
       els.liveSystemPromptMirror.value = prompt.content;
     }
-    
+    // 填充任务提示词
+    if (els.taskPrompt && prompt.taskPrompt) {
+      els.taskPrompt.value = prompt.taskPrompt;
+    }
+
+    // 更新当前任务为预设
+    state.currentTaskKey = 'preset:' + presetId;
+    state.currentPromptPresetId = presetId;
+
     // 显示预设名称
     const presetNameEl = document.getElementById('promptPresetName');
     const presetDescEl = document.getElementById('promptPresetDesc');
@@ -6144,11 +6226,14 @@ async function loadPromptPreset() {
     if (presetDescEl) {
       presetDescEl.textContent = prompt.description || '';
     }
-    
+
     showToast(`已加载提示词预设：${prompt.name}`);
-    
+
     // 自动保存预设选择
     await savePromptPresetSelection(presetId);
+
+    // 更新任务下拉框选中状态
+    renderTaskPresetButtons();
   } catch (e) {
     showToast("加载预设失败: " + e.message);
   }
