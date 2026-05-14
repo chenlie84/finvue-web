@@ -1471,6 +1471,18 @@
           <div class="panel">
             <div class="panel-hd"><div class="panel-title">分析配置</div></div>
             <div style="display:flex;flex-direction:column;gap:10px;">
+              <!-- 提示词预设选择器 -->
+              <div style="background:var(--bg2);padding:12px;border-radius:var(--r);border:1px solid var(--border);">
+                <div class="lbl" style="margin-bottom:8px;">提示词预设</div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  <select id="promptPresetSelect" class="sel" style="min-width:180px;" onchange="loadPromptPreset()">
+                    <option value="">加载预设...</option>
+                  </select>
+                  <button class="btn btn-outline" style="font-size:12px;padding:6px 12px;" onclick="fetchPromptPresets()">刷新预设列表</button>
+                  <span id="promptPresetName" class="badge gold" style="display:none;"></span>
+                </div>
+                <div id="promptPresetDesc" class="muted" style="font-size:11px;margin-top:8px;"></div>
+              </div>
               <div class="lbl">当前角色默认稿</div>
               <textarea class="textarea" id="anchorRolePrompt" rows="4" placeholder="主播角色设定"></textarea>
               <div class="lbl">系统提示词</div>
@@ -6016,6 +6028,23 @@ async function loadSettings() {
     els.taskPrompt.value = currentLibrary.userPrompt || TASK_SOURCE_DOCS[state.currentTaskKey] || els.taskPrompt.value;
     if (els.anchorRolePrompt) els.anchorRolePrompt.value = els.rolePrompt.value;
     if (els.userPrompt) els.userPrompt.value = els.taskPrompt.value;
+    
+    // 显示当前提示词预设
+    if (settings.promptPreset && settings.promptPresetName) {
+      const presetSelect = document.getElementById('promptPresetSelect');
+      const presetNameEl = document.getElementById('promptPresetName');
+      const presetDescEl = document.getElementById('promptPresetDesc');
+      if (presetSelect) presetSelect.value = settings.promptPreset;
+      if (presetNameEl) {
+        presetNameEl.textContent = settings.promptPresetName;
+        presetNameEl.style.display = 'inline-flex';
+      }
+      if (presetDescEl) presetDescEl.textContent = '当前使用预设提示词，切换预设会覆盖系统提示词内容';
+    }
+    
+    // 加载预设列表
+    fetchPromptPresets();
+    
     renderRolePresetButtons();
     renderTaskPresetButtons();
     refreshPromptSourcePanels();
@@ -6031,6 +6060,83 @@ async function loadSettings() {
     }
   } catch (error) {
     if (isAdmin()) els.adminStatus.textContent = error.message;
+  }
+}
+
+// 提示词预设相关函数
+async function fetchPromptPresets() {
+  try {
+    const response = await apiFetch("/api/prompts");
+    const data = await response.json();
+    if (!data.ok) throw new Error(data.error || "获取预设失败");
+    
+    const select = document.getElementById('promptPresetSelect');
+    if (!select) return;
+    
+    // 清空并重建选项
+    select.innerHTML = '<option value="">加载预设...</option>';
+    data.prompts.forEach(p => {
+      if (p.hasContent) {
+        const option = document.createElement('option');
+        option.value = p.id;
+        option.textContent = p.name;
+        select.appendChild(option);
+      }
+    });
+  } catch (e) {
+    console.error("获取提示词预设失败:", e);
+  }
+}
+
+async function loadPromptPreset() {
+  const select = document.getElementById('promptPresetSelect');
+  const presetId = select?.value;
+  if (!presetId) return;
+  
+  try {
+    const response = await apiFetch(`/api/prompts/${presetId}`);
+    const data = await response.json();
+    if (!data.ok) throw new Error(data.error || "获取提示词失败");
+    
+    const prompt = data.prompt;
+    // 填充系统提示词
+    if (els.systemPrompt && prompt.content) {
+      els.systemPrompt.value = prompt.content;
+      els.liveSystemPromptMirror.value = prompt.content;
+    }
+    
+    // 显示预设名称
+    const presetNameEl = document.getElementById('promptPresetName');
+    const presetDescEl = document.getElementById('promptPresetDesc');
+    if (presetNameEl) {
+      presetNameEl.textContent = prompt.name;
+      presetNameEl.style.display = 'inline-flex';
+    }
+    if (presetDescEl) {
+      presetDescEl.textContent = prompt.description || '';
+    }
+    
+    showToast(`已加载提示词预设：${prompt.name}`);
+    
+    // 自动保存预设选择
+    await savePromptPresetSelection(presetId);
+  } catch (e) {
+    showToast("加载预设失败: " + e.message);
+  }
+}
+
+async function savePromptPresetSelection(presetId) {
+  try {
+    const response = await apiFetch("/api/settings/prompt", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ presetId })
+    });
+    const data = await response.json();
+    if (!data.ok) throw new Error(data.error || "保存失败");
+    state.globalSettings = data.settings;
+  } catch (e) {
+    console.error("保存预设选择失败:", e);
   }
 }
 
