@@ -5128,6 +5128,7 @@ function normalizeAiProviderDraft(item = {}, index = 0) {
     model: String(item.model || ""),
     enabled: item.enabled !== false,
     priority: Number.isFinite(Number(item.priority)) ? Number(item.priority) : index + 1,
+    apiFormat: String(item.apiFormat || "finvue"),
     apiKeyPlacement: String(item.apiKeyPlacement || "header"),
     useProxy: item.useProxy === undefined ? true : Boolean(item.useProxy)
   };
