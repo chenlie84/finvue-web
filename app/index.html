@@ -5175,7 +5175,12 @@ function renderAdminAiProviders() {
         <input class="inp" data-ai-provider-key="${item.id}" type="password" value="${escapeHtml(item.apiKey)}" placeholder="API Key">
       </div>
       <input class="inp" data-ai-provider-base="${item.id}" value="${escapeHtml(item.baseUrl)}" placeholder="上游地址" style="margin-bottom:10px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+        <select class="sel" data-ai-provider-format="${item.id}">
+          <option value="finvue" ${item.apiFormat !== "openai" && item.apiFormat !== "anthropic" ? "selected" : ""}>FinVue 格式</option>
+          <option value="openai" ${item.apiFormat === "openai" ? "selected" : ""}>OpenAI (/v1/chat/completions)</option>
+          <option value="anthropic" ${item.apiFormat === "anthropic" ? "selected" : ""}>Anthropic (/v1/messages)</option>
+        </select>
         <select class="sel" data-ai-provider-key-placement="${item.id}">
           <option value="header" ${item.apiKeyPlacement !== "body" ? "selected" : ""}>Key 放 Header</option>
           <option value="body" ${item.apiKeyPlacement === "body" ? "selected" : ""}>Key 放 Body(api_key)</option>
@@ -5200,6 +5205,7 @@ function collectAiProvidersFromUi() {
     model: String(document.querySelector(`[data-ai-provider-model="${CSS.escape(item.id)}"]`)?.value || item.model).trim(),
     enabled: Boolean(document.querySelector(`[data-ai-provider-enabled="${CSS.escape(item.id)}"]`)?.checked),
     priority: Number(document.querySelector(`[data-ai-provider-priority="${CSS.escape(item.id)}"]`)?.value || item.priority || index + 1),
+    apiFormat: String(document.querySelector(`[data-ai-provider-format="${CSS.escape(item.id)}"]`)?.value || item.apiFormat || "finvue"),
     apiKeyPlacement: String(document.querySelector(`[data-ai-provider-key-placement="${CSS.escape(item.id)}"]`)?.value || item.apiKeyPlacement || "header"),
     useProxy: Boolean(document.querySelector(`[data-ai-provider-proxy="${CSS.escape(item.id)}"]`)?.checked)
   }));

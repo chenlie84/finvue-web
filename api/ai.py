@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -14,6 +15,144 @@ from services import object_storage
 
 
 router = APIRouter()
+
+
+# ══════════════ 兼容 API 端点 ══════════════
+
+@router.post("/v1/chat/completions")
+async def openai_compatible_chat(request: Request) -> dict[str, Any]:
+    """OpenAI 兼容的 Chat Completions API"""
+    body = await request.json()
+
+    # 提取 messages
+    messages = body.get("messages", [])
+    if not messages:
+        raise HTTPException(status_code=400, detail="messages is required")
+
+    # 提取 system prompt
+    system_prompt = ""
+    filtered_messages = []
+    for msg in messages:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        if role == "system":
+            system_prompt = content
+        else:
+            filtered_messages.append(msg)
+
+    # 合并 user messages 为 user_prompt
+    user_prompt = "\n".join(str(msg.get("content", "")) for msg in filtered_messages if msg.get("role") == "user")
+
+    # 构建 FinVue 格式的 payload
+    payload = {
+        "systemPrompt": system_prompt,
+        "userPrompt": user_prompt,
+        "model": body.get("model", ""),
+    }
+
+    # 检查是否有内联 API Key
+    if body.get("apiKey"):
+        payload["apiKey"] = body.get("apiKey")
+    if body.get("baseUrl"):
+        payload["baseUrl"] = body.get("baseUrl")
+
+    try:
+        result = ai_router.generate(payload)
+        return {
+            "id": f"chatcmpl-{hash(user_prompt) % 1000000}",
+            "object": "chat.completion",
+            "created": int(__import__("time").time()),
+            "model": body.get("model", "unknown"),
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": result.get("markdown", "")
+                    },
+                    "finish_reason": "stop"
+                }
+            ],
+            "usage": {
+                "prompt_tokens": len(system_prompt + user_prompt) // 4,
+                "completion_tokens": len(result.get("markdown", "")) // 4,
+                "total_tokens": (len(system_prompt + user_prompt) + len(result.get("markdown", ""))) // 4
+            }
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post("/v1/messages")
+async def anthropic_compatible_messages(request: Request) -> dict[str, Any]:
+    """Anthropic 兼容的 Messages API"""
+    body = await request.json()
+
+    # 提取 model
+    model = body.get("model", "claude-sonnet-4-20250514")
+
+    # 提取 system prompt
+    system_prompt = body.get("system", "")
+
+    # 提取 messages
+    messages = body.get("messages", [])
+    if not messages:
+        raise HTTPException(status_code=400, detail="messages is required")
+
+    # 构建 user prompt（Anthropic 格式：消息可能是 content 数组）
+    user_prompt_parts = []
+    for msg in messages:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        if isinstance(content, list):
+            # 处理多模态内容（简化处理，只取 text）
+            for item in content:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    user_prompt_parts.append(str(item.get("text", "")))
+        else:
+            user_prompt_parts.append(str(content))
+
+    user_prompt = "\n".join(user_prompt_parts)
+
+    # 构建 FinVue 格式的 payload
+    payload = {
+        "systemPrompt": system_prompt,
+        "userPrompt": user_prompt,
+        "model": model,
+    }
+
+    # 检查是否有内联 API Key
+    if body.get("api_key"):
+        payload["apiKey"] = body.get("api_key")
+    if body.get("base_url"):
+        payload["baseUrl"] = body.get("base_url")
+
+    # Anthropic 需要 max_tokens
+    max_tokens = body.get("max_tokens", 4096)
+
+    try:
+        result = ai_router.generate(payload)
+        markdown = result.get("markdown", "")
+
+        return {
+            "id": f"msg_{hash(user_prompt) % 1000000}",
+            "type": "message",
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "text",
+                    "text": markdown
+                }
+            ],
+            "model": model,
+            "stop_reason": "end_turn",
+            "usage": {
+                "input_tokens": len(system_prompt + user_prompt) // 4,
+                "output_tokens": len(markdown) // 4
+            }
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.post("/api/generate")

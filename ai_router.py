@@ -58,6 +58,7 @@ def _is_anthropic_endpoint(url: str) -> bool:
 def _build_request(provider: dict[str, Any], system_prompt: str, user_prompt: str) -> tuple[str, dict[str, Any], dict[str, str]]:
     base_url = _text(provider.get("baseUrl") or provider.get("url")).rstrip("/")
     model = _text(provider.get("model"))
+    api_format = _text(provider.get("apiFormat") or "finvue")
     if not base_url:
         raise ValueError("AI 路由缺少 baseUrl")
     if not model:
@@ -65,20 +66,25 @@ def _build_request(provider: dict[str, Any], system_prompt: str, user_prompt: st
 
     headers = {"Content-Type": "application/json"}
 
+    # 根据 apiFormat 设置或 URL 自动判断使用哪种协议
+    use_anthropic = api_format == "anthropic" or _is_anthropic_endpoint(base_url)
+    use_openai = api_format == "openai" or base_url.endswith("/chat/completions")
+
     # Anthropic 协议（Claude）
-    if _is_anthropic_endpoint(base_url):
+    if use_anthropic:
         headers["anthropic-version"] = "2023-06-01"
         payload = {
             "model": model,
             "max_tokens": 4096,
+            "system": system_prompt,
             "messages": [
-                {"role": "user", "content": f"{system_prompt}\n\n{user_prompt}"},
+                {"role": "user", "content": user_prompt},
             ],
         }
         return base_url, payload, headers
 
     # OpenAI 协议
-    if base_url.endswith("/chat/completions"):
+    if use_openai:
         payload = {
             "model": model,
             "messages": [
