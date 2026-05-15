@@ -5191,6 +5191,10 @@ function renderAdminAiProviders() {
           外部接口走代理
         </label>
       </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:10px;">
+        <button class="btn btn-outline" data-ai-provider-test="${item.id}" style="font-size:12px;padding:6px 14px;">测试连接</button>
+        <span class="muted" data-ai-provider-test-result="${item.id}" style="font-size:12px;margin-left:10px;display:none;align-items:center;"></span>
+      </div>
     </div>
   `).join("");
   renderAiRouteSummary();
@@ -11249,10 +11253,55 @@ els.reportFormat?.addEventListener("input", updateAdminDashboardSummary);
 els.rolePrompt?.addEventListener("input", updateAdminDashboardSummary);
 els.taskPrompt?.addEventListener("input", updateAdminDashboardSummary);
 els.addAiProviderBtn?.addEventListener("click", addAiProviderDraft);
-els.adminAiProviders?.addEventListener("click", (event) => {
+els.adminAiProviders?.addEventListener("click", async (event) => {
+  // 删除按钮
   const removeBtn = event.target.closest("[data-ai-provider-remove]");
-  if (!removeBtn) return;
-  removeAiProviderDraft(removeBtn.dataset.aiProviderRemove || "");
+  if (removeBtn) {
+    removeAiProviderDraft(removeBtn.dataset.aiProviderRemove || "");
+    return;
+  }
+  // 测试连接按钮
+  const testBtn = event.target.closest("[data-ai-provider-test]");
+  if (testBtn) {
+    const providerId = testBtn.dataset.aiProviderTest;
+    const resultSpan = document.querySelector(`[data-ai-provider-test-result="${providerId}"]`);
+    const btn = testBtn;
+
+    if (resultSpan) {
+      resultSpan.style.display = "flex";
+      resultSpan.textContent = "测试中...";
+      resultSpan.style.color = "#f59e0b";
+    }
+    btn.disabled = true;
+
+    try {
+      // 收集当前路由配置
+      const providers = collectAiProvidersFromUi();
+      const provider = providers.find(p => p.id === providerId);
+      if (!provider) throw new Error("未找到路由配置");
+
+      // 调用测试接口
+      const response = await fetch("/api/test-ai-provider", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(provider)
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        resultSpan.textContent = "✓ 连接成功";
+        resultSpan.style.color = "#10b981";
+      } else {
+        resultSpan.textContent = "✗ " + (result.error || "连接失败");
+        resultSpan.style.color = "#ef4444";
+      }
+    } catch (exc) {
+      resultSpan.textContent = "✗ " + (exc.message || "连接失败");
+      resultSpan.style.color = "#ef4444";
+    } finally {
+      btn.disabled = false;
+    }
+  }
 });
 els.adminAiProviders?.addEventListener("input", () => {
   renderAiRouteSummary();

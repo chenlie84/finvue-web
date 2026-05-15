@@ -155,6 +155,117 @@ async def anthropic_compatible_messages(request: Request) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+# ══════════════ 测试 AI 路由接口 ══════════════
+
+@router.post("/api/test-ai-provider")
+async def test_ai_provider(request: Request, session: dict = Depends(security.require_permission("live"))) -> Dict[str, Any]:
+    """测试 AI 路由连接"""
+    body = await request.json()
+
+    # 提取配置
+    base_url = body.get("baseUrl", "").strip()
+    api_key = body.get("apiKey", "").strip()
+    model = body.get("model", "").strip()
+    api_format = body.get("apiFormat", "finvue")
+    api_key_placement = body.get("apiKeyPlacement", "header")
+    use_proxy = body.get("useProxy", True)
+
+    if not base_url:
+        return {"success": False, "error": "请填写上游地址"}
+    if not api_key:
+        return {"success": False, "error": "请填写 API Key"}
+    if not model:
+        return {"success": False, "error": "请填写模型名"}
+
+    # 构造测试请求
+    headers = {"Content-Type": "application/json"}
+    test_prompt = "你好，请回复" + "。" if api_format == "anthropic" else ""
+
+    if api_format == "anthropic" or "/v1/messages" in base_url:
+        headers["anthropic-version"] = "2023-06-01"
+        payload = {
+            "model": model,
+            "max_tokens": 50,
+            "messages": [{"role": "user", "content": test_prompt}],
+        }
+    elif api_format == "openai" or "/chat/completions" in base_url:
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": "你是助手"},
+                {"role": "user", "content": test_prompt}
+            ],
+            "stream": False,
+        }
+    else:
+        # FinVue 格式
+        payload = {
+            "model": model,
+            "input": [
+                {"role": "user", "content": test_prompt}
+            ],
+            "stream": False,
+        }
+
+    if api_key_placement == "body":
+        payload["api_key"] = api_key
+    else:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    # 发送测试请求
+    import requests as req
+    proxy = None
+    if use_proxy:
+        import config
+        proxy = config.HTTPS_PROXY or config.HTTP_PROXY
+    proxies = {"http": proxy, "https": proxy} if proxy else None
+
+    try:
+        response = req.post(base_url, headers=headers, json=payload, timeout=30, proxies=proxies)
+
+        if response.status_code >= 400:
+            # 尝试解析错误信息
+            try:
+                error_data = response.json()
+                error_msg = error_data.get("error", {}).get("message") or error_data.get("message") or response.text[:200]
+            except Exception:
+                error_msg = response.text[:200]
+
+            hint = ""
+            if response.status_code == 401:
+                hint = "（API Key 可能不正确）"
+            elif response.status_code == 403:
+                hint = "（API Key 无权限或余额不足）"
+            elif response.status_code == 404:
+                hint = "（请检查上游地址和模型名称）"
+
+            return {"success": False, "error": f"{response.status_code}: {error_msg}{hint}"}
+
+        # 尝试解析响应
+        try:
+            data = response.json()
+            # 检查是否有有效内容
+            if api_format == "anthropic" or "/v1/messages" in base_url:
+                if isinstance(data.get("content"), list) and data["content"]:
+                    return {"success": True, "message": "连接成功"}
+            elif api_format == "openai" or "/chat/completions" in base_url:
+                if data.get("choices"):
+                    return {"success": True, "message": "连接成功"}
+            elif data.get("output_text") or data.get("output"):
+                return {"success": True, "message": "连接成功"}
+        except Exception:
+            pass
+
+        return {"success": False, "error": "响应格式异常"}
+
+    except req.exceptions.Timeout:
+        return {"success": False, "error": "请求超时"}
+    except req.exceptions.ConnectionError:
+        return {"success": False, "error": "连接失败，请检查网络或代理设置"}
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
+
+
 @router.post("/api/generate")
 async def generate(request: Request, session: dict = Depends(security.require_permission("live"))) -> dict:
     body = await request.json()
