@@ -159,12 +159,42 @@ def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: st
         raise RuntimeError(f"{response.status_code}: {error_detail}{hint}")
 
     # 尝试解析响应
-    try:
-        response_data = response.json()
-    except Exception as exc:
-        raise RuntimeError(f"AI 响应解析失败：{response.status_code} - {response.text[:200]}（{exc}）")
+    response_text = response.text
 
-    text = _extract_text(response_data)
+    # 检查是否是 SSE 流式响应
+    if response_text.startswith("event:") or "data:" in response_text[:100]:
+        # 尝试解析 SSE 流式响应，取最后一个有效 data
+        text = ""
+        for line in response_text.strip().split("\n"):
+            if line.startswith("data:"):
+                data_content = line[5:].strip()
+                if data_content and data_content != "[DONE]":
+                    try:
+                        data = json.loads(data_content)
+                        # 尝试从流式响应中提取文本
+                        if isinstance(data, dict):
+                            # Anthropic 格式
+                            if data.get("type") == "content_block_delta":
+                                delta = data.get("delta", {})
+                                if delta.get("type") == "text_delta":
+                                    text += delta.get("text", "")
+                            # OpenAI 格式
+                            elif data.get("choices"):
+                                choice = data["choices"][0]
+                                if choice.get("delta"):
+                                    text += choice["delta"].get("content", "")
+                    except Exception:
+                        pass
+        if not text:
+            raise RuntimeError(f"AI 响应解析失败：收到流式响应但无法提取文本，内容：{response_text[:300]}")
+    else:
+        # 普通 JSON 响应
+        try:
+            response_data = response.json()
+        except Exception as exc:
+            raise RuntimeError(f"AI 响应解析失败：{response.status_code} - {response.text[:200]}（{exc}）")
+
+        text = _extract_text(response_data)
     if not text:
         raise RuntimeError("模型返回为空")
     return text
