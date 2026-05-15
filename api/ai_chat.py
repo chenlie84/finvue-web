@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import ai_router
 import db
@@ -17,7 +17,7 @@ router = APIRouter()
 # ══════════════ 会话管理 ══════════════
 
 @router.get("/api/ai-chat/sessions")
-async def list_sessions(session: dict = Depends(security.require_auth)) -> list[dict[str, Any]]:
+async def list_sessions(session: dict = Depends(security.require_auth)) -> List[Dict[str, Any]]:
     """获取用户的会话列表"""
     username = session.get("username")
     sql = """
@@ -86,7 +86,7 @@ async def delete_session(session_id: str, session: dict = Depends(security.requi
 # ══════════════ 消息管理 ══════════════
 
 @router.get("/api/ai-chat/messages/{session_id}")
-async def get_messages(session_id: str, session: dict = Depends(security.require_auth)) -> list[dict[str, Any]]:
+async def get_messages(session_id: str, session: dict = Depends(security.require_auth)) -> List[Dict[str, Any]]:
     """获取会话消息"""
     username = session.get("username")
     
@@ -274,7 +274,7 @@ async def stream_message(request: Request, session: dict = Depends(security.requ
 # ══════════════ 提示词模板管理 ══════════════
 
 @router.get("/api/ai-chat/prompts")
-async def list_prompts(session: dict = Depends(security.require_auth)) -> list[dict[str, Any]]:
+async def list_prompts(session: dict = Depends(security.require_auth)) -> List[Dict[str, Any]]:
     """获取提示词模板列表"""
     username = session.get("username")
     sql = """
@@ -342,7 +342,7 @@ async def delete_prompt(prompt_id: int, session: dict = Depends(security.require
 # ══════════════ 知识库管理 ══════════════
 
 @router.get("/api/ai-chat/knowledge")
-async def list_knowledge(session: dict = Depends(security.require_auth)) -> list[dict[str, Any]]:
+async def list_knowledge(session: dict = Depends(security.require_auth)) -> List[Dict[str, Any]]:
     """获取知识库列表"""
     username = session.get("username")
     sql = """
@@ -426,7 +426,7 @@ async def get_knowledge_content(knowledge_id: int, session: dict = Depends(secur
 # ══════════════ 系统提示词 ══════════════
 
 @router.get("/api/ai-chat/system-prompts")
-async def get_system_prompts() -> list[dict[str, Any]]:
+async def get_system_prompts() -> List[Dict[str, Any]]:
     """获取系统预置提示词（无需登录）"""
     sql = """
         SELECT id, name, description, content, category
