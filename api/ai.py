@@ -241,7 +241,40 @@ async def test_ai_provider(request: Request, session: dict = Depends(security.re
 
             return {"success": False, "error": f"{response.status_code}: {error_msg}{hint}"}
 
-        # 尝试解析响应
+        # 检查是否是 SSE 流式响应
+        response_text = response.text
+        if response_text.startswith("event:") or "data:" in response_text[:100]:
+            # 尝试从 SSE 流式响应中提取内容
+            text_content = ""
+            for line in response_text.strip().split("\n"):
+                if line.startswith("data:"):
+                    data_content = line[5:].strip()
+                    if data_content and data_content != "[DONE]":
+                        try:
+                            data = json.loads(data_content)
+                            # Anthropic 流式格式
+                            if data.get("type") == "content_block_delta":
+                                delta = data.get("delta", {})
+                                if delta.get("type") == "text_delta":
+                                    text_content += delta.get("text", "")
+                            elif data.get("type") == "message_delta":
+                                # 消息结束
+                                pass
+                            elif data.get("type") == "message_start":
+                                # 消息开始
+                                pass
+                            # 检查非流式的 Anthropic 响应
+                            if isinstance(data.get("content"), list):
+                                for block in data["content"]:
+                                    if block.get("type") == "text":
+                                        text_content += block.get("text", "")
+                        except Exception:
+                            pass
+            if text_content:
+                return {"success": True, "message": f"连接成功（流式响应）"}
+            return {"success": True, "message": "连接成功，收到流式响应"}
+
+        # 普通 JSON 响应
         try:
             data = response.json()
             # 检查是否有有效内容
