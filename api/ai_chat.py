@@ -31,7 +31,7 @@ async def list_sessions(session: dict = Depends(security.require_auth)) -> List[
 
 
 @router.post("/api/ai-chat/sessions")
-async def create_session(request: Request, session: dict = Depends(security.require_auth)) -> dict[str, Any]:
+async def create_session(request: Request, session: dict = Depends(security.require_auth)) -> Dict[str, Any]:
     """创建新会话"""
     body = await request.json()
     username = session.get("username")
@@ -53,7 +53,7 @@ async def create_session(request: Request, session: dict = Depends(security.requ
 
 
 @router.put("/api/ai-chat/sessions/{session_id}")
-async def update_session(session_id: str, request: Request, session: dict = Depends(security.require_auth)) -> dict[str, Any]:
+async def update_session(session_id: str, request: Request, session: dict = Depends(security.require_auth)) -> Dict[str, Any]:
     """更新会话"""
     body = await request.json()
     username = session.get("username")
@@ -75,7 +75,7 @@ async def update_session(session_id: str, request: Request, session: dict = Depe
 
 
 @router.delete("/api/ai-chat/sessions/{session_id}")
-async def delete_session(session_id: str, session: dict = Depends(security.require_auth)) -> dict[str, Any]:
+async def delete_session(session_id: str, session: dict = Depends(security.require_auth)) -> Dict[str, Any]:
     """删除会话"""
     username = session.get("username")
     sql = "UPDATE finvue_ai_chat_sessions SET is_deleted = 1 WHERE session_id = %s AND created_by = %s"
@@ -105,7 +105,7 @@ async def get_messages(session_id: str, session: dict = Depends(security.require
 
 
 @router.post("/api/ai-chat/messages")
-async def send_message(request: Request, session: dict = Depends(security.require_auth)) -> dict[str, Any]:
+async def send_message(request: Request, session: dict = Depends(security.require_auth)) -> Dict[str, Any]:
     """发送消息并获取AI回复"""
     body = await request.json()
     username = session.get("username")
@@ -287,7 +287,7 @@ async def list_prompts(session: dict = Depends(security.require_auth)) -> List[D
 
 
 @router.post("/api/ai-chat/prompts")
-async def create_prompt(request: Request, session: dict = Depends(security.require_auth)) -> dict[str, Any]:
+async def create_prompt(request: Request, session: dict = Depends(security.require_auth)) -> Dict[str, Any]:
     """创建提示词模板"""
     body = await request.json()
     username = session.get("username")
@@ -308,7 +308,7 @@ async def create_prompt(request: Request, session: dict = Depends(security.requi
 
 
 @router.put("/api/ai-chat/prompts/{prompt_id}")
-async def update_prompt(prompt_id: int, request: Request, session: dict = Depends(security.require_auth)) -> dict[str, Any]:
+async def update_prompt(prompt_id: int, request: Request, session: dict = Depends(security.require_auth)) -> Dict[str, Any]:
     """更新提示词模板"""
     body = await request.json()
     username = session.get("username")
@@ -331,7 +331,7 @@ async def update_prompt(prompt_id: int, request: Request, session: dict = Depend
 
 
 @router.delete("/api/ai-chat/prompts/{prompt_id}")
-async def delete_prompt(prompt_id: int, session: dict = Depends(security.require_auth)) -> dict[str, Any]:
+async def delete_prompt(prompt_id: int, session: dict = Depends(security.require_auth)) -> Dict[str, Any]:
     """删除提示词模板"""
     username = session.get("username")
     sql = "DELETE FROM finvue_ai_prompt_templates WHERE id = %s AND created_by = %s AND is_system = 0"
@@ -359,7 +359,7 @@ async def upload_knowledge(
     request: Request,
     file: UploadFile = File(...),
     session: dict = Depends(security.require_auth)
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """上传知识库文件"""
     username = session.get("username")
     
@@ -402,7 +402,7 @@ async def upload_knowledge(
 
 
 @router.delete("/api/ai-chat/knowledge/{knowledge_id}")
-async def delete_knowledge(knowledge_id: int, session: dict = Depends(security.require_auth)) -> dict[str, Any]:
+async def delete_knowledge(knowledge_id: int, session: dict = Depends(security.require_auth)) -> Dict[str, Any]:
     """删除知识库"""
     username = session.get("username")
     sql = "DELETE FROM finvue_ai_knowledge_base WHERE id = %s AND created_by = %s"
@@ -411,7 +411,7 @@ async def delete_knowledge(knowledge_id: int, session: dict = Depends(security.r
 
 
 @router.get("/api/ai-chat/knowledge/{knowledge_id}/content")
-async def get_knowledge_content(knowledge_id: int, session: dict = Depends(security.require_auth)) -> dict[str, Any]:
+async def get_knowledge_content(knowledge_id: int, session: dict = Depends(security.require_auth)) -> Dict[str, Any]:
     """获取知识库详细内容"""
     username = session.get("username")
     sql = "SELECT id, name, content, file_name FROM finvue_ai_knowledge_base WHERE id = %s AND created_by = %s"
@@ -440,7 +440,7 @@ async def get_system_prompts() -> List[Dict[str, Any]]:
 # ══════════════ 兼容 OpenAI Chat API ══════════════
 
 @router.post("/api/ai-chat/chat")
-async def chat_completion(request: Request, session: dict = Depends(security.require_auth)) -> dict[str, Any]:
+async def chat_completion(request: Request, session: dict = Depends(security.require_auth)) -> Dict[str, Any]:
     """OpenAI 兼容的 Chat API"""
     body = await request.json()
     username = session.get("username")
