@@ -253,10 +253,14 @@ async def test_ai_provider(request: Request, session: dict = Depends(security.re
                     return {"success": True, "message": "连接成功"}
             elif data.get("output_text") or data.get("output"):
                 return {"success": True, "message": "连接成功"}
-        except Exception:
+
+            # 如果没有匹配到常见格式，但有响应数据，也视为成功
+            if data:
+                return {"success": True, "message": f"连接成功，收到响应: {str(data)[:100]}"}
+        except Exception as exc:
             pass
 
-        return {"success": False, "error": "响应格式异常"}
+        return {"success": False, "error": f"响应格式异常: {response.text[:200]}"}
 
     except req.exceptions.Timeout:
         return {"success": False, "error": "请求超时"}
