@@ -157,7 +157,14 @@ def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: st
             hint = "（请检查 API Key 是否有权限或余额是否充足）"
 
         raise RuntimeError(f"{response.status_code}: {error_detail}{hint}")
-    text = _extract_text(response.json())
+
+    # 尝试解析响应
+    try:
+        response_data = response.json()
+    except Exception as exc:
+        raise RuntimeError(f"AI 响应解析失败：{response.status_code} - {response.text[:200]}（{exc}）")
+
+    text = _extract_text(response_data)
     if not text:
         raise RuntimeError("模型返回为空")
     return text
