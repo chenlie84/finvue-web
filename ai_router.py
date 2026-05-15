@@ -126,6 +126,17 @@ def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: st
     response = requests.post(url, headers=headers, json=payload, timeout=timeout, proxies=proxies)
     if response.status_code >= 400:
         content_type = response.headers.get("content-type", "")
+        error_detail = response.text[:500]
+        # 尝试解析 JSON 错误信息
+        try:
+            error_json = response.json()
+            if error_json.get("error"):
+                error_detail = error_json.get("error", {}).get("message", error_detail)
+            elif error_json.get("message"):
+                error_detail = error_json.get("message")
+        except Exception:
+            pass
+
         if "text/html" in content_type:
             public_host = urlparse(config.PUBLIC_BASE_URL).netloc
             route_host = urlparse(url).netloc
@@ -135,7 +146,17 @@ def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: st
                     "当前模型 Base URL 可能配置成了本应用域名，请改为真实模型网关地址。"
                 )
             raise RuntimeError(f"{response.status_code}: AI 路由地址返回 HTML 页面，可能不是有效的模型接口")
-        raise RuntimeError(f"{response.status_code}: {response.text[:500]}")
+
+        # 提供更详细的错误提示
+        hint = ""
+        if response.status_code == 404:
+            hint = "（请检查：1. 模型名称是否正确，如 deepseek-chat；2. 上游地址是否完整，如 https://api.deepseek.com/v1/chat/completions）"
+        elif response.status_code == 401:
+            hint = "（请检查 API Key 是否正确）"
+        elif response.status_code == 403:
+            hint = "（请检查 API Key 是否有权限或余额是否充足）"
+
+        raise RuntimeError(f"{response.status_code}: {error_detail}{hint}")
     text = _extract_text(response.json())
     if not text:
         raise RuntimeError("模型返回为空")
