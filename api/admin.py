@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+import db
+import migrate
 import security
 import store
 
@@ -35,3 +37,26 @@ async def update_permissions(request: Request, _: dict = Depends(security.requir
     if not user:
         raise HTTPException(status_code=404, detail="未找到用户")
     return {"ok": True, "user": security.sanitize_user(user)}
+
+
+@router.post("/api/admin/migrations/reset")
+async def reset_migration(request: Request, _: dict = Depends(security.require_admin)) -> dict:
+    """删除迁移记录并重新执行（用于修复失败的迁移）"""
+    body = await request.json()
+    filename = body.get("filename")
+    if not filename:
+        raise HTTPException(status_code=400, detail="需要提供 filename")
+    
+    # 删除迁移记录
+    db.execute("DELETE FROM finvue_schema_migrations WHERE filename = %s", (filename,))
+    
+    # 重新执行迁移
+    ran = migrate.run_migrations()
+    return {"ok": True, "ran": ran}
+
+
+@router.post("/api/admin/migrations/run")
+def run_migrations(_: dict = Depends(security.require_admin)) -> dict:
+    """手动运行迁移"""
+    ran = migrate.run_migrations()
+    return {"ok": True, "ran": ran}
