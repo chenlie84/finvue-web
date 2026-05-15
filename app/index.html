@@ -531,6 +531,7 @@
     <nav class="sidebar">
       <div class="s-section">分析工具</div>
       <button class="nav-item active" data-sec="home" data-permission="home" onclick="showSec('home',this)"><span class="ni">◈</span> 工作台概览</button>
+      <button class="nav-item" data-sec="ai-chat" data-permission="ai-chat" onclick="showSec('ai-chat',this)"><span class="ni">🤖</span> AI 对话</button>
       <button class="nav-item" data-sec="live" data-permission="live" onclick="showSec('live',this)"><span class="ni">▶</span> 直播分析 <span class="nav-badge">3</span></button>
       <button class="nav-item" data-sec="anchor-library" data-permission="anchor-library" onclick="showSec('anchor-library',this)"><span class="ni">▣</span> 主播资料库</button>
       <button class="nav-item" data-sec="customer-library" data-permission="customer-library" onclick="showSec('customer-library',this)"><span class="ni">◉</span> 客户库</button>
@@ -573,6 +574,148 @@
           <div id="homeAnchorList" class="muted">正在加载主播数据...</div>
         </div>
       </div>
+
+      <!-- ══ AI 对话 ══ -->
+      <div class="sec" id="sec-ai-chat" style="display:flex;flex-direction:column;height:calc(100vh - 80px);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div>
+            <div class="page-title">AI 对话</div>
+            <div class="page-sub" style="margin-bottom:0;">与 AI 助手对话，支持提示词模板和知识库</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline" onclick="showAiChatSettings()" style="font-size:12px;padding:6px 12px;">⚙️ 设置</button>
+            <button class="btn btn-gold" onclick="createNewChat()" style="font-size:12px;padding:6px 12px;">+ 新建对话</button>
+          </div>
+        </div>
+        
+        <div style="flex:1;display:flex;gap:16px;min-height:0;">
+          <!-- 左侧：会话列表 -->
+          <div style="width:240px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;">
+            <div style="padding:8px 12px;background:var(--bg2);border-radius:var(--r);font-size:12px;color:var(--text1);">
+              对话历史
+            </div>
+            <div id="ai-chat-sessions" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px;">
+              <!-- 会话列表项将通过JS加载 -->
+              <div class="muted" style="padding:12px;font-size:12px;">加载中...</div>
+            </div>
+          </div>
+          
+          <!-- 中间：对话区域 -->
+          <div style="flex:1;display:flex;flex-direction:column;gap:12px;min-height:0;background:var(--bg1);border-radius:var(--r2);border:1px solid var(--border);padding:16px;">
+            <!-- 提示词和知识库选择 -->
+            <div id="ai-chat-config-bar" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--border);">
+              <select id="ai-prompt-select" class="sel" style="font-size:12px;min-width:160px;" onchange="loadPromptContent()">
+                <option value="">选择提示词模板...</option>
+              </select>
+              <select id="ai-knowledge-select" class="sel" style="font-size:12px;min-width:160px;" onchange="selectKnowledgeBase()">
+                <option value="">选择知识库...</option>
+              </select>
+              <button class="btn btn-outline-sm" onclick="editCurrentPrompt()" style="font-size:11px;padding:4px 8px;" title="编辑当前提示词">✏️</button>
+              <button class="btn btn-outline-sm" onclick="managePrompts()" style="font-size:11px;padding:4px 8px;" title="管理提示词">📝</button>
+              <button class="btn btn-outline-sm" onclick="manageKnowledge()" style="font-size:11px;padding:4px 8px;" title="管理知识库">📚</button>
+            </div>
+            
+            <!-- 对话记录区域 -->
+            <div id="ai-chat-messages" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;min-height:200px;">
+              <div class="ai-msg ai-msg-assistant" style="max-width:80%;">
+                <div style="font-size:12px;color:var(--text1);margin-bottom:4px;">🤖 AI 助手</div>
+                <div style="background:var(--bg2);padding:12px;border-radius:var(--r);line-height:1.6;">你好！我是 AI 助手。<br>你可以：<br>• 选择提示词模板改变我的角色<br>• 上传知识库让我基于文档回答<br>• 创建新对话进行不同主题的讨论</div>
+              </div>
+            </div>
+            
+            <!-- 输入区域 -->
+            <div style="display:flex;gap:12px;align-items:flex-end;">
+              <textarea id="ai-chat-input" placeholder="输入你的问题..." rows="2" style="flex:1;resize:none;padding:10px;border:1px solid var(--border);border-radius:var(--r);font-family:inherit;font-size:14px;background:var(--bg2);color:var(--text0);" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAiChat();}"></textarea>
+              <button class="btn btn-gold" onclick="sendAiChat()" id="ai-chat-send-btn" style="padding:10px 20px;height:fit-content;">发送</button>
+            </div>
+          </div>
+        </div>
+      </div><!-- /sec-ai-chat -->
+      
+      <!-- AI 对话设置弹窗 -->
+      <div id="ai-chat-settings-modal" class="modal-backdrop" style="display:none;">
+        <div class="modal-panel" style="max-width:500px;">
+          <div class="panel-hd">
+            <div class="panel-title">AI 对话设置</div>
+            <span style="cursor:pointer;font-size:18px;" onclick="closeAiChatSettings()">×</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:16px;padding:16px 0;">
+            <div>
+              <div class="lbl">系统提示词</div>
+              <textarea id="ai-system-prompt" class="textarea" rows="4" placeholder="设置 AI 的角色和行为..."></textarea>
+            </div>
+            <div>
+              <div class="lbl">模型选择</div>
+              <select id="ai-model-select" class="sel" style="width:100%;">
+                <option value="">使用默认模型</option>
+              </select>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;">
+              <button class="btn btn-outline" onclick="closeAiChatSettings()">取消</button>
+              <button class="btn btn-gold" onclick="saveAiChatSettings()">保存设置</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 提示词管理弹窗 -->
+      <div id="ai-prompt-modal" class="modal-backdrop" style="display:none;">
+        <div class="modal-panel" style="max-width:600px;">
+          <div class="panel-hd">
+            <div class="panel-title">提示词模板管理</div>
+            <span style="cursor:pointer;font-size:18px;" onclick="closePromptModal()">×</span>
+          </div>
+          <div style="padding:16px 0;">
+            <div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+              <button class="btn btn-outline-sm" onclick="showCreatePrompt()">+ 新建模板</button>
+            </div>
+            <div id="ai-prompt-list" style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;">
+              <!-- 提示词列表 -->
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 知识库管理弹窗 -->
+      <div id="ai-knowledge-modal" class="modal-backdrop" style="display:none;">
+        <div class="modal-panel" style="max-width:600px;">
+          <div class="panel-hd">
+            <div class="panel-title">知识库管理</div>
+            <span style="cursor:pointer;font-size:18px;" onclick="closeKnowledgeModal()">×</span>
+          </div>
+          <div style="padding:16px 0;">
+            <div class="upload-zone" style="margin-bottom:16px;padding:16px;">
+              <div style="font-size:13px;color:var(--text1);">拖拽文件到此处或点击上传</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:4px;">支持 txt, md, json 文件</div>
+              <input type="file" accept=".txt,.md,.markdown,.json" onchange="uploadKnowledgeFile(this)">
+            </div>
+            <div id="ai-knowledge-list" style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;">
+              <!-- 知识库列表 -->
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- AI 快速对话侧边栏 -->
+      <div id="ai-sidebar-drawer" style="position:fixed;right:-380px;top:0;width:380px;height:100vh;background:var(--bg1);border-left:1px solid var(--border);z-index:9000;transition:right .3s ease;display:flex;flex-direction:column;">
+        <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:14px;font-weight:500;">🤖 AI 助手</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline-sm" onclick="openFullAiChat()" style="font-size:11px;">全屏</button>
+            <button class="btn btn-outline-sm" onclick="closeAiDrawer()" style="font-size:11px;">×</button>
+          </div>
+        </div>
+        <div id="ai-drawer-messages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;">
+          <div style="background:var(--bg2);padding:10px;border-radius:var(--r);font-size:13px;line-height:1.5;">
+            你好！有什么可以帮你的？
+          </div>
+        </div>
+        <div style="padding:12px;border-top:1px solid var(--border);display:flex;gap:8px;">
+          <input id="ai-drawer-input" type="text" class="inp" style="flex:1;" placeholder="快捷提问..." onkeydown="if(event.key==='Enter')sendAiDrawerMessage()">
+          <button class="btn btn-gold" onclick="sendAiDrawerMessage()" style="padding:8px 12px;font-size:12px;">发送</button>
+        </div>
+      </div>
+      <div id="ai-sidebar-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8999;display:none;" onclick="closeAiDrawer()"></div>
 
       <!-- ══ 直播分析 ══ -->
       <div class="sec" id="sec-live">
@@ -3713,6 +3856,7 @@ function showSec(id, btn) {
   if (id === "home") drawSpark("homeChart");
   if (id === "backtest") setTimeout(() => drawSpark("btChart", [8,7.5,8.2,8.8,8.5,9,8.7,9.1,8.9,9.2], true), 100);
   if (id === "distill-library") renderDistillLibrary();
+  if (id === "ai-chat") initAiChat();
   if (id === "export") renderExportCenter();
   if (id === "notify") renderNotifyCenter();
 }
@@ -11324,8 +11468,377 @@ els.adminUsersTable?.addEventListener("click", async (event) => {
 });
 document.querySelectorAll('input[name="liveReportType"]').forEach((input) => input.addEventListener("change", syncLiveInputCopy));
 
+// ══════════════ AI 对话功能 ══════════════
+let currentChatSession = null;
+let currentPromptContent = "";
+let currentKnowledgeId = null;
+
+async function initAiChat() {
+  // 加载提示词模板
+  try {
+    const promptsRes = await fetch("/api/ai-chat/prompts", { credentials: "include" });
+    const prompts = await promptsRes.json();
+    const select = document.getElementById("ai-prompt-select");
+    select.innerHTML = '<option value="">选择提示词模板...</option>';
+    prompts.forEach(p => {
+      select.innerHTML += `<option value="${p.id}" data-content="${escapeHtml(p.content || '')}">${escapeHtml(p.name)}</option>`;
+    });
+  } catch(e) { console.error("加载提示词失败", e); }
+  
+  // 加载知识库
+  try {
+    const kbRes = await fetch("/api/ai-chat/knowledge", { credentials: "include" });
+    const kbList = await kbRes.json();
+    const select = document.getElementById("ai-knowledge-select");
+    select.innerHTML = '<option value="">选择知识库...</option>';
+    kbList.forEach(k => {
+      select.innerHTML += `<option value="${k.id}">${escapeHtml(k.name)} (${k.file_type})</option>`;
+    });
+  } catch(e) { console.error("加载知识库失败", e); }
+  
+  // 加载会话列表
+  loadChatSessions();
+}
+
+async function loadChatSessions() {
+  try {
+    const res = await fetch("/api/ai-chat/sessions", { credentials: "include" });
+    const sessions = await res.json();
+    const container = document.getElementById("ai-chat-sessions");
+    if (!sessions.length) {
+      container.innerHTML = '<div class="muted" style="padding:12px;font-size:12px;">暂无对话历史</div>';
+      return;
+    }
+    container.innerHTML = sessions.map(s => `
+      <div class="nav-item ${currentChatSession === s.session_id ? 'active' : ''}" onclick="selectChatSession('${s.session_id}')" style="font-size:12px;padding:8px 10px;">
+        ${escapeHtml(s.title || '新对话')}
+      </div>
+    `).join('');
+  } catch(e) { console.error("加载会话失败", e); }
+}
+
+async function selectChatSession(sessionId) {
+  currentChatSession = sessionId;
+  loadChatSessions();
+  loadChatMessages(sessionId);
+}
+
+async function loadChatMessages(sessionId) {
+  try {
+    const res = await fetch(`/api/ai-chat/messages/${sessionId}`, { credentials: "include" });
+    const messages = await res.json();
+    const container = document.getElementById("ai-chat-messages");
+    if (!messages.length) {
+      container.innerHTML = '<div class="ai-msg ai-msg-assistant" style="max-width:80%;"><div style="font-size:12px;color:var(--text1);margin-bottom:4px;">🤖 AI 助手</div><div style="background:var(--bg2);padding:12px;border-radius:var(--r);">开始新对话吧！</div></div>';
+      return;
+    }
+    container.innerHTML = messages.map(m => `
+      <div class="ai-msg ${m.role === 'user' ? 'ai-msg-user' : 'ai-msg-assistant'}" style="max-width:80%;align-self:${m.role === 'user' ? 'flex-end' : 'flex-start'};">
+        <div style="font-size:12px;color:var(--text1);margin-bottom:4px;">${m.role === 'user' ? '👤 你' : '🤖 AI 助手'}</div>
+        <div style="background:var(--bg2);padding:12px;border-radius:var(--r);white-space:pre-wrap;line-height:1.6;">${escapeHtml(m.content)}</div>
+      </div>
+    `).join('');
+    container.scrollTop = container.scrollHeight;
+  } catch(e) { console.error("加载消息失败", e); }
+}
+
+async function sendAiChat() {
+  const input = document.getElementById("ai-chat-input");
+  const message = input.value.trim();
+  if (!message) return;
+  
+  const btn = document.getElementById("ai-chat-send-btn");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+  
+  const promptSelect = document.getElementById("ai-prompt-select");
+  const selectedPrompt = promptSelect.options[promptSelect.selectedIndex];
+  const systemPrompt = selectedPrompt?.dataset?.content || "";
+  
+  const knowledgeSelect = document.getElementById("ai-knowledge-select");
+  const knowledgeId = knowledgeSelect.value || null;
+  
+  // 添加用户消息到界面
+  const container = document.getElementById("ai-chat-messages");
+  container.innerHTML += `
+    <div class="ai-msg ai-msg-user" style="max-width:80%;align-self:flex-end;">
+      <div style="font-size:12px;color:var(--text1);margin-bottom:4px;">👤 你</div>
+      <div style="background:var(--gold-dim);padding:12px;border-radius:var(--r);white-space:pre-wrap;">${escapeHtml(message)}</div>
+    </div>
+  `;
+  container.innerHTML += `
+    <div class="ai-msg ai-msg-assistant" style="max-width:80%;">
+      <div style="font-size:12px;color:var(--text1);margin-bottom:4px;">🤖 AI 助手</div>
+      <div style="background:var(--bg2);padding:12px;border-radius:var(--r);"><span class="spinner"></span> 思考中...</div>
+    </div>
+  `;
+  container.scrollTop = container.scrollHeight;
+  input.value = "";
+  
+  try {
+    const res = await fetch("/api/ai-chat/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        sessionId: currentChatSession,
+        message: message,
+        systemPrompt: systemPrompt,
+        knowledgeBaseId: knowledgeId
+      })
+    });
+    const data = await res.json();
+    
+    if (data.sessionId && !currentChatSession) {
+      currentChatSession = data.sessionId;
+      loadChatSessions();
+    }
+    
+    // 更新AI回复
+    const lastAssistant = container.querySelectorAll(".ai-msg-assistant");
+    const lastMsg = lastAssistant[lastAssistant.length - 1];
+    lastMsg.querySelector("div:last-child").innerHTML = escapeHtml(data.message || "无回复");
+    container.scrollTop = container.scrollHeight;
+  } catch(e) {
+    showToast("发送失败: " + e.message);
+  }
+  
+  btn.disabled = false;
+  btn.innerHTML = "发送";
+}
+
+async function createNewChat() {
+  currentChatSession = null;
+  document.getElementById("ai-chat-messages").innerHTML = '<div class="ai-msg ai-msg-assistant" style="max-width:80%;"><div style="font-size:12px;color:var(--text1);margin-bottom:4px;">🤖 AI 助手</div><div style="background:var(--bg2);padding:12px;border-radius:var(--r);">你好！我是 AI 助手，有什么可以帮你的吗？</div></div>';
+  loadChatSessions();
+}
+
+// 提示词相关
+function loadPromptContent() {
+  const select = document.getElementById("ai-prompt-select");
+  const option = select.options[select.selectedIndex];
+  currentPromptContent = option?.dataset?.content || "";
+}
+
+function editCurrentPrompt() {
+  const select = document.getElementById("ai-prompt-select");
+  if (!select.value) {
+    showToast("请先选择一个提示词模板");
+    return;
+  }
+  document.getElementById("ai-system-prompt").value = currentPromptContent;
+  showAiChatSettings();
+}
+
+async function managePrompts() {
+  document.getElementById("ai-prompt-modal").style.display = "flex";
+  loadPromptList();
+}
+
+function closePromptModal() {
+  document.getElementById("ai-prompt-modal").style.display = "none";
+}
+
+async function loadPromptList() {
+  try {
+    const res = await fetch("/api/ai-chat/prompts", { credentials: "include" });
+    const prompts = await res.json();
+    const container = document.getElementById("ai-prompt-list");
+    container.innerHTML = prompts.map(p => `
+      <div style="padding:12px;background:var(--bg2);border-radius:var(--r);border:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="font-weight:500;">${escapeHtml(p.name)}</div>
+          <div style="display:flex;gap:6px;">
+            ${!p.is_system ? `<button class="btn btn-outline-sm" onclick="deletePrompt(${p.id})" style="font-size:10px;padding:2px 6px;">删除</button>` : ''}
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text1);line-height:1.5;">${escapeHtml(p.description || p.content?.substring(0, 100) || '')}</div>
+      </div>
+    `).join('');
+  } catch(e) { console.error("加载提示词列表失败", e); }
+}
+
+async function deletePrompt(id) {
+  if (!confirm("确定删除此提示词模板？")) return;
+  try {
+    await fetch(`/api/ai-chat/prompts/${id}`, { method: "DELETE", credentials: "include" });
+    showToast("删除成功");
+    loadPromptList();
+  } catch(e) { showToast("删除失败"); }
+}
+
+function showCreatePrompt() {
+  const name = prompt("请输入模板名称：");
+  if (!name) return;
+  const content = prompt("请输入提示词内容：");
+  if (!content) return;
+  fetch("/api/ai-chat/prompts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ name: name, content: content, category: "custom" })
+  }).then(r => r.json()).then(() => {
+    showToast("创建成功");
+    loadPromptList();
+  });
+}
+
+// 知识库相关
+function selectKnowledgeBase() {
+  const select = document.getElementById("ai-knowledge-select");
+  currentKnowledgeId = select.value || null;
+}
+
+async function manageKnowledge() {
+  document.getElementById("ai-knowledge-modal").style.display = "flex";
+  loadKnowledgeList();
+}
+
+function closeKnowledgeModal() {
+  document.getElementById("ai-knowledge-modal").style.display = "none";
+}
+
+async function loadKnowledgeList() {
+  try {
+    const res = await fetch("/api/ai-chat/knowledge", { credentials: "include" });
+    const list = await res.json();
+    const container = document.getElementById("ai-knowledge-list");
+    if (!list.length) {
+      container.innerHTML = '<div class="muted" style="padding:12px;font-size:12px;">暂无知识库</div>';
+      return;
+    }
+    container.innerHTML = list.map(k => `
+      <div style="padding:12px;background:var(--bg2);border-radius:var(--r);border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-weight:500;font-size:13px;">${escapeHtml(k.name)}</div>
+          <div style="font-size:11px;color:var(--text1);">${k.file_type?.toUpperCase()} · ${k.file_size ? Math.round(k.file_size/1024) + 'KB' : ''}</div>
+        </div>
+        <button class="btn btn-danger-sm" onclick="deleteKnowledge(${k.id})" style="font-size:10px;padding:4px 8px;">删除</button>
+      </div>
+    `).join('');
+  } catch(e) { console.error("加载知识库失败", e); }
+}
+
+async function deleteKnowledge(id) {
+  if (!confirm("确定删除此知识库？")) return;
+  try {
+    await fetch(`/api/ai-chat/knowledge/${id}`, { method: "DELETE", credentials: "include" });
+    showToast("删除成功");
+    loadKnowledgeList();
+  } catch(e) { showToast("删除失败"); }
+}
+
+async function uploadKnowledgeFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  const formData = new FormData();
+  formData.append("file", file);
+  
+  showToast("上传中...");
+  try {
+    const res = await fetch("/api/ai-chat/knowledge", {
+      method: "POST",
+      credentials: "include",
+      body: formData
+    });
+    const data = await res.json();
+    if (data.id) {
+      showToast("上传成功");
+      loadKnowledgeList();
+    } else {
+      showToast("上传失败");
+    }
+  } catch(e) {
+    showToast("上传失败: " + e.message);
+  }
+  input.value = "";
+}
+
+// 设置弹窗
+function showAiChatSettings() {
+  document.getElementById("ai-chat-settings-modal").style.display = "flex";
+  document.getElementById("ai-system-prompt").value = currentPromptContent;
+}
+
+function closeAiChatSettings() {
+  document.getElementById("ai-chat-settings-modal").style.display = "none";
+}
+
+function saveAiChatSettings() {
+  const prompt = document.getElementById("ai-system-prompt").value;
+  currentPromptContent = prompt;
+  showToast("设置已保存");
+  closeAiChatSettings();
+}
+
+// 侧边栏快速对话
+function openAiDrawer() {
+  document.getElementById("ai-sidebar-drawer").style.right = "0";
+  document.getElementById("ai-sidebar-overlay").style.display = "block";
+}
+
+function closeAiDrawer() {
+  document.getElementById("ai-sidebar-drawer").style.right = "-380px";
+  document.getElementById("ai-sidebar-overlay").style.display = "none";
+}
+
+async function sendAiDrawerMessage() {
+  const input = document.getElementById("ai-drawer-input");
+  const message = input.value.trim();
+  if (!message) return;
+  
+  const container = document.getElementById("ai-drawer-messages");
+  container.innerHTML += `<div style="background:var(--gold-dim);padding:8px 12px;border-radius:var(--r);font-size:13px;align-self:flex-end;max-width:80%;">${escapeHtml(message)}</div>`;
+  container.innerHTML += `<div id="drawer-loading" style="background:var(--bg2);padding:8px 12px;border-radius:var(--r);font-size:13px;"><span class="spinner"></span> 思考中...</div>`;
+  container.scrollTop = container.scrollHeight;
+  input.value = "";
+  
+  try {
+    const res = await fetch("/api/ai-chat/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        messages: [{ role: "user", content: message }]
+      })
+    });
+    const data = await res.json();
+    const loading = document.getElementById("drawer-loading");
+    if (loading) loading.remove();
+    container.innerHTML += `<div style="background:var(--bg2);padding:8px 12px;border-radius:var(--r);font-size:13px;white-space:pre-wrap;">${escapeHtml(data.choices?.[0]?.message?.content || '无回复')}</div>`;
+    container.scrollTop = container.scrollHeight;
+  } catch(e) {
+    const loading = document.getElementById("drawer-loading");
+    if (loading) loading.remove();
+    container.innerHTML += `<div style="color:var(--red);font-size:12px;">错误: ${e.message}</div>`;
+  }
+}
+
+function openFullAiChat() {
+  closeAiDrawer();
+  showSec('ai-chat');
+}
+
+// 添加AI助手按钮到顶部导航
+function addAiChatButton() {
+  const topnav = document.querySelector(".topnav");
+  if (!topnav) return;
+  // 检查是否已存在
+  if (document.getElementById("ai-chat-toggle-btn")) return;
+  const btn = document.createElement("button");
+  btn.id = "ai-chat-toggle-btn";
+  btn.className = "btn btn-outline";
+  btn.style.cssText = "font-size:12px;padding:5px 10px;";
+  btn.innerHTML = "🤖 AI";
+  btn.onclick = openAiDrawer;
+  topnav.insertBefore(btn, topnav.lastElementChild);
+}
+
 window.addEventListener("load", async () => {
   initTheme(); // 初始化主题
+  initAiChat(); // 初始化AI对话
+  addAiChatButton(); // 添加AI助手按钮
   document.querySelectorAll(".toggle").forEach((t) => t.addEventListener("click", () => {
     t.classList.toggle("on");
     showToast(t.classList.contains("on") ? "已开启" : "已关闭");

@@ -12,7 +12,7 @@ import uvicorn
 
 import config
 import migrate
-from api import admin, ai, auth, customers, files, jobs, libraries, reports, settings, sop, system, logs
+from api import admin, ai, auth, customers, files, jobs, libraries, reports, settings, sop, system, logs, ai_chat
 from api import operation as api_operation
 
 
@@ -44,6 +44,7 @@ app.include_router(files.router)
 app.include_router(sop.router)
 app.include_router(logs.router)
 app.include_router(api_operation.router)
+app.include_router(ai_chat.router)
 
 
 @app.exception_handler(HTTPException)
