@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -20,7 +20,7 @@ router = APIRouter()
 # ══════════════ 兼容 API 端点 ══════════════
 
 @router.post("/v1/chat/completions")
-async def openai_compatible_chat(request: Request) -> dict[str, Any]:
+async def openai_compatible_chat(request: Request) -> Dict[str, Any]:
     """OpenAI 兼容的 Chat Completions API"""
     body = await request.json()
 
@@ -84,7 +84,7 @@ async def openai_compatible_chat(request: Request) -> dict[str, Any]:
 
 
 @router.post("/v1/messages")
-async def anthropic_compatible_messages(request: Request) -> dict[str, Any]:
+async def anthropic_compatible_messages(request: Request) -> Dict[str, Any]:
     """Anthropic 兼容的 Messages API"""
     body = await request.json()
 
