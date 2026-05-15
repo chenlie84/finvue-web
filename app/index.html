@@ -6977,9 +6977,11 @@ function buildLivePrompt() {
     systemPrompt ? `【系统要求】\n${systemPrompt}` : "",
     taskPrompt ? `【核心任务】\n${taskPrompt}` : "",
     roleTaskGuidance ? `【角色专项要求】\n${roleTaskGuidance}` : "",
-    taskModeHint ? `【任务模式补充】\n${taskModeHint}` : "",
+    // 直播拆解分析只需要自己的提示词，不叠加其他预设
+    taskModeHint && state.currentReportStyle !== "liveAnalysis" ? `【任务模式补充】\n${taskModeHint}` : "",
     styleExtraPrompt ? `【报告风格要求】\n${styleExtraPrompt}` : "",
-    anchorEvaluationInstructions ? `【主播评价体系要求】\n${anchorEvaluationInstructions}` : "",
+    // 只有非直播拆解风格才添加主播评价体系要求
+    anchorEvaluationInstructions && state.currentReportStyle !== "liveAnalysis" ? `【主播评价体系要求】\n${anchorEvaluationInstructions}` : "",
     reportFormat ? `【输出说明】\n${reportFormat}` : "",
     hotTopics ? `【外部热点】\n${hotTopics}` : "",
     reportType === "anchorEvaluation" && evaluationNotes ? `【补充背景说明】\n${evaluationNotes}` : "",
