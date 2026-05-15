@@ -18,8 +18,12 @@ from api import operation as api_operation
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    print(f"[lifespan] AUTO_MIGRATE={config.AUTO_MIGRATE}, ENV={config.ENV}, has_mysql={config.has_mysql_config()}")
     if config.AUTO_MIGRATE and config.has_mysql_config() and config.ENV.lower() != "test":
+        print("[lifespan] Running migrations...")
         migrate.run_migrations()
+    else:
+        print("[lifespan] Skipping migrations")
     if not config.has_ceph_config():
         config.OBJECT_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
     yield
