@@ -71,7 +71,7 @@ def _get_transcript_knowledge(anchor_name: str) -> str:
         return ""
     
     transcripts = db.fetch_all(
-        "SELECT raw FROM finvue_transcripts WHERE anchor_name = %s ORDER BY analyzed_at DESC LIMIT 10",
+        "SELECT raw FROM finvue_transcripts WHERE anchor_name = %s ORDER BY updated_at DESC LIMIT 10",
         (anchor_name,)
     )
     if not transcripts:
@@ -86,7 +86,9 @@ def _get_transcript_knowledge(anchor_name: str) -> str:
         content_parts.append(f"\n--- 逐字稿 {i+1} ---")
         if raw.get("liveTheme"):
             content_parts.append(f"直播主题：{raw['liveTheme']}")
-        if raw.get("analyzedAt"):
+        if raw.get("updatedAt"):
+            content_parts.append(f"更新时间：{raw['updatedAt']}")
+        elif raw.get("analyzedAt"):
             content_parts.append(f"分析时间：{raw['analyzedAt']}")
         if raw.get("sourceFileName"):
             content_parts.append(f"来源文件：{raw['sourceFileName']}")
