@@ -8693,7 +8693,7 @@ async function submitLibraryIdentityRename(kind) {
   try {
     setLibraryIdentityRenameLoading(kind, true);
     const payload = await renameLibraryIdentity(currentName, nextName);
-    showToast(`已统一为 ${payload.targetName}`);
+    showToast(`已统一为 ${payload.newName || payload.targetName || nextName}`);
   } catch (error) {
     showToast(error.message);
   } finally {
