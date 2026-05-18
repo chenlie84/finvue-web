@@ -103,13 +103,14 @@ def dashboard_weekly(
         anchors = []
         for row in anchor_rows or []:
             account = row.get("account", "")
-            live_count = row.get("live_count", 0) or 0
-            avg_acu = row.get("avg_acu", 0) or 0
-            avg_duration = row.get("avg_duration", 0) or 0
-            avg_watch = row.get("avg_watch", 0) or 0
-            avg_follow = row.get("avg_follow", 0) or 0
-            total_follow = row.get("total_follow", 0) or 0
-            total_watch = row.get("total_watch", 0) or 0
+            live_count = int(row.get("live_count", 0) or 0)
+            avg_acu = float(row.get("avg_acu", 0) or 0)
+            avg_duration = float(row.get("avg_duration", 0) or 0)
+            avg_watch = float(row.get("avg_watch", 0) or 0)
+            avg_follow = float(row.get("avg_follow", 0) or 0)
+            total_follow = int(row.get("total_follow", 0) or 0)
+            total_watch = int(row.get("total_watch", 0) or 0)
+            total_earn = float(row.get("total_earn", 0) or 0)
 
             # 计算转粉率（follow_rate = avg_follow / avg_watch，百分比）
             follow_rate = 0.0
@@ -117,7 +118,7 @@ def dashboard_weekly(
                 follow_rate = avg_follow / avg_watch
 
             # 计算停留时长（分钟）
-            retention = avg_duration / 60.0 if avg_duration else 0.0
+            retention = avg_duration / 60.0 if avg_duration > 0 else 0.0
 
             # 判断状态（基于 ACU 和转粉率）
             status = "yellow"
@@ -149,7 +150,7 @@ def dashboard_weekly(
                 "follow_rate": round(follow_rate, 4),
                 "current_fans": int(total_follow),
                 "tenure_month": tenure_months,
-                "monthly_income": round(row.get("total_earn", 0) or 0 / 10000, 2),  # 万元
+                "monthly_income": round(total_earn / 10000, 2),  # 万元
                 "live_count": live_count,
                 "total_watch": total_watch,
                 "total_follow": total_follow,
