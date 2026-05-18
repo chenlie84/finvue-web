@@ -240,12 +240,35 @@ async def patch_identity(request: Request, _: dict = Depends(security.require_an
     
     has_old_data = old_profile or (old_transcripts_count and old_transcripts_count.get("cnt", 0) > 0) or (old_reports_count and old_reports_count.get("cnt", 0) > 0)
     
+    # 如果原名称不存在数据，直接创建新主播 profile
     if not has_old_data:
-        raise HTTPException(status_code=404, detail=f"未找到 '{old_name}' 的任何数据")
-    
+        now = datetime.now(timezone.utc).isoformat()
+        new_id = store._id("anchor")
+        new_raw = {
+            "id": new_id,
+            "anchorName": new_name,
+            "snapshots": [],
+            "createdAt": now,
+            "updatedAt": now
+        }
+        db.execute(
+            "INSERT INTO finvue_anchor_profiles (id, anchor_name, raw, created_at, updated_at) VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            (new_id, new_name, store._json(new_raw))
+        )
+        profiles = db.fetch_all("SELECT raw FROM finvue_anchor_profiles ORDER BY updated_at DESC")
+        entries = db.fetch_all("SELECT raw FROM finvue_transcripts ORDER BY updated_at DESC")
+        return {
+            "ok": True,
+            "oldName": old_name,
+            "newName": new_name,
+            "created": True,
+            "profiles": [store.parse_json(p.get("raw"), {}) for p in profiles],
+            "entries": [store.parse_json(e.get("raw"), {}) for e in entries]
+        }
+
     # 检查新名称是否已存在（用于判断是否需要合并）
     new_profile = db.fetch_one("SELECT id, raw FROM finvue_anchor_profiles WHERE anchor_name = %s ORDER BY updated_at DESC LIMIT 1", (new_name,))
-    
+
     merged = False
     
     # 如果新旧主播 profile 都存在且不同，需要合并数据
