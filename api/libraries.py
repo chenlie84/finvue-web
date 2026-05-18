@@ -282,11 +282,19 @@ async def patch_identity(request: Request, _: dict = Depends(security.require_an
             for p in all_profiles_to_merge[1:]:
                 db.execute("DELETE FROM finvue_anchor_profiles WHERE id = %s", (p["id"],))
         
-        # 更新其他表中的 anchor_name
+        # 更新其他表中的 anchor_name，并同步 raw JSON
         db.execute("UPDATE finvue_transcripts SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
         db.execute("UPDATE finvue_analysis_reports SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
         db.execute("UPDATE finvue_customer_profiles SET latest_anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE latest_anchor_name = %s", (new_name, old_name))
         db.execute("UPDATE finvue_customer_sessions SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
+        
+        # 同步更新逐字稿 raw JSON 中的 anchorName
+        updated_transcripts = db.fetch_all("SELECT id, raw FROM finvue_transcripts WHERE anchor_name = %s", (new_name,))
+        for t in updated_transcripts:
+            raw = store.parse_json(t.get("raw"), {})
+            if raw.get("anchorName") != new_name:
+                raw["anchorName"] = new_name
+                db.execute("UPDATE finvue_transcripts SET raw = %s WHERE id = %s", (store._json(raw), t["id"]))
     
     # 返回更新后的数据
     profiles = db.fetch_all("SELECT raw FROM finvue_anchor_profiles ORDER BY updated_at DESC")
