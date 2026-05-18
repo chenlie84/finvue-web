@@ -21,48 +21,65 @@ def _get_anchor_profile_knowledge(anchor_name: str) -> str:
     if not anchor_name:
         return ""
     
-    profile = db.fetch_one(
-        "SELECT raw FROM finvue_anchor_profiles WHERE anchor_name = %s ORDER BY updated_at DESC LIMIT 1",
-        (anchor_name,)
-    )
-    if not profile:
-        return ""
+    try:
+        profile = db.fetch_one(
+            "SELECT raw FROM finvue_anchor_profiles WHERE anchor_name = %s ORDER BY updated_at DESC LIMIT 1",
+            (anchor_name,)
+        )
+        if not profile:
+            return ""
+        
+        raw_str = profile.get("raw") or "{}"
+        if not raw_str.strip():
+            return ""
+        
+        try:
+            raw = json.loads(raw_str)
+        except json.JSONDecodeError:
+            return f"【主播资料：{anchor_name}】（数据格式错误，无法解析）"
+        
+        content_parts = []
+        
+        content_parts.append(f"【主播资料：{anchor_name}】")
+        
+        # 基本信息
+        if raw.get("anchorName"):
+            content_parts.append(f"主播名称：{raw['anchorName']}")
+        if raw.get("contentSchool"):
+            content_parts.append(f"流派标签：{raw['contentSchool']}")
+        if raw.get("complianceLevel"):
+            content_parts.append(f"合规等级：{raw['complianceLevel']}")
+        if raw.get("sixDimensionScore"):
+            content_parts.append(f"六维评分：{json.dumps(raw['sixDimensionScore'], ensure_ascii=False)}")
+        if raw.get("classifications"):
+            classifications = raw['classifications']
+            if isinstance(classifications, list):
+                content_parts.append(f"画像标签：{', '.join(str(c) for c in classifications[:10])}")
+        
+        # 分析报告快照（限制内容长度）
+        snapshots = raw.get("snapshots", [])
+        if snapshots and isinstance(snapshots, list):
+            content_parts.append("\n【历史分析报告】")
+            for i, snapshot in enumerate(snapshots[:3]):  # 只取最近3份报告，减少长度
+                if not isinstance(snapshot, dict):
+                    continue
+                content_parts.append(f"\n--- 报告 {i+1} ---")
+                if snapshot.get("title"):
+                    content_parts.append(f"标题：{str(snapshot['title'])[:100]}")
+                if snapshot.get("analyzedAt"):
+                    content_parts.append(f"分析时间：{str(snapshot['analyzedAt'])}")
+                if snapshot.get("summary"):
+                    content_parts.append(f"摘要：{str(snapshot['summary'])[:500]}")
+                if snapshot.get("markdown"):
+                    # 截取报告内容的前1000字符
+                    md_content = str(snapshot['markdown'])[:1000]
+                    content_parts.append(f"报告内容片段：\n{md_content}")
+        
+        return "\n".join(content_parts)
     
-    raw = json.loads(profile.get("raw") or "{}")
-    content_parts = []
-    
-    content_parts.append(f"【主播资料：{anchor_name}】")
-    
-    # 基本信息
-    if raw.get("anchorName"):
-        content_parts.append(f"主播名称：{raw['anchorName']}")
-    if raw.get("contentSchool"):
-        content_parts.append(f"流派标签：{raw['contentSchool']}")
-    if raw.get("complianceLevel"):
-        content_parts.append(f"合规等级：{raw['complianceLevel']}")
-    if raw.get("sixDimensionScore"):
-        content_parts.append(f"六维评分：{json.dumps(raw['sixDimensionScore'], ensure_ascii=False)}")
-    if raw.get("classifications"):
-        content_parts.append(f"画像标签：{', '.join(raw['classifications'])}")
-    
-    # 分析报告快照
-    snapshots = raw.get("snapshots", [])
-    if snapshots:
-        content_parts.append("\n【历史分析报告】")
-        for i, snapshot in enumerate(snapshots[:5]):  # 最近5份报告
-            content_parts.append(f"\n--- 报告 {i+1} ---")
-            if snapshot.get("title"):
-                content_parts.append(f"标题：{snapshot['title']}")
-            if snapshot.get("analyzedAt"):
-                content_parts.append(f"分析时间：{snapshot['analyzedAt']}")
-            if snapshot.get("summary"):
-                content_parts.append(f"摘要：{snapshot['summary']}")
-            if snapshot.get("markdown"):
-                # 截取报告内容的前2000字符
-                md_content = snapshot['markdown'][:2000]
-                content_parts.append(f"报告内容片段：\n{md_content}")
-    
-    return "\n".join(content_parts)
+    except Exception as e:
+        print(f"[anchor_profile_knowledge] Error: {e}")
+        return f"【主播资料：{anchor_name}】（获取失败：{str(e)}）"
 
 
 def _get_transcript_knowledge(anchor_name: str) -> str:
@@ -70,43 +87,58 @@ def _get_transcript_knowledge(anchor_name: str) -> str:
     if not anchor_name:
         return ""
     
-    transcripts = db.fetch_all(
-        "SELECT raw FROM finvue_transcripts WHERE anchor_name = %s ORDER BY updated_at DESC LIMIT 10",
-        (anchor_name,)
-    )
-    if not transcripts:
-        return ""
-    
-    content_parts = []
-    content_parts.append(f"【逐字稿库：{anchor_name}】")
-    content_parts.append(f"共 {len(transcripts)} 份逐字稿记录\n")
-    
-    for i, t in enumerate(transcripts):
-        raw = json.loads(t.get("raw") or "{}")
-        content_parts.append(f"\n--- 逐字稿 {i+1} ---")
-        if raw.get("liveTheme"):
-            content_parts.append(f"直播主题：{raw['liveTheme']}")
-        if raw.get("updatedAt"):
-            content_parts.append(f"更新时间：{raw['updatedAt']}")
-        elif raw.get("analyzedAt"):
-            content_parts.append(f"分析时间：{raw['analyzedAt']}")
-        if raw.get("sourceFileName"):
-            content_parts.append(f"来源文件：{raw['sourceFileName']}")
+    try:
+        transcripts = db.fetch_all(
+            "SELECT raw FROM finvue_transcripts WHERE anchor_name = %s ORDER BY updated_at DESC LIMIT 5",
+            (anchor_name,)
+        )
+        if not transcripts:
+            return ""
         
-        # 章节
-        chapters = raw.get("chapters", [])
-        if chapters:
-            content_parts.append(f"章节结构（{len(chapters)} 个章节）：")
-            for ch in chapters[:10]:
-                if ch.get("title"):
-                    content_parts.append(f"  - {ch['title']}: {ch.get('preview', '')[:100]}")
+        content_parts = []
+        content_parts.append(f"【逐字稿库：{anchor_name}】")
+        content_parts.append(f"共 {len(transcripts)} 份逐字稿记录\n")
         
-        # 逐字稿内容（截取）
-        transcript_text = raw.get("transcriptText", "")
-        if transcript_text:
-            content_parts.append(f"逐字稿内容片段：\n{transcript_text[:3000]}")
+        for i, t in enumerate(transcripts):
+            raw_str = t.get("raw") or "{}"
+            if not raw_str.strip():
+                continue
+            
+            try:
+                raw = json.loads(raw_str)
+            except json.JSONDecodeError:
+                content_parts.append(f"\n--- 逐字稿 {i+1} ---（数据格式错误）")
+                continue
+            
+            content_parts.append(f"\n--- 逐字稿 {i+1} ---")
+            if raw.get("liveTheme"):
+                content_parts.append(f"直播主题：{str(raw['liveTheme'])[:100]}")
+            if raw.get("updatedAt"):
+                content_parts.append(f"更新时间：{str(raw['updatedAt'])}")
+            elif raw.get("analyzedAt"):
+                content_parts.append(f"分析时间：{str(raw['analyzedAt'])}")
+            if raw.get("sourceFileName"):
+                content_parts.append(f"来源文件：{str(raw['sourceFileName'])[:50]}")
+            
+            # 章节（限制数量）
+            chapters = raw.get("chapters", [])
+            if chapters and isinstance(chapters, list):
+                content_parts.append(f"章节结构（{len(chapters)} 个章节）：")
+                for ch in chapters[:5]:  # 只显示前5个章节
+                    if isinstance(ch, dict) and ch.get("title"):
+                        preview = str(ch.get('preview', ''))[:80]
+                        content_parts.append(f"  - {str(ch['title'])[:50]}: {preview}")
+            
+            # 逐字稿内容（更短的截取）
+            transcript_text = raw.get("transcriptText", "")
+            if transcript_text:
+                content_parts.append(f"逐字稿内容片段：\n{str(transcript_text)[:1500]}")
+        
+        return "\n".join(content_parts)
     
-    return "\n".join(content_parts)
+    except Exception as e:
+        print(f"[transcript_knowledge] Error: {e}")
+        return f"【逐字稿库：{anchor_name}】（获取失败：{str(e)}）"
 
 
 def _get_distill_knowledge(anchor_name: str) -> str:
