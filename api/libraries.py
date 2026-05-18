@@ -281,6 +281,16 @@ async def patch_identity(request: Request, _: dict = Depends(security.require_an
             # 删除其他所有重复记录
             for p in all_profiles_to_merge[1:]:
                 db.execute("DELETE FROM finvue_anchor_profiles WHERE id = %s", (p["id"],))
+        else:
+            # 主播库没有 profile，但有逐字稿/报告数据，需要创建新的主播 profile
+            now = datetime.now(timezone.utc).isoformat()
+            new_id = store._id("anchor")
+            new_raw = {"id": new_id, "anchorName": new_name, "snapshots": [], "createdAt": now, "updatedAt": now}
+            db.execute(
+                "INSERT INTO finvue_anchor_profiles (id, anchor_name, raw, created_at, updated_at) VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                (new_id, new_name, store._json(new_raw))
+            )
+
         
         # 更新其他表中的 anchor_name，并同步 raw JSON
         db.execute("UPDATE finvue_transcripts SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
