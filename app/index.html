@@ -102,6 +102,21 @@
   #sec-ai-chat .ai-chat-main{flex:1;display:flex;flex-direction:column;gap:12px;min-height:0;background:var(--bg1);border-radius:var(--r2);border:1px solid var(--border);padding:16px;}
   #sec-ai-chat .ai-chat-config{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--border);flex-shrink:0;}
   #sec-ai-chat .ai-chat-msgs{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;min-height:0;}
+  #sec-ai-chat .ai-msg-user-content{background:var(--gold-dim);padding:12px 16px;border-radius:var(--r);white-space:pre-wrap;font-size:14px;line-height:1.6;}
+  #sec-ai-chat .ai-msg-assistant-content{background:var(--bg2);padding:12px 16px;border-radius:var(--r);font-size:14px;line-height:1.7;}
+  #sec-ai-chat .ai-msg-assistant-content table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;}
+  #sec-ai-chat .ai-msg-assistant-content th,#sec-ai-chat .ai-msg-assistant-content td{border:1px solid var(--border);padding:8px 12px;text-align:left;}
+  #sec-ai-chat .ai-msg-assistant-content th{background:var(--bg1);font-weight:600;color:var(--gold);}
+  #sec-ai-chat .ai-msg-assistant-content h1,#sec-ai-chat .ai-msg-assistant-content h2,#sec-ai-chat .ai-msg-assistant-content h3,#sec-ai-chat .ai-msg-assistant-content h4{margin:16px 0 8px 0;font-weight:600;color:var(--text0);}
+  #sec-ai-chat .ai-msg-assistant-content h1{font-size:18px;}
+  #sec-ai-chat .ai-msg-assistant-content h2{font-size:16px;}
+  #sec-ai-chat .ai-msg-assistant-content h3{font-size:14px;}
+  #sec-ai-chat .ai-msg-assistant-content h4{font-size:13px;}
+  #sec-ai-chat .ai-msg-assistant-content p{margin:8px 0;}
+  #sec-ai-chat .ai-msg-assistant-content ul,#sec-ai-chat .ai-msg-assistant-content ol{margin:8px 0;padding-left:24px;}
+  #sec-ai-chat .ai-msg-assistant-content li{margin:4px 0;}
+  #sec-ai-chat .ai-msg-assistant-content blockquote{margin:8px 0;padding:8px 12px;background:var(--bg1);border-left:3px solid var(--gold);color:var(--text1);}
+  #sec-ai-chat .ai-msg-assistant-content hr{margin:16px 0;border:none;height:1px;background:var(--border);}
   #sec-ai-chat .ai-chat-input-row{display:flex;gap:12px;align-items:flex-end;flex-shrink:0;padding-top:12px;border-top:1px solid var(--border);}
   .asec{display:none;}
   .asec.active{display:block;}
@@ -11638,7 +11653,7 @@ async function loadChatMessages(sessionId) {
     container.innerHTML = messages.map(m => `
       <div class="ai-msg ${m.role === 'user' ? 'ai-msg-user' : 'ai-msg-assistant'}" style="max-width:80%;align-self:${m.role === 'user' ? 'flex-end' : 'flex-start'};">
         <div style="font-size:12px;color:var(--text1);margin-bottom:4px;">${m.role === 'user' ? '👤 你' : '🤖 AI 助手'}</div>
-        <div style="background:var(--bg2);padding:12px;border-radius:var(--r);white-space:pre-wrap;line-height:1.6;">${escapeHtml(m.content)}</div>
+        <div class="${m.role === 'user' ? 'ai-msg-user-content' : 'ai-msg-assistant-content'}">${m.role === 'user' ? escapeHtml(m.content) : markdownToReportHtml(m.content)}</div>
       </div>
     `).join('');
     container.scrollTop = container.scrollHeight;
@@ -11649,35 +11664,35 @@ async function sendAiChat() {
   const input = document.getElementById("ai-chat-input");
   const message = input.value.trim();
   if (!message) return;
-  
+
   const btn = document.getElementById("ai-chat-send-btn");
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>';
-  
+
   const promptSelect = document.getElementById("ai-prompt-select");
   const selectedPrompt = promptSelect.options[promptSelect.selectedIndex];
   const systemPrompt = selectedPrompt?.dataset?.content || "";
-  
+
   const knowledgeSelect = document.getElementById("ai-knowledge-select");
   const knowledgeId = knowledgeSelect.value || null;
-  
+
   // 添加用户消息到界面
   const container = document.getElementById("ai-chat-messages");
   container.innerHTML += `
     <div class="ai-msg ai-msg-user" style="max-width:80%;align-self:flex-end;">
       <div style="font-size:12px;color:var(--text1);margin-bottom:4px;">👤 你</div>
-      <div style="background:var(--gold-dim);padding:12px;border-radius:var(--r);white-space:pre-wrap;">${escapeHtml(message)}</div>
+      <div class="ai-msg-user-content">${escapeHtml(message)}</div>
     </div>
   `;
   container.innerHTML += `
     <div class="ai-msg ai-msg-assistant" style="max-width:80%;">
       <div style="font-size:12px;color:var(--text1);margin-bottom:4px;">🤖 AI 助手</div>
-      <div style="background:var(--bg2);padding:12px;border-radius:var(--r);"><span class="spinner"></span> 思考中...</div>
+      <div class="ai-msg-assistant-content"><span class="spinner"></span> 思考中...</div>
     </div>
   `;
   container.scrollTop = container.scrollHeight;
   input.value = "";
-  
+
   try {
     const res = await fetch("/api/ai-chat/messages", {
       method: "POST",
@@ -11691,21 +11706,21 @@ async function sendAiChat() {
       })
     });
     const data = await res.json();
-    
+
     if (data.sessionId && !currentChatSession) {
       currentChatSession = data.sessionId;
       loadChatSessions();
     }
-    
-    // 更新AI回复
+
+    // 更新AI回复（使用 Markdown 渲染）
     const lastAssistant = container.querySelectorAll(".ai-msg-assistant");
     const lastMsg = lastAssistant[lastAssistant.length - 1];
-    lastMsg.querySelector("div:last-child").innerHTML = escapeHtml(data.message || "无回复");
+    lastMsg.querySelector(".ai-msg-assistant-content").innerHTML = markdownToReportHtml(data.message || "无回复");
     container.scrollTop = container.scrollHeight;
   } catch(e) {
     showToast("发送失败: " + e.message);
   }
-  
+
   btn.disabled = false;
   btn.innerHTML = "发送";
 }
