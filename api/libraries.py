@@ -217,13 +217,13 @@ async def patch_identity(request: Request, _: dict = Depends(security.require_an
     body = await request.json()
     old_name = store.text(body.get("fromName") or body.get("oldName") or body.get("from"))
     new_name = store.text(body.get("toName") or body.get("newName") or body.get("to"))
-    
+
     if not old_name or not new_name:
         raise HTTPException(status_code=400, detail="缺少原名称或新名称")
-    
+
     if old_name == new_name:
         raise HTTPException(status_code=400, detail="原名称和新名称相同")
-    
+
     # 获取所有 old_name 的 profile（可能有多条重复记录）
     old_profiles = db.fetch_all(
         "SELECT id, raw, updated_at FROM finvue_anchor_profiles WHERE anchor_name = %s ORDER BY updated_at DESC",
@@ -234,15 +234,71 @@ async def patch_identity(request: Request, _: dict = Depends(security.require_an
         "SELECT id, raw, updated_at FROM finvue_anchor_profiles WHERE anchor_name = %s ORDER BY updated_at DESC",
         (new_name,)
     )
-    
+
     # 检查是否有其他数据（transcripts, reports）
     old_transcripts_count = db.fetch_one("SELECT COUNT(*) as cnt FROM finvue_transcripts WHERE anchor_name = %s", (old_name,))
     old_reports_count = db.fetch_one("SELECT COUNT(*) as cnt FROM finvue_analysis_reports WHERE anchor_name = %s", (old_name,))
-    
+
     has_old_data = old_profiles or (old_transcripts_count and old_transcripts_count.get("cnt", 0) > 0) or (old_reports_count and old_reports_count.get("cnt", 0) > 0)
-    
-    # 如果没有任何数据，直接创建新主播
-    if not has_old_data:
+
+    # 先执行所有数据表的更新（确保在所有情况下都能同步）
+    # 更新逐字稿表的 anchor_name 字段
+    db.execute("UPDATE finvue_transcripts SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
+    # 更新分析报告表
+    db.execute("UPDATE finvue_analysis_reports SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
+    # 更新客户表
+    db.execute("UPDATE finvue_customer_profiles SET latest_anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE latest_anchor_name = %s", (new_name, old_name))
+    db.execute("UPDATE finvue_customer_sessions SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
+
+    # 同步更新逐字稿 raw JSON 中的 anchorName
+    # 查询所有 anchor_name = new_name 的逐字稿（包括原本就是 new_name 的和新更新的）
+    all_transcripts_with_new_name = db.fetch_all("SELECT id, raw FROM finvue_transcripts WHERE anchor_name = %s", (new_name,))
+    for t in all_transcripts_with_new_name:
+        raw = store.parse_json(t.get("raw"), {})
+        if raw.get("anchorName") != new_name:
+            raw["anchorName"] = new_name
+            db.execute("UPDATE finvue_transcripts SET raw = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s", (store._json(raw), t["id"]))
+
+    # 同步更新分析报告 raw JSON 中的 anchorName
+    all_reports_with_new_name = db.fetch_all("SELECT id, raw FROM finvue_analysis_reports WHERE anchor_name = %s", (new_name,))
+    for r in all_reports_with_new_name:
+        raw = store.parse_json(r.get("raw"), {})
+        if raw.get("anchorName") != new_name:
+            raw["anchorName"] = new_name
+            db.execute("UPDATE finvue_analysis_reports SET raw = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s", (store._json(raw), r["id"]))
+
+    # 合并主播资料库
+    all_profiles_to_merge = old_profiles + new_profiles
+    if all_profiles_to_merge:
+        # 选择最新的一条作为主记录（优先选择 new_profiles 中最新的，因为它更稳定）
+        main_profile = all_profiles_to_merge[0]
+        main_raw = store.parse_json(main_profile.get("raw"), {})
+        main_raw["anchorName"] = new_name
+
+        # 合并所有 snapshots，去重
+        all_snapshots = []
+        seen_ids = set()
+        for p in all_profiles_to_merge:
+            raw = store.parse_json(p.get("raw"), {})
+            for s in store.safe_array(raw.get("snapshots", [])):
+                sid = s.get("id") or s.get("analyzedAt") or ""
+                if sid and sid not in seen_ids:
+                    all_snapshots.append(s)
+                    seen_ids.add(sid)
+
+        main_raw["snapshots"] = all_snapshots
+
+        # 更新主记录
+        db.execute(
+            "UPDATE finvue_anchor_profiles SET anchor_name = %s, raw = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+            (new_name, store._json(main_raw), main_profile["id"])
+        )
+
+        # 删除其他所有重复记录
+        for p in all_profiles_to_merge[1:]:
+            db.execute("DELETE FROM finvue_anchor_profiles WHERE id = %s", (p["id"],))
+    elif not has_old_data:
+        # 如果没有任何 old_name 的数据，也没有 new_name 的主播资料，创建新的主播资料
         now = datetime.now(timezone.utc).isoformat()
         new_id = store._id("anchor")
         new_raw = {"id": new_id, "anchorName": new_name, "snapshots": [], "createdAt": now, "updatedAt": now}
@@ -251,64 +307,19 @@ async def patch_identity(request: Request, _: dict = Depends(security.require_an
             (new_id, new_name, store._json(new_raw))
         )
     else:
-        # 合并所有 old_name 和 new_name 的 profile 到一条记录
-        all_profiles_to_merge = old_profiles + new_profiles
-        if all_profiles_to_merge:
-            # 选择最新的一条作为主记录
-            main_profile = all_profiles_to_merge[0]
-            main_raw = store.parse_json(main_profile.get("raw"), {})
-            main_raw["anchorName"] = new_name
-            
-            # 合并所有 snapshots，去重
-            all_snapshots = []
-            seen_ids = set()
-            for p in all_profiles_to_merge:
-                raw = store.parse_json(p.get("raw"), {})
-                for s in store.safe_array(raw.get("snapshots", [])):
-                    sid = s.get("id") or s.get("analyzedAt") or ""
-                    if sid and sid not in seen_ids:
-                        all_snapshots.append(s)
-                        seen_ids.add(sid)
-            
-            main_raw["snapshots"] = all_snapshots
-            
-            # 更新主记录
-            db.execute(
-                "UPDATE finvue_anchor_profiles SET anchor_name = %s, raw = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
-                (new_name, store._json(main_raw), main_profile["id"])
-            )
-            
-            # 删除其他所有重复记录
-            for p in all_profiles_to_merge[1:]:
-                db.execute("DELETE FROM finvue_anchor_profiles WHERE id = %s", (p["id"],))
-        else:
-            # 主播库没有 profile，但有逐字稿/报告数据，需要创建新的主播 profile
-            now = datetime.now(timezone.utc).isoformat()
-            new_id = store._id("anchor")
-            new_raw = {"id": new_id, "anchorName": new_name, "snapshots": [], "createdAt": now, "updatedAt": now}
-            db.execute(
-                "INSERT INTO finvue_anchor_profiles (id, anchor_name, raw, created_at, updated_at) VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-                (new_id, new_name, store._json(new_raw))
-            )
+        # 有逐字稿/报告数据但没有主播资料，创建新的主播资料
+        now = datetime.now(timezone.utc).isoformat()
+        new_id = store._id("anchor")
+        new_raw = {"id": new_id, "anchorName": new_name, "snapshots": [], "createdAt": now, "updatedAt": now}
+        db.execute(
+            "INSERT INTO finvue_anchor_profiles (id, anchor_name, raw, created_at, updated_at) VALUES (%s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            (new_id, new_name, store._json(new_raw))
+        )
 
-        
-        # 更新其他表中的 anchor_name，并同步 raw JSON
-        db.execute("UPDATE finvue_transcripts SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
-        db.execute("UPDATE finvue_analysis_reports SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
-        db.execute("UPDATE finvue_customer_profiles SET latest_anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE latest_anchor_name = %s", (new_name, old_name))
-        db.execute("UPDATE finvue_customer_sessions SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
-        
-        # 同步更新逐字稿 raw JSON 中的 anchorName（确保一定写入）
-        updated_transcripts = db.fetch_all("SELECT id, raw FROM finvue_transcripts WHERE anchor_name = %s", (new_name,))
-        for t in updated_transcripts:
-            raw = store.parse_json(t.get("raw"), {})
-            raw["anchorName"] = new_name  # 强制写入，不管之前有没有
-            db.execute("UPDATE finvue_transcripts SET raw = %s WHERE id = %s", (store._json(raw), t["id"]))
-    
     # 返回更新后的数据
     profiles = db.fetch_all("SELECT raw FROM finvue_anchor_profiles ORDER BY updated_at DESC")
     entries = db.fetch_all("SELECT raw FROM finvue_transcripts ORDER BY updated_at DESC")
-    
+
     return {
         "ok": True,
         "oldName": old_name,
