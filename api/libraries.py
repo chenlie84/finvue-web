@@ -288,6 +288,13 @@ async def patch_identity(request: Request, _: dict = Depends(security.require_an
     db.execute("UPDATE finvue_customer_profiles SET latest_anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE latest_anchor_name = %s", (new_name, old_name))
     db.execute("UPDATE finvue_customer_sessions SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
     
+    # 同步更新所有 profile raw JSON 中的 anchorName 
+    all_profiles = db.fetch_all("SELECT id, raw FROM finvue_anchor_profiles WHERE anchor_name = %s", (new_name,)) 
+    for p in all_profiles: 
+        raw = store.parse_json(p.get("raw"), {}) 
+        if raw.get("anchorName") != new_name: 
+            raw["anchorName"] = new_name 
+            db.execute("UPDATE finvue_anchor_profiles SET raw = %s WHERE id = %s", (store._json(raw), p["id"]))
     # 返回更新后的数据
     profiles = db.fetch_all("SELECT raw FROM finvue_anchor_profiles ORDER BY updated_at DESC")
     entries = db.fetch_all("SELECT raw FROM finvue_transcripts ORDER BY updated_at DESC")
