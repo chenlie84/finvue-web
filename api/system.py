@@ -1,12 +1,19 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+import json
+import subprocess
+from pathlib import Path
 
+from fastapi import APIRouter, Depends, Request, Query
+
+import config
 import security
 import store
 
 
 router = APIRouter()
+
+ANCHOR_DASHBOARD_BRIDGE = Path(__file__).parent.parent / "app" / "lib" / "anchor_dashboard_bridge.py"
 
 
 @router.get("/api/health")
@@ -15,8 +22,78 @@ def health() -> dict:
 
 
 @router.get("/api/anchor-dashboard/weekly")
-def dashboard_weekly(_: dict = Depends(security.require_permission("home"))) -> dict:
-    return {"ok": True, "items": [], "message": "FastAPI 线上版已接管，数据看板将通过 MySQL 聚合接口补齐。"}
+def dashboard_weekly(
+    force: bool = Query(False),
+    start: str = Query(""),
+    end: str = Query(""),
+    _: dict = Depends(security.require_permission("home"))
+) -> dict:
+    """获取主播画像周会数据，通过 anchor_dashboard_bridge 调用外部 anchor_dashboard 模块."""
+    python_path = str(config.ANCHOR_DASHBOARD_PYTHON or "python3").strip()
+    if not ANCHOR_DASHBOARD_BRIDGE.exists():
+        return {
+            "ok": False,
+            "anchors": [],
+            "refresh_stats": {},
+            "error": "anchor_dashboard_bridge.py 脚本不存在",
+            "message": "请确保 app/lib/anchor_dashboard_bridge.py 文件存在"
+        }
+
+    try:
+        args = [python_path, str(ANCHOR_DASHBOARD_BRIDGE)]
+        if start:
+            args.append(start)
+        else:
+            args.append("-")
+        if end:
+            args.append(end)
+        else:
+            args.append("-")
+
+        result = subprocess.run(
+            args,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            cwd=str(ANCHOR_DASHBOARD_BRIDGE.parent.parent.parent)
+        )
+
+        if result.returncode != 0:
+            error_msg = result.stderr.strip() or result.stdout.strip() or "未知错误"
+            return {
+                "ok": False,
+                "anchors": [],
+                "refresh_stats": {},
+                "error": f"anchor_dashboard_bridge 执行失败: {error_msg}",
+                "returncode": result.returncode
+            }
+
+        payload = json.loads(result.stdout)
+        payload["ok"] = True
+        return payload
+
+    except subprocess.TimeoutExpired:
+        return {
+            "ok": False,
+            "anchors": [],
+            "refresh_stats": {},
+            "error": "anchor_dashboard_bridge 执行超时（60秒）"
+        }
+    except json.JSONDecodeError as e:
+        return {
+            "ok": False,
+            "anchors": [],
+            "refresh_stats": {},
+            "error": f"JSON 解析失败: {e.msg}",
+            "raw_output": result.stdout[:500] if result else ""
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "anchors": [],
+            "refresh_stats": {},
+            "error": f"执行异常: {str(e)}"
+        }
 
 
 @router.post("/api/live-room-analytics/sync")
