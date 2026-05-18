@@ -76,6 +76,7 @@ def _build_request(provider: dict[str, Any], system_prompt: str, user_prompt: st
         payload = {
             "model": model,
             "max_tokens": 4096,
+            "stream": False,  # 禁用流式响应
             "system": system_prompt,
             "messages": [
                 {"role": "user", "content": user_prompt},
@@ -165,7 +166,13 @@ def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: st
     if response_text.startswith("event:") or "data:" in response_text[:100]:
         # 尝试解析 SSE 流式响应，取最后一个有效 data
         text = ""
+        content_blocks = {}  # 存储每个 content_block 的文本
         for line in response_text.strip().split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("event:"):
+                continue  # 跳过 event 类型行
             if line.startswith("data:"):
                 data_content = line[5:].strip()
                 if data_content and data_content != "[DONE]":
@@ -173,11 +180,36 @@ def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: st
                         data = json.loads(data_content)
                         # 尝试从流式响应中提取文本
                         if isinstance(data, dict):
-                            # Anthropic 格式
-                            if data.get("type") == "content_block_delta":
+                            # Anthropic 格式 - 多种事件类型
+                            event_type = data.get("type", "")
+                            
+                            # content_block_start: 记录 block index 和类型
+                            if event_type == "content_block_start":
+                                block = data.get("content_block", {})
+                                block_index = data.get("index", 0)
+                                if block.get("type") == "text":
+                                    content_blocks[block_index] = ""
+                            
+                            # content_block_delta: 提取文本增量
+                            elif event_type == "content_block_delta":
+                                block_index = data.get("index", 0)
                                 delta = data.get("delta", {})
                                 if delta.get("type") == "text_delta":
-                                    text += delta.get("text", "")
+                                    text_delta = delta.get("text", "")
+                                    if block_index in content_blocks:
+                                        content_blocks[block_index] += text_delta
+                                    else:
+                                        content_blocks[block_index] = text_delta
+                                    text += text_delta
+                            
+                            # message_delta: 消息状态更新（不包含文本）
+                            elif event_type == "message_delta":
+                                pass
+                            
+                            # message_start: 消息开始（不包含文本）
+                            elif event_type == "message_start":
+                                pass
+                            
                             # OpenAI 格式
                             elif data.get("choices"):
                                 choice = data["choices"][0]
@@ -185,8 +217,13 @@ def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: st
                                     text += choice["delta"].get("content", "")
                     except Exception:
                         pass
+        
+        # 如果增量方式没提取到文本，尝试从 content_blocks 合成
+        if not text and content_blocks:
+            text = "".join(content_blocks.get(i, "") for i in sorted(content_blocks.keys()))
+        
         if not text:
-            raise RuntimeError(f"AI 响应解析失败：收到流式响应但无法提取文本，内容：{response_text[:300]}")
+            raise RuntimeError(f"AI 响应解析失败：收到流式响应但无法提取文本，内容：{response_text[:500]}")
     else:
         # 普通 JSON 响应
         try:
