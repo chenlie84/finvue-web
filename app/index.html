@@ -11608,10 +11608,34 @@ async function initAiChat() {
     const kbRes = await fetch("/api/ai-chat/knowledge", { credentials: "include" });
     const kbList = await kbRes.json();
     const select = document.getElementById("ai-knowledge-select");
-    select.innerHTML = '<option value="">选择知识库...</option>';
-    kbList.forEach(k => {
-      select.innerHTML += `<option value="${k.id}">${escapeHtml(k.name)} (${k.file_type})</option>`;
-    });
+    
+    // 分离普通知识库和主播蒸馏库
+    const normalKb = kbList.filter(k => !k.is_distill);
+    const distillKb = kbList.filter(k => k.is_distill);
+    
+    let html = '<option value="">选择知识库...</option>';
+    
+    // 普通知识库
+    if (normalKb.length) {
+      html += '<optgroup label="📁 上传的知识库">';
+      normalKb.forEach(k => {
+        html += `<option value="${k.id}">${escapeHtml(k.name)} (${k.file_type})</option>`;
+      });
+      html += '</optgroup>';
+    }
+    
+    // 主播蒸馏库
+    if (distillKb.length) {
+      html += '<optgroup label="🎯 主播蒸馏库">';
+      distillKb.forEach(k => {
+        const badge = k.has_profile ? '📋' : '';
+        const countBadge = k.transcript_count > 0 ? `📝${k.transcript_count}` : '';
+        html += `<option value="${k.id}" style="color:var(--gold);">${escapeHtml(k.name.replace('主播蒸馏：', ''))} ${badge} ${countBadge}</option>`;
+      });
+      html += '</optgroup>';
+    }
+    
+    select.innerHTML = html;
   } catch(e) { console.error("加载知识库失败", e); }
   
   // 加载会话列表

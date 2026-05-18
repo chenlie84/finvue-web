@@ -14,6 +14,164 @@ from fastapi.responses import StreamingResponse
 router = APIRouter()
 
 
+# ══════════════ 主播蒸馏库知识库辅助函数 ══════════════
+
+def _get_anchor_profile_knowledge(anchor_name: str) -> str:
+    """获取主播资料库的知识库内容"""
+    if not anchor_name:
+        return ""
+    
+    profile = db.fetch_one(
+        "SELECT raw FROM finvue_anchor_profiles WHERE anchor_name = %s ORDER BY updated_at DESC LIMIT 1",
+        (anchor_name,)
+    )
+    if not profile:
+        return ""
+    
+    raw = json.loads(profile.get("raw") or "{}")
+    content_parts = []
+    
+    content_parts.append(f"【主播资料：{anchor_name}】")
+    
+    # 基本信息
+    if raw.get("anchorName"):
+        content_parts.append(f"主播名称：{raw['anchorName']}")
+    if raw.get("contentSchool"):
+        content_parts.append(f"流派标签：{raw['contentSchool']}")
+    if raw.get("complianceLevel"):
+        content_parts.append(f"合规等级：{raw['complianceLevel']}")
+    if raw.get("sixDimensionScore"):
+        content_parts.append(f"六维评分：{json.dumps(raw['sixDimensionScore'], ensure_ascii=False)}")
+    if raw.get("classifications"):
+        content_parts.append(f"画像标签：{', '.join(raw['classifications'])}")
+    
+    # 分析报告快照
+    snapshots = raw.get("snapshots", [])
+    if snapshots:
+        content_parts.append("\n【历史分析报告】")
+        for i, snapshot in enumerate(snapshots[:5]):  # 最近5份报告
+            content_parts.append(f"\n--- 报告 {i+1} ---")
+            if snapshot.get("title"):
+                content_parts.append(f"标题：{snapshot['title']}")
+            if snapshot.get("analyzedAt"):
+                content_parts.append(f"分析时间：{snapshot['analyzedAt']}")
+            if snapshot.get("summary"):
+                content_parts.append(f"摘要：{snapshot['summary']}")
+            if snapshot.get("markdown"):
+                # 截取报告内容的前2000字符
+                md_content = snapshot['markdown'][:2000]
+                content_parts.append(f"报告内容片段：\n{md_content}")
+    
+    return "\n".join(content_parts)
+
+
+def _get_transcript_knowledge(anchor_name: str) -> str:
+    """获取逐字稿库的知识库内容"""
+    if not anchor_name:
+        return ""
+    
+    transcripts = db.fetch_all(
+        "SELECT raw FROM finvue_transcripts WHERE anchor_name = %s ORDER BY analyzed_at DESC LIMIT 10",
+        (anchor_name,)
+    )
+    if not transcripts:
+        return ""
+    
+    content_parts = []
+    content_parts.append(f"【逐字稿库：{anchor_name}】")
+    content_parts.append(f"共 {len(transcripts)} 份逐字稿记录\n")
+    
+    for i, t in enumerate(transcripts):
+        raw = json.loads(t.get("raw") or "{}")
+        content_parts.append(f"\n--- 逐字稿 {i+1} ---")
+        if raw.get("liveTheme"):
+            content_parts.append(f"直播主题：{raw['liveTheme']}")
+        if raw.get("analyzedAt"):
+            content_parts.append(f"分析时间：{raw['analyzedAt']}")
+        if raw.get("sourceFileName"):
+            content_parts.append(f"来源文件：{raw['sourceFileName']}")
+        
+        # 章节
+        chapters = raw.get("chapters", [])
+        if chapters:
+            content_parts.append(f"章节结构（{len(chapters)} 个章节）：")
+            for ch in chapters[:10]:
+                if ch.get("title"):
+                    content_parts.append(f"  - {ch['title']}: {ch.get('preview', '')[:100]}")
+        
+        # 逐字稿内容（截取）
+        transcript_text = raw.get("transcriptText", "")
+        if transcript_text:
+            content_parts.append(f"逐字稿内容片段：\n{transcript_text[:3000]}")
+    
+    return "\n".join(content_parts)
+
+
+def _get_distill_knowledge(anchor_name: str) -> str:
+    """获取主播蒸馏库的知识库内容（主播资料 + 逐字稿）"""
+    profile_knowledge = _get_anchor_profile_knowledge(anchor_name)
+    transcript_knowledge = _get_transcript_knowledge(anchor_name)
+    
+    if not profile_knowledge and not transcript_knowledge:
+        return ""
+    
+    content_parts = ["【主播蒸馏库知识】"]
+    if profile_knowledge:
+        content_parts.append(profile_knowledge)
+    if transcript_knowledge:
+        content_parts.append("\n" + transcript_knowledge)
+    
+    return "\n".join(content_parts)
+
+
+def _get_distill_anchor_list() -> List[Dict[str, Any]]:
+    """获取主播蒸馏库的主播列表（用于知识库选项）"""
+    # 从主播资料库获取主播列表
+    profiles = db.fetch_all(
+        "SELECT anchor_name, updated_at FROM finvue_anchor_profiles ORDER BY updated_at DESC LIMIT 50"
+    )
+    
+    # 从逐字稿库获取主播列表
+    transcripts = db.fetch_all(
+        "SELECT anchor_name, COUNT(*) as transcript_count FROM finvue_transcripts GROUP BY anchor_name ORDER BY MAX(updated_at) DESC LIMIT 50"
+    )
+    
+    # 合并去重
+    anchor_set = set()
+    anchors = []
+    
+    for p in profiles or []:
+        name = p.get("anchor_name")
+        if name and name not in anchor_set:
+            anchor_set.add(name)
+            anchors.append({
+                "anchorName": name,
+                "hasProfile": True,
+                "transcriptCount": 0
+            })
+    
+    # 补充逐字稿数量
+    for t in transcripts or []:
+        name = t.get("anchor_name")
+        count = t.get("transcript_count", 0)
+        if name:
+            if name in anchor_set:
+                # 更新已有主播的逐字稿数量
+                for a in anchors:
+                    if a["anchorName"] == name:
+                        a["transcriptCount"] = count
+                        break
+            else:
+                anchor_set.add(name)
+                anchors.append({
+                    "anchorName": name,
+                    "hasProfile": False,
+                    "transcriptCount": count
+                })
+    
+    return anchors
+
+
 # ══════════════ 会话管理 ══════════════
 
 @router.get("/api/ai-chat/sessions")
@@ -149,11 +307,24 @@ async def send_message(request: Request, session: dict = Depends(security.requir
     
     # 如果有知识库内容，附加到系统提示词
     knowledge_context = ""
-    if body.get("knowledgeBaseId"):
-        kb_sql = "SELECT content FROM finvue_ai_knowledge_base WHERE id = %s AND created_by = %s AND status = 'ready'"
-        kb = db.fetch_one(kb_sql, (body.get("knowledgeBaseId"), username))
-        if kb and kb.get("content"):
-            knowledge_context = f"\n\n【知识库内容】\n{kb['content']}\n"
+    kb_id = body.get("knowledgeBaseId")
+    if kb_id:
+        # 检查是否是主播蒸馏库的特殊 ID
+        if kb_id.startswith("distill:"):
+            anchor_name = kb_id.replace("distill:", "")
+            knowledge_context = _get_distill_knowledge(anchor_name)
+        elif kb_id.startswith("anchor:"):
+            anchor_name = kb_id.replace("anchor:", "")
+            knowledge_context = _get_anchor_profile_knowledge(anchor_name)
+        elif kb_id.startswith("transcript:"):
+            anchor_name = kb_id.replace("transcript:", "")
+            knowledge_context = _get_transcript_knowledge(anchor_name)
+        else:
+            # 普通知识库
+            kb_sql = "SELECT content FROM finvue_ai_knowledge_base WHERE id = %s AND created_by = %s AND status = 'ready'"
+            kb = db.fetch_one(kb_sql, (kb_id, username))
+            if kb and kb.get("content"):
+                knowledge_context = f"\n\n【知识库内容】\n{kb['content']}\n"
     
     # 调用AI生成回复
     try:
@@ -228,11 +399,24 @@ async def stream_message(request: Request, session: dict = Depends(security.requ
     # 构建提示词
     system_prompt = body.get("systemPrompt", "")
     knowledge_context = ""
-    if body.get("knowledgeBaseId"):
-        kb_sql = "SELECT content FROM finvue_ai_knowledge_base WHERE id = %s AND created_by = %s AND status = 'ready'"
-        kb = db.fetch_one(kb_sql, (body.get("knowledgeBaseId"), username))
-        if kb and kb.get("content"):
-            knowledge_context = f"\n\n【知识库内容】\n{kb['content']}\n"
+    kb_id = body.get("knowledgeBaseId")
+    if kb_id:
+        # 检查是否是主播蒸馏库的特殊 ID
+        if kb_id.startswith("distill:"):
+            anchor_name = kb_id.replace("distill:", "")
+            knowledge_context = _get_distill_knowledge(anchor_name)
+        elif kb_id.startswith("anchor:"):
+            anchor_name = kb_id.replace("anchor:", "")
+            knowledge_context = _get_anchor_profile_knowledge(anchor_name)
+        elif kb_id.startswith("transcript:"):
+            anchor_name = kb_id.replace("transcript:", "")
+            knowledge_context = _get_transcript_knowledge(anchor_name)
+        else:
+            # 普通知识库
+            kb_sql = "SELECT content FROM finvue_ai_knowledge_base WHERE id = %s AND created_by = %s AND status = 'ready'"
+            kb = db.fetch_one(kb_sql, (kb_id, username))
+            if kb and kb.get("content"):
+                knowledge_context = f"\n\n【知识库内容】\n{kb['content']}\n"
     
     def events():
         full_response = ""
@@ -343,15 +527,36 @@ async def delete_prompt(prompt_id: int, session: dict = Depends(security.require
 
 @router.get("/api/ai-chat/knowledge")
 async def list_knowledge(session: dict = Depends(security.require_auth)) -> List[Dict[str, Any]]:
-    """获取知识库列表"""
+    """获取知识库列表（包括普通知识库和主播蒸馏库）"""
     username = session.get("username")
+    
+    # 1. 普通知识库
     sql = """
         SELECT id, name, description, file_name, file_type, file_size, status, created_at
         FROM finvue_ai_knowledge_base
         WHERE created_by = %s
         ORDER BY created_at DESC
     """
-    return db.fetch_all(sql, (username,))
+    kb_list = db.fetch_all(sql, (username,))
+    
+    # 2. 主播蒸馏库（作为虚拟知识库）
+    distill_anchors = _get_distill_anchor_list()
+    for anchor in distill_anchors:
+        kb_list.append({
+            "id": f"distill:{anchor['anchorName']}",
+            "name": f"主播蒸馏：{anchor['anchorName']}",
+            "description": f"主播资料 + {anchor['transcriptCount']}份逐字稿",
+            "file_name": None,
+            "file_type": "distill",
+            "file_size": None,
+            "status": "ready",
+            "created_at": None,
+            "is_distill": True,
+            "has_profile": anchor.get("hasProfile", False),
+            "transcript_count": anchor.get("transcriptCount", 0)
+        })
+    
+    return kb_list
 
 
 @router.post("/api/ai-chat/knowledge")
