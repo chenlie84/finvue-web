@@ -1391,6 +1391,99 @@
         </div>
       </div>
       
+      <!-- ══ 热点追踪 ══ -->
+      <div class="sec" id="sec-hotspot">
+        <div class="page-title">热点追踪</div>
+        <div class="page-sub">财经热点事件追踪，支持 AI 解读与直播话术建议</div>
+
+        <!-- 搜索 + 筛选 -->
+        <div style="display:flex;gap:10px;margin-bottom:20px;">
+          <input class="inp" placeholder="搜索热点标题、关键词…" style="flex:1;"/>
+          <select class="sel"><option>全部来源</option><option>财经新闻</option><option>政策公告</option><option>市场动态</option><option>行业事件</option></select>
+          <select class="sel"><option>全部状态</option><option>进行中</option><option>已结束</option><option>待关注</option></select>
+          <button class="btn btn-gold" onclick="showToast('添加热点')">+ 添加热点</button>
+        </div>
+
+        <!-- 统计 -->
+        <div class="g4 mb">
+          <div class="kpi" style="--accent:var(--gold)"><div class="kpi-lbl">追踪热点</div><div class="kpi-val gold">12</div><div class="kpi-delta muted">本月收录</div></div>
+          <div class="kpi" style="--accent:var(--green)"><div class="kpi-lbl">进行中</div><div class="kpi-val">5</div><div class="kpi-delta green">需要关注</div></div>
+          <div class="kpi" style="--accent:var(--blue)"><div class="kpi-lbl">已解读</div><div class="kpi-val">8</div><div class="kpi-delta muted">AI 分析</div></div>
+          <div class="kpi" style="--accent:var(--purple)"><div class="kpi-lbl">话术建议</div><div class="kpi-val">15</div><div class="kpi-delta muted">可复用</div></div>
+        </div>
+
+        <!-- 热点列表 -->
+        <div class="g2 mb">
+          <div class="panel">
+            <div class="panel-hd"><div class="panel-title">当前热点</div><span class="panel-act">最近 7 天</span></div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div class="hotspot-card" onclick="showToast('打开热点：美联储加息')" style="padding:14px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg1);cursor:pointer;">
+                <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;">
+                  <div>
+                    <div style="font-size:14px;font-weight:500;color:var(--text0);">美联储维持利率不变，鲍威尔讲话要点</div>
+                    <div style="font-size:12px;color:var(--text1);margin-top:6px;">2026-05-18 · 财经新闻</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"><span class="badge gold">进行中</span><span class="badge blue">宏观</span><span class="badge purple">美联储</span></div>
+                  </div>
+                  <div style="text-align:right;">
+                    <div style="font-size:11px;color:var(--text2);">热度指数</div>
+                    <div style="font-size:18px;color:var(--gold);font-weight:600;">87</div>
+                  </div>
+                </div>
+                <div style="font-size:12px;color:var(--text1);margin-top:10px;line-height:1.6;padding-top:10px;border-top:1px solid var(--border);">AI 解读：美联储维持利率符合市场预期，鲍威尔强调通胀仍需关注，建议直播时重点关注对 A 股资金面影响...</div>
+              </div>
+              <div class="hotspot-card" onclick="showToast('打开热点：黄金新高')" style="padding:14px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg1);cursor:pointer;">
+                <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;">
+                  <div>
+                    <div style="font-size:14px;font-weight:500;color:var(--text0);">黄金突破 3200 美元创历史新高</div>
+                    <div style="font-size:12px;color:var(--text1);margin-top:6px;">2026-05-17 · 市场动态</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"><span class="badge green">已解读</span><span class="badge gold">黄金</span><span class="badge blue">大宗</span></div>
+                  </div>
+                  <div style="text-align:right;">
+                    <div style="font-size:11px;color:var(--text2);">热度指数</div>
+                    <div style="font-size:18px;color:var(--gold);font-weight:600;">92</div>
+                  </div>
+                </div>
+                <div style="font-size:12px;color:var(--text1);margin-top:10px;line-height:1.6;padding-top:10px;border-top:1px solid var(--border);">AI 解读：地缘避险情绪推动金价，建议直播话术侧重配置价值，可引用历史数据对比...</div>
+              </div>
+              <div class="hotspot-card" onclick="showToast('打开热点：新能源政策')" style="padding:14px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg1);cursor:pointer;">
+                <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;">
+                  <div>
+                    <div style="font-size:14px;font-weight:500;color:var(--text0);">新能源汽车下乡补贴政策落地</div>
+                    <div style="font-size:12px;color:var(--text1);margin-top:6px;">2026-05-15 · 政策公告</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"><span class="badge">待关注</span><span class="badge blue">新能源</span><span class="badge green">汽车</span></div>
+                  </div>
+                  <div style="text-align:right;">
+                    <div style="font-size:11px;color:var(--text2);">热度指数</div>
+                    <div style="font-size:18px;color:var(--blue);font-weight:600;">65</div>
+                  </div>
+                </div>
+                <div style="font-size:12px;color:var(--text2);margin-top:10px;line-height:1.6;padding-top:10px;border-top:1px solid var(--border);">待解读：点击生成 AI 分析与直播话术建议</div>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-hd"><div class="panel-title">话术建议库</div><span class="panel-act">从热点提取</span></div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="padding:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);">
+                <div style="font-size:12px;color:var(--text1);margin-bottom:6px;">美联储加息解读</div>
+                <div style="font-size:13px;color:var(--text0);line-height:1.6;">"这次美联储维持利率，其实市场早有预期。大家看，最近北向资金流入明显增加，说明外资对国内市场信心增强..."</div>
+                <div style="display:flex;gap:6px;margin-top:8px;"><span class="badge gold">推荐</span><span class="badge blue">宏观</span></div>
+              </div>
+              <div style="padding:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);">
+                <div style="font-size:12px;color:var(--text1);margin-bottom:6px;">黄金新高解读</div>
+                <div style="font-size:13px;color:var(--text0);line-height:1.6;">"黄金这波上涨，核心还是避险需求。3200 美元这个关口，大家记住，是历史新高，说明什么？全球资金都在找安全的地方..."</div>
+                <div style="display:flex;gap:6px;margin-top:8px;"><span class="badge green">合规</span><span class="badge gold">黄金</span></div>
+              </div>
+              <div style="padding:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);">
+                <div style="font-size:12px;color:var(--text1);margin-bottom:6px;">市场波动解读</div>
+                <div style="font-size:13px;color:var(--text0);line-height:1.6;">"今天大盘震荡，大家不用慌。3300 点这个位置，本身就存在分歧，上有压力下有支撑，震荡整理很正常..."</div>
+                <div style="display:flex;gap:6px;margin-top:8px;"><span class="badge blue">稳健</span><span class="badge green">安抚</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ══ SOP ══ -->
       <div class="sec" id="sec-market">
         <div class="page-title">实时行情</div>
