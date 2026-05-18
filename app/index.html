@@ -3863,6 +3863,7 @@ function showSec(id, btn) {
     targetBtn.classList.add("active");
   }
   if (id === "home") drawSpark("homeChart");
+  if (id === "portrait") window.AnchorPortraitPage?.ensureRendered();
   if (id === "backtest") setTimeout(() => drawSpark("btChart", [8,7.5,8.2,8.8,8.5,9,8.7,9.1,8.9,9.2], true), 100);
   if (id === "distill-library") renderDistillLibrary();
   if (id === "ai-chat") initAiChat();
