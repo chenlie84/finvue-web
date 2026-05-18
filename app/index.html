@@ -922,63 +922,76 @@
               </div>
               <div class="lbl" id="transcriptLabel">逐字稿正文（可直接补充或修正）</div>
               <textarea class="textarea" id="tsText" rows="5" placeholder="将逐字稿粘贴于此；如果已经上传文件，这里也可以继续补充正文片段…"></textarea>
-              <div class="lbl" id="transcriptNotesLabel" style="margin-top:10px;">补充备注（可选）</div>
-              <textarea class="textarea" id="transcriptNotes" rows="3" placeholder="补充备注会和逐字稿一起发给模型，例如：机构背景、主播状态、直播目标、你想重点关注的问题…"></textarea>
-              <div id="evaluationDataBlock" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
-                <div class="panel" style="margin:0 0 12px;">
-                  <div class="panel-hd">
-                    <div class="panel-title">使用已接入直播数据</div>
-                    <span class="panel-act" id="metricsAnchorMeta">从 anchor_dashboard 自动拉取</span>
+              
+              <!-- 可折叠区域：补充内容 -->
+              <div style="margin-top:14px;border-top:1px solid var(--border);">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;">
+                  <span class="muted" style="font-size:12px;">补充备注、直播数据等（展开后可配置）</span>
+                  <span class="collapse-btn" onclick="toggleTranscriptExpand()">
+                    <span class="caret">▸</span>
+                    <span>展开</span>
+                  </span>
+                </div>
+                <div id="transcriptExpandBody" style="display:none;">
+                  <div class="lbl" id="transcriptNotesLabel" style="margin-top:10px;">补充备注（可选）</div>
+                  <textarea class="textarea" id="transcriptNotes" rows="3" placeholder="补充备注会和逐字稿一起发给模型，例如：机构背景、主播状态、直播目标、你想重点关注的问题…"></textarea>
+                  <div id="evaluationDataBlock" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+                    <div class="panel" style="margin:0 0 12px;">
+                      <div class="panel-hd">
+                        <div class="panel-title">使用已接入直播数据</div>
+                        <span class="panel-act" id="metricsAnchorMeta">从 anchor_dashboard 自动拉取</span>
+                      </div>
+                      <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr auto auto;gap:10px;align-items:end;">
+                        <div>
+                          <div class="lbl">选择主播</div>
+                          <select class="sel" id="metricsAnchorSelect" style="width:100%;">
+                            <option value="">请选择主播</option>
+                          </select>
+                        </div>
+                        <div>
+                          <div class="lbl">开始日期</div>
+                          <input class="inp" id="metricsAnchorStart" type="date" />
+                        </div>
+                        <div>
+                          <div class="lbl">结束日期</div>
+                          <input class="inp" id="metricsAnchorEnd" type="date" />
+                        </div>
+                        <button class="btn btn-outline" type="button" id="metricsAnchorRefreshBtn" onclick="loadMetricsAnchorOptions(true)" style="font-size:12px;padding:8px 14px;">刷新主播</button>
+                        <button class="btn btn-gold" type="button" id="metricsAnchorLoadBtn" onclick="loadConnectedAnchorMetrics()" style="font-size:12px;padding:8px 14px;">载入数据</button>
+                      </div>
+                      <div class="muted" style="font-size:12px;line-height:1.7;margin-top:10px;" id="metricsAnchorHint">如果这场直播的数据已经在已接入系统里，就不需要再上传 Excel。</div>
+                      <div id="metricsAnchorHistory" style="margin-top:12px;display:none;"></div>
+                    </div>
+                    <div class="lbl">直播数据文件（可选）</div>
+                    <div class="upload-zone mb" style="margin-bottom:10px;">
+                      <input id="metricsFileInput" type="file" accept=".xlsx,.xls,.csv" onchange="handleMetricsFile(this)"/>
+                      <div style="font-size:22px;">📊</div>
+                      <div style="font-size:13px;color:var(--text1);">上传直播数据 Excel / CSV</div>
+                      <div style="font-size:11px;color:var(--text2);">自动抽取前几行数据摘要，和逐字稿一起分析</div>
+                      <div id="metricsFileName" style="font-size:12px;color:var(--gold);"></div>
+                    </div>
+                    <div id="metricsUploadActions" style="display:none;justify-content:flex-end;gap:8px;margin:-2px 0 10px;">
+                      <button class="btn btn-outline" type="button" style="font-size:12px;padding:6px 12px;" onclick="triggerFileUpload('metrics')">重新上传</button>
+                      <button class="btn btn-outline" type="button" style="font-size:12px;padding:6px 12px;" onclick="clearUploadedFile('metrics')">删除已上传</button>
+                    </div>
+                    <div class="lbl">融合报告补充（可选）</div>
+                    <div class="upload-zone mb" style="margin-bottom:10px;">
+                      <input id="metricsSupplementFileInput" type="file" accept=".txt,.md,.markdown,.pdf" onchange="handleMetricsSupplementFile(this)"/>
+                      <div style="font-size:22px;">🧩</div>
+                      <div style="font-size:13px;color:var(--text1);">上传补充融合报告</div>
+                      <div style="font-size:11px;color:var(--text2);">适合补充分钟级趋势、关键时刻、互动玩法等已接入接口缺少的信息</div>
+                      <div id="metricsSupplementName" style="font-size:12px;color:var(--gold);"></div>
+                    </div>
+                    <div id="metricsSupplementUploadActions" style="display:none;justify-content:flex-end;gap:8px;margin:-2px 0 10px;">
+                      <button class="btn btn-outline" type="button" style="font-size:12px;padding:6px 12px;" onclick="triggerFileUpload('metricsSupplement')">重新上传</button>
+                      <button class="btn btn-outline" type="button" style="font-size:12px;padding:6px 12px;" onclick="clearUploadedFile('metricsSupplement')">删除已上传</button>
+                    </div>
+                    <div class="lbl">补充说明</div>
+                    <textarea class="textarea" id="evaluationNotes" rows="4" placeholder="补充这场直播的背景信息，例如：机构场景、直播主题、产品类型、目标用户、后台关键数据观察等…"></textarea>
+                    <div class="lbl" style="margin-top:10px;">直播数据摘要</div>
+                    <textarea class="textarea" id="metricsRawText" rows="4" placeholder="上传 Excel 后会自动抽出关键数据摘要；也可以手动补充直播后台数据说明…"></textarea>
                   </div>
-                  <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr auto auto;gap:10px;align-items:end;">
-                    <div>
-                      <div class="lbl">选择主播</div>
-                      <select class="sel" id="metricsAnchorSelect" style="width:100%;">
-                        <option value="">请选择主播</option>
-                      </select>
-                    </div>
-                    <div>
-                      <div class="lbl">开始日期</div>
-                      <input class="inp" id="metricsAnchorStart" type="date" />
-                    </div>
-                    <div>
-                      <div class="lbl">结束日期</div>
-                      <input class="inp" id="metricsAnchorEnd" type="date" />
-                    </div>
-                    <button class="btn btn-outline" type="button" id="metricsAnchorRefreshBtn" onclick="loadMetricsAnchorOptions(true)" style="font-size:12px;padding:8px 14px;">刷新主播</button>
-                    <button class="btn btn-gold" type="button" id="metricsAnchorLoadBtn" onclick="loadConnectedAnchorMetrics()" style="font-size:12px;padding:8px 14px;">载入数据</button>
-                  </div>
-                  <div class="muted" style="font-size:12px;line-height:1.7;margin-top:10px;" id="metricsAnchorHint">如果这场直播的数据已经在已接入系统里，就不需要再上传 Excel。</div>
-                  <div id="metricsAnchorHistory" style="margin-top:12px;display:none;"></div>
                 </div>
-                <div class="lbl">直播数据文件（可选）</div>
-                <div class="upload-zone mb" style="margin-bottom:10px;">
-                  <input id="metricsFileInput" type="file" accept=".xlsx,.xls,.csv" onchange="handleMetricsFile(this)"/>
-                  <div style="font-size:22px;">📊</div>
-                  <div style="font-size:13px;color:var(--text1);">上传直播数据 Excel / CSV</div>
-                  <div style="font-size:11px;color:var(--text2);">自动抽取前几行数据摘要，和逐字稿一起分析</div>
-                  <div id="metricsFileName" style="font-size:12px;color:var(--gold);"></div>
-                </div>
-                <div id="metricsUploadActions" style="display:none;justify-content:flex-end;gap:8px;margin:-2px 0 10px;">
-                  <button class="btn btn-outline" type="button" style="font-size:12px;padding:6px 12px;" onclick="triggerFileUpload('metrics')">重新上传</button>
-                  <button class="btn btn-outline" type="button" style="font-size:12px;padding:6px 12px;" onclick="clearUploadedFile('metrics')">删除已上传</button>
-                </div>
-                <div class="lbl">融合报告补充（可选）</div>
-                <div class="upload-zone mb" style="margin-bottom:10px;">
-                  <input id="metricsSupplementFileInput" type="file" accept=".txt,.md,.markdown,.pdf" onchange="handleMetricsSupplementFile(this)"/>
-                  <div style="font-size:22px;">🧩</div>
-                  <div style="font-size:13px;color:var(--text1);">上传补充融合报告</div>
-                  <div style="font-size:11px;color:var(--text2);">适合补充分钟级趋势、关键时刻、互动玩法等已接入接口缺少的信息</div>
-                  <div id="metricsSupplementName" style="font-size:12px;color:var(--gold);"></div>
-                </div>
-                <div id="metricsSupplementUploadActions" style="display:none;justify-content:flex-end;gap:8px;margin:-2px 0 10px;">
-                  <button class="btn btn-outline" type="button" style="font-size:12px;padding:6px 12px;" onclick="triggerFileUpload('metricsSupplement')">重新上传</button>
-                  <button class="btn btn-outline" type="button" style="font-size:12px;padding:6px 12px;" onclick="clearUploadedFile('metricsSupplement')">删除已上传</button>
-                </div>
-                <div class="lbl">补充说明</div>
-                <textarea class="textarea" id="evaluationNotes" rows="4" placeholder="补充这场直播的背景信息，例如：机构场景、直播主题、产品类型、目标用户、后台关键数据观察等…"></textarea>
-                <div class="lbl" style="margin-top:10px;">直播数据摘要</div>
-                <textarea class="textarea" id="metricsRawText" rows="4" placeholder="上传 Excel 后会自动抽出关键数据摘要；也可以手动补充直播后台数据说明…"></textarea>
               </div>
             </div>
             <div class="panel" id="resumePanel">
@@ -4331,6 +4344,19 @@ function toggleAdvancedPromptSettings(forceExpanded) {
   els.advancedPromptSummary.style.display = nextExpanded ? "none" : "block";
   els.advancedPromptToggle.classList.toggle("collapsed", !nextExpanded);
   els.advancedPromptToggle.lastElementChild.textContent = nextExpanded ? "折叠" : "展开";
+}
+
+function toggleTranscriptExpand(forceExpanded) {
+  const body = document.getElementById("transcriptExpandBody");
+  const btn = body?.previousElementSibling?.querySelector(".collapse-btn");
+  if (!body || !btn) return;
+  const isCollapsed = body.style.display === "none";
+  const nextExpanded = typeof forceExpanded === "boolean" ? forceExpanded : isCollapsed;
+  body.style.display = nextExpanded ? "block" : "none";
+  btn.classList.toggle("collapsed", !nextExpanded);
+  const caret = btn.querySelector(".caret");
+  if (caret) caret.textContent = nextExpanded ? "▾" : "▸";
+  btn.lastElementChild.textContent = nextExpanded ? "折叠" : "展开";
 }
 
 function refreshPromptSourcePanels() {
