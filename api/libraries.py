@@ -215,8 +215,9 @@ async def delete_transcript(request: Request, id: str = Query("", alias="id"), _
 @router.patch("/api/library-identity")
 async def patch_identity(request: Request, _: dict = Depends(security.require_any_permission("anchor-library", "transcript-library", "customer-library"))) -> dict:
     body = await request.json()
-    old_name = store.text(body.get("oldName") or body.get("from"))
-    new_name = store.text(body.get("newName") or body.get("to"))
+    # 支持多种参数名：fromName/toName, oldName/newName, from/to
+    old_name = store.text(body.get("fromName") or body.get("oldName") or body.get("from"))
+    new_name = store.text(body.get("toName") or body.get("newName") or body.get("to"))
     if not old_name or not new_name:
         raise HTTPException(status_code=400, detail="缺少原名称或新名称")
     
