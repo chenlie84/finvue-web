@@ -868,6 +868,12 @@
             <div class="panel">
               <div class="panel-hd"><div class="panel-title">AI 路由</div></div>
               <div class="muted" style="font-size:12px;line-height:1.8;">直播分析页不再单独维护 API Key 和模型。当前任务将自动走后台已启用的 AI 路由池，主路由失败时会回退到备用路由。</div>
+              <div style="margin-top:12px;">
+                <div class="lbl" style="margin-bottom:6px;">选择 AI 模型</div>
+                <select class="sel" id="live-model-select" style="width:100%;" title="选择 AI 模型，空则使用默认路由池">
+                  <option value="">使用默认路由池</option>
+                </select>
+              </div>
               <div style="margin-top:10px;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg1);">
                 <div class="muted" style="font-size:11px;">当前路由概览</div>
                 <div id="aiRouteSummary" style="margin-top:6px;font-size:13px;line-height:1.7;color:var(--text0);">正在读取后台配置…</div>
@@ -5410,6 +5416,17 @@ function renderAiRouteSummary() {
     .sort((a, b) => a.priority - b.priority)
     .map((item, index) => `${index === 0 ? "主路由" : `备用 ${index}`}：${item.label} / ${item.model}`)
     .join("；");
+  
+  // 同时更新直播分析页的模型选择下拉框
+  const liveModelSelect = document.getElementById("live-model-select");
+  if (liveModelSelect) {
+    const sortedProviders = providers.sort((a, b) => (a.priority || 0) - (b.priority || 0));
+    liveModelSelect.innerHTML = '<option value="">使用默认路由池</option>';
+    sortedProviders.forEach(p => {
+      const label = p.label || p.model || "未知模型";
+      liveModelSelect.innerHTML += `<option value="${p.id}">${escapeHtml(label)} (${escapeHtml(p.model)})</option>`;
+    });
+  }
 }
 
 function renderAdminAiProviders() {
@@ -10966,9 +10983,14 @@ async function persistCurrentAnalysisBundle(markdown) {
 }
 
 async function executeSingleLiveRun() {
+  // 获取选择的模型
+  const modelSelect = document.getElementById("live-model-select");
+  const selectedModelId = modelSelect?.value || null;
+  
   const requestPayload = {
     systemPrompt: buildLiveSystemPrompt() || "你是一位专业的投顾直播内容分析专家。",
-    userPrompt: buildLivePrompt()
+    userPrompt: buildLivePrompt(),
+    model: selectedModelId
   };
   setRunProgress(18, "模型已受理请求", "当前路由为非流式生成，完成后会一次性返回报告。");
   state.lastMarkdown = await runLiveOnce(requestPayload);
