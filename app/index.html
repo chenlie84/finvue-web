@@ -628,6 +628,9 @@
           <div class="ai-chat-main">
             <!-- 提示词和知识库选择 -->
             <div id="ai-chat-config-bar" class="ai-chat-config">
+              <select id="ai-model-select" class="sel" style="font-size:12px;min-width:140px;" title="选择 AI 模型">
+                <option value="">使用默认模型</option>
+              </select>
               <select id="ai-prompt-select" class="sel" style="font-size:12px;min-width:160px;" onchange="loadPromptContent()">
                 <option value="">选择提示词模板...</option>
               </select>
@@ -11590,6 +11593,7 @@ document.querySelectorAll('input[name="liveReportType"]').forEach((input) => inp
 let currentChatSession = null;
 let currentPromptContent = "";
 let currentKnowledgeId = null;
+let currentAiModel = "";
 
 async function initAiChat() {
   // 加载提示词模板
@@ -11602,7 +11606,20 @@ async function initAiChat() {
       select.innerHTML += `<option value="${p.id}" data-content="${escapeHtml(p.content || '')}">${escapeHtml(p.name)}</option>`;
     });
   } catch(e) { console.error("加载提示词失败", e); }
-  
+
+  // 加载 AI 提供商（模型）列表
+  try {
+    const settingsRes = await fetch("/api/settings", { credentials: "include" });
+    const settings = await settingsRes.json();
+    const providers = settings.aiProviders || [];
+    const modelSelect = document.getElementById("ai-model-select");
+    modelSelect.innerHTML = '<option value="">使用默认模型</option>';
+    providers.filter(p => p.enabled).sort((a, b) => (a.priority || 0) - (b.priority || 0)).forEach(p => {
+      const label = p.label || p.model || "未知模型";
+      modelSelect.innerHTML += `<option value="${p.id}">${escapeHtml(label)} (${escapeHtml(p.model)})</option>`;
+    });
+  } catch(e) { console.error("加载模型列表失败", e); }
+
   // 加载知识库
   try {
     const kbRes = await fetch("/api/ai-chat/knowledge", { credentials: "include" });
@@ -11700,6 +11717,10 @@ async function sendAiChat() {
   const knowledgeSelect = document.getElementById("ai-knowledge-select");
   const knowledgeId = knowledgeSelect.value || null;
 
+  // 获取选择的模型
+  const modelSelect = document.getElementById("ai-model-select");
+  const selectedModelId = modelSelect.value || null;
+
   // 添加用户消息到界面
   const container = document.getElementById("ai-chat-messages");
   container.innerHTML += `
@@ -11726,7 +11747,8 @@ async function sendAiChat() {
         sessionId: currentChatSession,
         message: message,
         systemPrompt: systemPrompt,
-        knowledgeBaseId: knowledgeId
+        knowledgeBaseId: knowledgeId,
+        model: selectedModelId
       })
     });
     const data = await res.json();

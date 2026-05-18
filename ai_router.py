@@ -201,19 +201,38 @@ def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: st
 
 
 def _routes_from_payload(payload: dict[str, Any], settings: dict[str, Any]) -> list[dict[str, Any]]:
-    inline = {
-        "id": "request-inline",
-        "label": payload.get("routeLabel") or "本次请求路由",
-        "baseUrl": payload.get("baseUrl") or payload.get("apiBaseUrl"),
-        "apiKey": payload.get("apiKey"),
-        "model": payload.get("model"),
-        "enabled": bool(payload.get("apiKey") and payload.get("model")),
-        "priority": 0,
-    }
-    routes = [inline] if inline["enabled"] else []
-    for route in settings.get("aiProviders") or []:
-        if isinstance(route, dict) and route.get("enabled", True):
-            routes.append(route)
+    routes = []
+    
+    # 检查 payload 中的 model 是否是提供商 ID
+    model_param = payload.get("model", "")
+    if model_param:
+        # 从 settings 中查找匹配的提供商
+        for route in settings.get("aiProviders") or []:
+            if isinstance(route, dict) and route.get("id") == model_param:
+                if route.get("enabled", True):
+                    routes.append(route)
+                    break
+    
+    # 如果没有找到匹配的提供商，检查 inline 配置
+    if not routes:
+        inline = {
+            "id": "request-inline",
+            "label": payload.get("routeLabel") or "本次请求路由",
+            "baseUrl": payload.get("baseUrl") or payload.get("apiBaseUrl"),
+            "apiKey": payload.get("apiKey"),
+            "model": payload.get("model"),
+            "enabled": bool(payload.get("apiKey") and payload.get("model") and not model_param.startswith("provider-")),
+            "priority": 0,
+        }
+        if inline["enabled"]:
+            routes.append(inline)
+    
+    # 添加所有启用的提供商作为备用（如果指定了提供商，则不再添加备用）
+    if not routes:
+        for route in settings.get("aiProviders") or []:
+            if isinstance(route, dict) and route.get("enabled", True):
+                routes.append(route)
+    
     return sorted(routes, key=lambda item: int(item.get("priority") or 999))
 
 
