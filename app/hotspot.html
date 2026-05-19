@@ -496,14 +496,25 @@ async function fetchHotspots() {
     const data = await res.json();
 
     const result = data.result || {};
-    status.innerHTML = `
-      <span style="color:var(--green)">✓ 抓取完成！</span>
-      共获取 ${fmt(result.totalItems || 0)} 条热搜，
-      成功平台: ${result.successPlatforms?.join(', ') || '--'}
-    `;
+    const failedList = result.failedPlatforms || [];
+    
+    if (failedList.length > 0) {
+      const failedHtml = failedList.map(f => `${esc(f.platform)}: ${esc(f.error)}`).join('<br>');
+      status.innerHTML = `
+        <span style="color:var(--green)">✓ 成功 ${result.successPlatforms?.length || 0} 个平台，共 ${fmt(result.totalItems || 0)} 条热搜</span>
+        <br><span style="color:var(--red);font-size:11px;">失败平台：<br>${failedHtml}</span>
+      `;
+    } else {
+      status.innerHTML = `
+        <span style="color:var(--green)">✓ 抓取完成！</span>
+        共获取 ${fmt(result.totalItems || 0)} 条热搜，
+        成功平台: ${result.successPlatforms?.join(', ') || '--'}
+      `;
+    }
+    
     $('lastFetchInfo').innerHTML = `
       <span style="color:var(--gold)">最后抓取: ${new Date().toLocaleString('zh-CN')}</span>
-      <br>成功 ${result.successPlatforms?.length || 0} 个平台
+      <br>成功 ${result.successPlatforms?.length || 0} 个平台，失败 ${failedList.length} 个
     `;
 
     // 刷新统计和热搜列表
