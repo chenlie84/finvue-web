@@ -491,9 +491,10 @@ async def fetch_hotspots(
     if not platforms:
         platforms = ["weibo", "zhihu", "baidu", "douyin", "bilibili", "toutiao", "cls", "wallstreetcn"]
 
-    # 调用抓取服务
+    # 调用抓取服务（在线程池中运行同步函数）
     from services.hotspot_fetcher import fetch_all_platforms
-    result = await fetch_all_platforms(platforms)
+    from starlette.concurrency import run_in_threadpool
+    result = await run_in_threadpool(fetch_all_platforms, platforms)
 
     # 记录操作日志
     username = str(session.get("username") or "")

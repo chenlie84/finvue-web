@@ -75,61 +75,63 @@ def _extract_keywords(title: str) -> list[str]:
     return keywords[:5]
 
 
-async def fetch_platform_hotspots(platform: str) -> dict:
-    """抓取单个平台的热搜数据"""
-    import aiohttp
+def fetch_platform_hotspots(platform: str) -> dict:
+    """抓取单个平台的热搜数据（使用 requests）"""
+    import requests
 
     newnow_id = PLATFORM_ID_MAP.get(platform, platform)
     url = f"{NEWSNOW_API_BASE}?type={newnow_id}"
 
     # 使用项目配置的代理（内部服务器访问外网需要走代理）
-    proxy = None
+    proxies = None
     if config.HTTP_PROXY:
-        proxy = config.HTTP_PROXY
+        proxies = {"http": config.HTTP_PROXY, "https": config.HTTP_PROXY}
 
     try:
-        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session:
-            async with session.get(url, proxy=proxy) as resp:
-                if resp.status != 200:
-                    return {"ok": False, "platform": platform, "error": f"HTTP {resp.status}"}
+        resp = requests.get(url, proxies=proxies, timeout=30)
+        if resp.status_code != 200:
+            return {"ok": False, "platform": platform, "error": f"HTTP {resp.status_code}"}
 
-                data = await resp.json()
-                if not data or data.get("code") != 200:
-                    return {"ok": False, "platform": platform, "error": data.get("msg") or "API 返回错误"}
+        data = resp.json()
+        if not data or data.get("code") != 200:
+            return {"ok": False, "platform": platform, "error": data.get("msg") or "API 返回错误"}
 
-                news_list = data.get("data") or []
-                items = []
+        news_list = data.get("data") or []
+        items = []
 
-                for idx, news in enumerate(news_list):
-                    title = news.get("title") or ""
-                    if not title:
-                        continue
+        for idx, news in enumerate(news_list):
+            title = news.get("title") or ""
+            if not title:
+                continue
 
-                    items.append({
-                        "id": _hash_title_platform(title, platform),
-                        "title": title.strip(),
-                        "url": news.get("url") or news.get("sourceUrl") or "",
-                        "rank": idx + 1,
-                        "hotValue": news.get("hotValue") or news.get("hot") or str(news.get("score") or ""),
-                        "sourceId": news.get("sourceId") or news.get("id") or "",
-                        "sourceName": news.get("sourceName") or "",
-                    })
+            items.append({
+                "id": _hash_title_platform(title, platform),
+                "title": title.strip(),
+                "url": news.get("url") or news.get("sourceUrl") or "",
+                "rank": idx + 1,
+                "hotValue": news.get("hotValue") or news.get("hot") or str(news.get("score") or ""),
+                "sourceId": news.get("sourceId") or news.get("id") or "",
+                "sourceName": news.get("sourceName") or "",
+            })
 
-                return {"ok": True, "platform": platform, "items": items, "count": len(items)}
+        return {"ok": True, "platform": platform, "items": items, "count": len(items)}
 
     except Exception as e:
         return {"ok": False, "platform": platform, "error": str(e)}
 
 
-async def fetch_all_platforms(platforms: list[str] | None = None) -> dict:
-    """抓取所有启用平台的热搜数据"""
-    import asyncio
+def fetch_all_platforms(platforms: list[str] | None = None) -> dict:
+    """抓取所有启用平台的热搜数据（使用线程池并发）"""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     if not platforms:
         platforms = list(PLATFORM_ID_MAP.keys())
 
-    tasks = [fetch_platform_hotspots(p) for p in platforms]
-    results = await asyncio.gather(*tasks)
+    results = []
+    with ThreadPoolExecutor(max_workers=min(len(platforms), 10)) as executor:
+        futures = {executor.submit(fetch_platform_hotspots, p): p for p in platforms}
+        for future in as_completed(futures):
+            results.append(future.result())
 
     total_items = 0
     success_platforms = []
