@@ -496,16 +496,6 @@ async def fetch_hotspots(
     from starlette.concurrency import run_in_threadpool
     result = await run_in_threadpool(fetch_all_platforms, platforms)
 
-    # 记录操作日志
-    username = str(session.get("username") or "")
-    db.execute(
-        """
-        INSERT INTO finvue_action_logs (username, action, detail, created_at)
-        VALUES (%s, 'hotspot_fetch', %s, CURRENT_TIMESTAMP)
-        """,
-        (username, f"手动抓取热搜，平台: {','.join(platforms)}")
-    )
-
     return {"ok": True, "message": "热搜抓取完成", "result": result}
 
 
