@@ -18,6 +18,7 @@ services:
       - USE_CEPH_S3=false
       - http_proxy=
       - https_proxy=
+      - HOTSPOT_NO_PROXY=1
       - OBJECT_STORAGE_DIR=/srv/finvue/objects
     volumes:
       - finvue_objects:/srv/finvue/objects
