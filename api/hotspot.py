@@ -165,10 +165,10 @@ def get_current_hotspots(
 
     rows = db.fetch_all(
         f"""
-        SELECT id, platform, title, url, rank, hot_value, keywords, first_seen_at, last_seen_at, appearance_count, ai_analysis
+        SELECT id, platform, title, url, `rank`, hot_value, keywords, first_seen_at, last_seen_at, appearance_count, ai_analysis
         FROM finvue_hotspot_items
         WHERE {where_sql}
-        ORDER BY platform ASC, rank ASC
+        ORDER BY platform ASC, `rank` ASC
         LIMIT 200
         """,
         tuple(args)
@@ -246,7 +246,7 @@ def get_history_hotspots(
     # 获取数据
     rows = db.fetch_all(
         f"""
-        SELECT id, platform, title, url, rank, hot_value, keywords, first_seen_at, last_seen_at, appearance_count, ai_analysis
+        SELECT id, platform, title, url, `rank`, hot_value, keywords, first_seen_at, last_seen_at, appearance_count, ai_analysis
         FROM finvue_hotspot_items
         WHERE {where_sql}
         ORDER BY last_seen_at DESC
@@ -295,7 +295,7 @@ def get_trend_data(
     # 获取历史快照
     snapshots = db.fetch_all(
         """
-        SELECT id, rank, hot_value, snapshot_time
+        SELECT id, `rank`, hot_value, snapshot_time
         FROM finvue_hotspot_snapshots
         WHERE item_id = %s
         ORDER BY snapshot_time ASC
@@ -353,10 +353,10 @@ def search_hotspots(
 
     rows = db.fetch_all(
         f"""
-        SELECT id, platform, title, url, rank, hot_value, keywords, first_seen_at, last_seen_at, appearance_count, ai_analysis
+        SELECT id, platform, title, url, `rank`, hot_value, keywords, first_seen_at, last_seen_at, appearance_count, ai_analysis
         FROM finvue_hotspot_items
         WHERE {where_sql}
-        ORDER BY last_seen_at DESC, rank ASC
+        ORDER BY last_seen_at DESC, `rank` ASC
         LIMIT 100
         """,
         tuple(args)

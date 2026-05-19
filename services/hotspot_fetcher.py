@@ -187,7 +187,7 @@ def save_hotspot_items(platform: str, items: list[dict]) -> int:
             db.execute(
                 """
                 UPDATE finvue_hotspot_items
-                SET rank = %s, hot_value = %s, last_seen_at = CURRENT_TIMESTAMP,
+                SET `rank` = %s, hot_value = %s, last_seen_at = CURRENT_TIMESTAMP,
                     appearance_count = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
                 """,
@@ -197,9 +197,9 @@ def save_hotspot_items(platform: str, items: list[dict]) -> int:
             # 添加快照
             db.execute(
                 """
-                INSERT INTO finvue_hotspot_snapshots (id, item_id, platform, title, rank, hot_value, snapshot_time)
+                INSERT INTO finvue_hotspot_snapshots (id, item_id, platform, title, `rank`, hot_value, snapshot_time)
                 VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
-                ON DUPLICATE KEY UPDATE rank = VALUES(rank), hot_value = VALUES(hot_value)
+                ON DUPLICATE KEY UPDATE `rank` = VALUES(`rank`), hot_value = VALUES(hot_value)
                 """,
                 (f"{item_id}-{now.strftime('%Y%m%d%H%M')}", item_id, platform, title, rank, hot_value)
             )
@@ -208,7 +208,7 @@ def save_hotspot_items(platform: str, items: list[dict]) -> int:
             db.execute(
                 """
                 INSERT INTO finvue_hotspot_items
-                (id, platform, title, url, rank, hot_value, keywords, first_seen_at, last_seen_at, appearance_count)
+                (id, platform, title, url, `rank`, hot_value, keywords, first_seen_at, last_seen_at, appearance_count)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)
                 """,
                 (item_id, platform, title, url, rank, hot_value, _json(keywords))
@@ -217,7 +217,7 @@ def save_hotspot_items(platform: str, items: list[dict]) -> int:
             # 添加初始快照
             db.execute(
                 """
-                INSERT INTO finvue_hotspot_snapshots (id, item_id, platform, title, rank, hot_value, snapshot_time)
+                INSERT INTO finvue_hotspot_snapshots (id, item_id, platform, title, `rank`, hot_value, snapshot_time)
                 VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                 """,
                 (f"{item_id}-{now.strftime('%Y%m%d%H%M')}", item_id, platform, title, rank, hot_value)
