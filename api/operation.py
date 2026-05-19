@@ -132,10 +132,12 @@ LIVE_FIELD_MAP = {
 
 VIDEO_FIELD_MAP = {
     "账号名称": "account",
+    "主播账号": "account",
     "account": "account",
     "视频ID": "video_id",
     "video_id": "video_id",
     "作品名称": "title",
+    "视频标题": "title",
     "title": "title",
     "发布时间": "publish_time",
     "publish_time": "publish_time",
@@ -159,8 +161,9 @@ VIDEO_FIELD_MAP = {
     "互动率": "interaction_rate",
     "interaction_rate": "interaction_rate",
     "涨粉": "follow_count",
-    "follow_count": "follow_count",
     "涨粉数": "follow_count",
+    "粉丝增量": "follow_count",
+    "follow_count": "follow_count",
 }
 
 
