@@ -34,11 +34,31 @@ def _pending_files(applied: set[str]) -> list[Path]:
     return [path for path in sorted(MIGRATIONS_DIR.glob("*.sql")) if path.name not in applied]
 
 
+def _remove_leading_comments(sql: str) -> str:
+    """移除 SQL 开头的注释行，保留实际 SQL 语句."""
+    lines = sql.split("\n")
+    first_non_comment_idx = 0
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped and not stripped.startswith("--"):
+            first_non_comment_idx = i
+            break
+    return "\n".join(lines[first_non_comment_idx:]).strip()
+
+
 def _execute_sql_with_error_handling(cursor, sql: str, filename: str) -> int:
     """执行SQL语句，处理索引已存在等错误."""
-    statements = [s.strip() for s in sql.split(";") if s.strip() and not s.strip().startswith("--")]
+    statements = []
+    for part in sql.split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        # 移除开头的注释，保留实际 SQL
+        clean_stmt = _remove_leading_comments(part)
+        if clean_stmt:
+            statements.append(clean_stmt)
     executed = 0
-    
+
     for stmt in statements:
         if not stmt:
             continue
@@ -53,7 +73,7 @@ def _execute_sql_with_error_handling(cursor, sql: str, filename: str) -> int:
             # 其他错误需要抛出
             print(f"[migrate] SQL执行错误 {e.args[0]}: {e.args[1]}")
             raise
-    
+
     return executed
 
 

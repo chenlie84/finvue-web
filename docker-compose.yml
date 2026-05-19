@@ -1,0 +1,47 @@
+services:
+  finvue:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - ENV=production
+      - HOST=0.0.0.0
+      - PORT=8080
+      - MYSQL_HOST=db
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=finvue
+      - MYSQL_USER=finvue
+      - MYSQL_PASSWORD=finvue_password
+      - AUTH_SECRET=change-this-to-a-long-random-secret-key
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+      - USE_CEPH_S3=false
+      - http_proxy=
+      - https_proxy=
+      - OBJECT_STORAGE_DIR=/srv/finvue/objects
+    volumes:
+      - finvue_objects:/srv/finvue/objects
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=finvue
+      - MYSQL_USER=finvue
+      - MYSQL_PASSWORD=finvue_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  finvue_objects:
