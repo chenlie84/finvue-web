@@ -78,14 +78,17 @@ def _extract_keywords(title: str) -> list[str]:
 def fetch_platform_hotspots(platform: str) -> dict:
     """抓取单个平台的热搜数据（使用 requests）"""
     import requests
+    import os
 
     newnow_id = PLATFORM_ID_MAP.get(platform, platform)
     url = f"{NEWSNOW_API_BASE}?type={newnow_id}"
 
     # 使用项目配置的代理（内部服务器访问外网需要走代理）
+    # 可通过环境变量 HOTSPOT_NO_PROXY=1 禁用代理
     proxies = None
-    if config.HTTP_PROXY:
-        proxies = {"http": config.HTTP_PROXY, "https": config.HTTP_PROXY}
+    if not os.environ.get("HOTSPOT_NO_PROXY"):
+        if config.HTTP_PROXY:
+            proxies = {"http": config.HTTP_PROXY, "https": config.HTTP_PROXY}
 
     try:
         resp = requests.get(url, proxies=proxies, timeout=30)
