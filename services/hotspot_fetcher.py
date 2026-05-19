@@ -7,6 +7,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
+import config
 import db
 
 
@@ -81,9 +82,14 @@ async def fetch_platform_hotspots(platform: str) -> dict:
     newnow_id = PLATFORM_ID_MAP.get(platform, platform)
     url = f"{NEWSNOW_API_BASE}?type={newnow_id}"
 
+    # 使用项目配置的代理（内部服务器访问外网需要走代理）
+    proxy = None
+    if config.HTTP_PROXY:
+        proxy = config.HTTP_PROXY
+
     try:
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session:
-            async with session.get(url) as resp:
+            async with session.get(url, proxy=proxy) as resp:
                 if resp.status != 200:
                     return {"ok": False, "platform": platform, "error": f"HTTP {resp.status}"}
 
