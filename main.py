@@ -12,7 +12,7 @@ import uvicorn
 
 import config
 import migrate
-from api import admin, ai, auth, customers, files, jobs, libraries, reports, settings, sop, system, logs, ai_chat
+from api import admin, ai, auth, customers, files, jobs, libraries, reports, settings, sop, system, logs, ai_chat, hotspot
 from api import operation as api_operation
 
 
@@ -53,6 +53,7 @@ app.include_router(sop.router)
 app.include_router(logs.router)
 app.include_router(api_operation.router)
 app.include_router(ai_chat.router)
+app.include_router(hotspot.router)
 
 
 @app.exception_handler(HTTPException)
@@ -106,6 +107,11 @@ def sop_page(request: Request) -> HTMLResponse:
 @app.get("/operation-dashboard.html")
 def operation_dashboard(request: Request) -> HTMLResponse:
     return _page(request, "operation-dashboard.html")
+
+
+@app.get("/hotspot.html")
+def hotspot_page(request: Request) -> HTMLResponse:
+    return _page(request, "hotspot.html")
 
 
 @app.get("/favicon.ico")

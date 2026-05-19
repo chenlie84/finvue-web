@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>热搜追踪 · FinVue</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg0:#0A0B0E;--bg1:#11131A;--bg2:#181B24;--bg3:#1E2230;--border:#252836;--border2:#2E3347;--gold:#C8922A;--gold2:#E5B84A;--gold-dim:rgba(200,146,42,.12);--text0:#EAE6DD;--text1:#9B97A0;--text2:#5A566A;--green:#2DBD85;--red:#E05252;--blue:#4A90D9;--purple:#9B7FE8;--r:8px;--r2:12px;--font-display:'Playfair Display',Georgia,serif;--font-body:'Outfit',sans-serif;--font-mono:'JetBrains Mono',monospace;}
+[data-theme="light"]{--bg0:#F8FAFC;--bg1:#FFFFFF;--bg2:#F1F5F9;--bg3:#E2E8F0;--border:#E2E8F0;--border2:#CBD5E1;--gold:#D97706;--gold2:#F59E0B;--gold-dim:rgba(217,119,6,.08);--text0:#1E293B;--text1:#64748B;--text2:#94A3B8;--green:#059669;--red:#DC2626;--blue:#2563EB;--purple:#7C3AED;}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;background:var(--bg0);color:var(--text0);font-family:var(--font-body);font-size:14px;line-height:1.6;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+
+.container{max-width:1400px;margin:0 auto;padding:28px;}
+
+/* 顶部导航 */
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;gap:16px;}
+.back-btn{color:var(--text1);border:1px solid var(--border2);border-radius:var(--r);padding:8px 14px;background:var(--bg1);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;}
+.back-btn:hover{color:var(--gold);border-color:var(--gold);}
+.theme-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--border);background:var(--bg1);color:var(--text1);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s;}
+.theme-btn:hover{background:var(--bg2);color:var(--gold);}
+.theme-btn.active{background:var(--gold-dim);color:var(--gold);border-color:var(--gold);}
+
+/* 页面标题 */
+header{text-align:center;margin-bottom:32px;}
+h1{font-family:var(--font-display);font-size:32px;font-weight:600;color:var(--text0);margin-bottom:8px;}
+.subtitle{color:var(--text1);font-size:13px;}
+
+/* 统计卡片 */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.stat-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r2);padding:18px 20px;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--gold);}
+.stat-card.green::before{background:var(--green);}
+.stat-card.blue::before{background:var(--blue);}
+.stat-card.purple::before{background:var(--purple);}
+.stat-label{font-size:11px;color:var(--text1);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+.stat-value{font-family:var(--font-mono);font-size:26px;font-weight:500;color:var(--gold);}
+.stat-card.green .stat-value{color:var(--green);}
+.stat-card.blue .stat-value{color:var(--blue);}
+.stat-card.purple .stat-value{color:var(--purple);}
+.stat-delta{font-size:12px;color:var(--text2);}
+
+/* 搜索和筛选 */
+.filter-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+.search-input{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:10px 14px;color:var(--text0);font-size:13px;outline:none;transition:border-color .2s;flex:1;min-width:200px;}
+.search-input:focus{border-color:var(--gold);}
+.search-input::placeholder{color:var(--text2);}
+.select-box{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;color:var(--text0);font-size:13px;cursor:pointer;min-width:120px;}
+.btn{padding:9px 16px;border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid;display:inline-flex;align-items:center;gap:6px;}
+.btn-gold{background:var(--gold);color:#0A0B0E;border-color:var(--gold);}
+.btn-gold:hover{background:var(--gold2);}
+.btn-outline{background:transparent;border-color:var(--border2);color:var(--text1);}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+
+/* 标签切换 */
+.tab-bar{display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:12px;}
+.tab-btn{padding:8px 16px;border-radius:var(--r) var(--r) 0 0;font-size:13px;color:var(--text1);cursor:pointer;background:none;border:none;transition:all .15s;}
+.tab-btn:hover{color:var(--gold);}
+.tab-btn.active{color:var(--gold);background:var(--gold-dim);border-bottom:2px solid var(--gold);margin-bottom:-1px;}
+
+/* 平台标签 */
+.platform-tags{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;}
+.platform-tag{padding:6px 12px;border-radius:20px;font-size:12px;border:1px solid var(--border);color:var(--text1);cursor:pointer;transition:all .15s;background:var(--bg1);}
+.platform-tag:hover{border-color:var(--gold);color:var(--gold);}
+.platform-tag.active{background:var(--gold-dim);border-color:var(--gold);color:var(--gold);}
+
+/* 热搜卡片网格 */
+.hotspot-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+@media(max-width:900px){.hotspot-grid{grid-template-columns:1fr;}.stats-grid{grid-template-columns:repeat(2,1fr);}}
+
+/* 平台面板 */
+.platform-panel{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r2);padding:20px;}
+.panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.panel-title{font-size:15px;font-weight:600;color:var(--text0);display:flex;align-items:center;gap:8px;}
+.panel-title .icon{font-size:18px;}
+.panel-count{font-size:12px;color:var(--text2);}
+
+/* 热搜条目 */
+.hotspot-item{padding:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);margin-bottom:10px;cursor:pointer;transition:all .15s;}
+.hotspot-item:hover{border-color:var(--gold);}
+.hotspot-item:last-child{margin-bottom:0;}
+.hotspot-rank{font-family:var(--font-mono);font-size:14px;font-weight:600;color:var(--gold);min-width:28px;}
+.hotspot-title{font-size:14px;color:var(--text0);line-height:1.5;flex:1;}
+.hotspot-meta{font-size:11px;color:var(--text2);margin-top:4px;display:flex;gap:8px;}
+.hotspot-hot{color:var(--red);font-family:var(--font-mono);}
+.hotspot-tags{display:flex;gap:4px;margin-top:6px;}
+.badge{display:inline-flex;padding:2px 8px;border-radius:12px;font-size:11px;}
+.badge.gold{background:var(--gold-dim);color:var(--gold);}
+.badge.blue{background:rgba(74,144,217,.12);color:var(--blue);}
+.badge.green{background:rgba(45,189,133,.12);color:var(--green);}
+.badge.gray{background:var(--border);color:var(--text1);}
+
+/* 分析结果面板 */
+.analysis-panel{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r2);padding:20px;margin-top:20px;}
+.analysis-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.analysis-title{font-size:15px;font-weight:600;color:var(--gold);}
+.analysis-content{font-size:13px;line-height:1.8;color:var(--text0);white-space:pre-wrap;}
+.analysis-content h1,.analysis-content h2,.analysis-content h3{margin:16px 0 8px;color:var(--text0);}
+.analysis-content h2{font-size:14px;border-bottom:1px solid var(--border);padding-bottom:4px;}
+.analysis-content ul,.analysis-content ol{margin:8px 0;padding-left:24px;}
+.analysis-content li{margin:4px 0;}
+.analysis-content blockquote{margin:8px 0;padding:8px 12px;background:var(--bg2);border-left:3px solid var(--gold);color:var(--text1);}
+
+/* 历史趋势图表 */
+.trend-chart{height:120px;background:var(--bg2);border-radius:var(--r);margin-top:12px;position:relative;overflow:hidden;}
+.trend-chart canvas{width:100%;height:100%;}
+
+/* 空状态 */
+.empty{text-align:center;color:var(--text1);padding:40px 20px;}
+.empty-icon{font-size:48px;opacity:.3;margin-bottom:12px;}
+
+/* 加载状态 */
+.loading{text-align:center;color:var(--text1);padding:20px;}
+.spinner{width:20px;height:20px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;margin-right:8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* 历史记录表格 */
+.history-table{width:100%;border-collapse:collapse;}
+.history-table th{text-align:left;padding:10px 12px;font-size:11px;text-transform:uppercase;color:var(--text2);background:var(--bg2);border-bottom:1px solid var(--border);}
+.history-table td{padding:12px;border-bottom:1px solid var(--border);font-size:13px;}
+.history-table tr:hover td{background:var(--bg2);}
+
+/* 模态框 */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;display:none;align-items:center;justify-content:center;padding:24px;}
+.modal-backdrop.active{display:flex;}
+.modal-panel{width:min(600px,100%);max-height:80vh;overflow:auto;background:var(--bg1);border:1px solid var(--border2);border-radius:var(--r2);padding:24px;}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.modal-title{font-size:16px;font-weight:600;}
+.modal-close{color:var(--text1);cursor:pointer;font-size:20px;}
+.modal-close:hover{color:var(--gold);}
+
+/* 设置面板 */
+.settings-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+.settings-item{margin-bottom:16px;}
+.settings-label{font-size:12px;color:var(--text1);margin-bottom:6px;}
+.checkbox-list{display:flex;flex-direction:column;gap:6px;}
+.checkbox-item{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2);border-radius:var(--r);cursor:pointer;}
+.checkbox-item input{accent-color:var(--gold);}
+.checkbox-item:hover{background:var(--bg3);}
+
+/* 关键词输入 */
+.keyword-input-row{display:flex;gap:8px;}
+.keyword-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px;}
+.keyword-tag{padding:4px 10px;border-radius:12px;font-size:12px;background:var(--gold-dim);color:var(--gold);display:flex;align-items:center;gap:4px;}
+.keyword-tag .remove{cursor:pointer;color:var(--text2);}
+.keyword-tag .remove:hover{color:var(--red);}
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- 顶部导航 -->
+  <div class="topbar">
+    <button class="back-btn" onclick="location.href='/index.html'">← 返回主页</button>
+    <div style="display:flex;gap:6px;">
+      <button class="theme-btn active" id="theme-dark" onclick="setTheme('dark')">🌙</button>
+      <button class="theme-btn" id="theme-light" onclick="setTheme('light')">☀️</button>
+    </div>
+  </div>
+
+  <!-- 页面标题 -->
+  <header>
+    <h1>热搜追踪看板</h1>
+    <div class="subtitle" id="subtitle">多平台热搜聚合 · 实时监控 · AI解读</div>
+  </header>
+
+  <!-- 统计卡片 -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card">
+      <div class="stat-label">今日新增</div>
+      <div class="stat-value" id="statTodayNew">--</div>
+      <div class="stat-delta">热搜收录</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">当前活跃</div>
+      <div class="stat-value" id="statActive">--</div>
+      <div class="stat-delta">2小时内</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">已分析</div>
+      <div class="stat-value" id="statAnalyzed">--</div>
+      <div class="stat-delta">AI解读</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-label">监控平台</div>
+      <div class="stat-value" id="statPlatforms">--</div>
+      <div class="stat-delta">数据源</div>
+    </div>
+  </div>
+
+  <!-- 搜索和筛选 -->
+  <div class="filter-bar">
+    <input type="text" class="search-input" id="searchInput" placeholder="搜索关键词..." onkeydown="if(event.key==='Enter')searchHotspots()">
+    <select class="select-box" id="platformSelect" onchange="filterByPlatform()">
+      <option value="">全部平台</option>
+    </select>
+    <select class="select-box" id="timeRange">
+      <option value="today">今日</option>
+      <option value="7days" selected>最近7天</option>
+      <option value="30days">最近30天</option>
+    </select>
+    <button class="btn btn-gold" onclick="searchHotspots()">🔍 搜索</button>
+    <button class="btn btn-outline" onclick="showSettings()">⚙ 设置</button>
+  </div>
+
+  <!-- 标签切换 -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('current')">实时热搜</button>
+    <button class="tab-btn" onclick="switchTab('history')">历史趋势</button>
+    <button class="tab-btn" onclick="switchTab('keywords')">关键词追踪</button>
+  </div>
+
+  <!-- 主内容区 -->
+  <div id="mainContent">
+    <!-- 实时热搜 -->
+    <div id="tab-current" class="tab-content active">
+      <div class="hotspot-grid" id="hotspotGrid">
+        <div class="loading"><span class="spinner"></span> 正在加载热搜数据...</div>
+      </div>
+    </div>
+
+    <!-- 历史趋势 -->
+    <div id="tab-history" class="tab-content" style="display:none;">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">历史热搜记录</div>
+          <div class="panel-count" id="historyCount">共 0 条</div>
+        </div>
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>标题</th>
+              <th>平台</th>
+              <th>最高排名</th>
+              <th>出现次数</th>
+              <th>首次发现</th>
+              <th>最后出现</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="historyTable">
+            <tr><td colspan="7" class="empty">暂无历史数据</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 关键词追踪 -->
+    <div id="tab-keywords" class="tab-content" style="display:none;">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">追踪关键词命中记录</div>
+          <div class="panel-count" id="keywordCount">共追踪 0 个关键词</div>
+        </div>
+        <div id="keywordResults">
+          <div class="empty">请在设置中添加需要追踪的关键词</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI 分析结果 -->
+  <div class="analysis-panel" id="analysisPanel" style="display:none;">
+    <div class="analysis-header">
+      <div class="analysis-title" id="analysisTitle">AI 分析结果</div>
+      <button class="btn btn-outline" onclick="closeAnalysis()">关闭</button>
+    </div>
+    <div class="analysis-content" id="analysisContent"></div>
+  </div>
+</div>
+
+<!-- 设置模态框 -->
+<div class="modal-backdrop" id="settingsModal">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <div class="modal-title">热搜监控设置</div>
+      <span class="modal-close" onclick="closeSettings()">×</span>
+    </div>
+    <div class="settings-grid">
+      <div class="settings-item">
+        <div class="settings-label">启用的平台</div>
+        <div class="checkbox-list" id="platformCheckboxes"></div>
+      </div>
+      <div class="settings-item">
+        <div class="settings-label">追踪关键词</div>
+        <div class="keyword-input-row">
+          <input type="text" class="search-input" id="newKeywordInput" placeholder="输入关键词，回车添加" style="flex:1" onkeydown="if(event.key==='Enter')addKeyword()">
+          <button class="btn btn-outline" onclick="addKeyword()">添加</button>
+        </div>
+        <div class="keyword-tags" id="keywordTags"></div>
+      </div>
+      <div class="settings-item">
+        <div class="settings-label">数据保留天数</div>
+        <select class="select-box" id="retentionDays" style="width:100%">
+          <option value="7">7 天</option>
+          <option value="14">14 天</option>
+          <option value="30" selected>30 天</option>
+          <option value="60">60 天</option>
+        </select>
+      </div>
+      <div class="settings-item">
+        <div class="settings-label">抓取间隔（分钟）</div>
+        <select class="select-box" id="fetchInterval" style="width:100%">
+          <option value="30">30 分钟</option>
+          <option value="60" selected>60 分钟</option>
+          <option value="120">2 小时</option>
+          <option value="360">6 小时</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:20px;display:flex;gap:10px;">
+      <button class="btn btn-gold" onclick="saveSettings()">保存设置</button>
+      <button class="btn btn-outline" onclick="closeSettings()">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 辅助函数
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39'}[m]));
+const fmt = n => Number(n || 0).toLocaleString("zh-CN");
+
+// 状态
+let state = {
+  platforms: [],
+  settings: { enabledPlatforms: [], trackedKeywords: [] },
+  currentHotspots: [],
+  historyHotspots: [],
+  selectedPlatform: "",
+  selectedItemId: null
+};
+
+// 主题切换
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('theme', theme);
+  $('theme-dark').classList.toggle('active', theme === 'dark');
+  $('theme-light').classList.toggle('active', theme === 'light');
+}
+function initTheme() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  setTheme(saved);
+}
+
+// 标签切换
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
+  $(`tab-${tab}`).style.display = 'block';
+  if (tab === 'current') loadCurrentHotspots();
+  else if (tab === 'history') loadHistoryHotspots();
+  else if (tab === 'keywords') loadKeywordResults();
+}
+
+// 加载平台列表
+async function loadPlatforms() {
+  try {
+    const res = await fetch('/api/hotspot/platforms', { credentials: 'include' });
+    if (!res.ok) { if (res.status === 401) { location.href = '/index.html'; return; } throw new Error(res.statusText); }
+    const data = await res.json();
+    state.platforms = data.platforms || [];
+    // 渲染平台选择框
+    $('platformSelect').innerHTML = '<option value="">全部平台</option>' + state.platforms.map(p => `<option value="${esc(p.id)}">${esc(p.icon || '🔥')} ${esc(p.name)}</option>`).join('');
+    // 渲染设置中的平台复选框
+    renderPlatformCheckboxes();
+  } catch (e) {
+    console.error('加载平台失败:', e);
+  }
+}
+
+// 加载设置
+async function loadSettings() {
+  try {
+    const res = await fetch('/api/hotspot/settings', { credentials: 'include' });
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+    state.settings = data.settings || {};
+    renderKeywordTags();
+  } catch (e) {
+    console.error('加载设置失败:', e);
+  }
+}
+
+// 加载统计数据
+async function loadStats() {
+  try {
+    const res = await fetch('/api/hotspot/stats', { credentials: 'include' });
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+    const stats = data.stats || {};
+    $('statTodayNew').textContent = fmt(stats.todayNew || 0);
+    $('statActive').textContent = fmt(stats.active || 0);
+    $('statAnalyzed').textContent = fmt(stats.analyzed || 0);
+    $('statPlatforms').textContent = fmt(Object.keys(stats.platformStats || {}).length || state.platforms.length);
+  } catch (e) {
+    console.error('加载统计失败:', e);
+  }
+}
+
+// 加载当前热搜
+async function loadCurrentHotspots() {
+  $('hotspotGrid').innerHTML = '<div class="loading"><span class="spinner"></span> 正在加载热搜数据...</div>';
+  try {
+    const platform = $('platformSelect').value || state.selectedPlatform;
+    const keyword = $('searchInput').value;
+    let url = '/api/hotspot/current';
+    if (platform) url += `?platform=${encodeURIComponent(platform)}`;
+    if (keyword) url += `${platform ? '&' : '?'}keyword=${encodeURIComponent(keyword)}`;
+
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) { if (res.status === 401) { location.href = '/index.html'; return; } throw new Error(res.statusText); }
+    const data = await res.json();
+    state.currentHotspots = data.items || [];
+    renderHotspotGrid(data.byPlatform || {});
+  } catch (e) {
+    $('hotspotGrid').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>加载失败: ${esc(e.message)}</div>`;
+  }
+}
+
+// 渲染热搜网格（按平台分组）
+function renderHotspotGrid(byPlatform) {
+  if (!Object.keys(byPlatform).length) {
+    $('hotspotGrid').innerHTML = '<div class="empty"><div class="empty-icon">📭</div>暂无热搜数据</div>';
+    return;
+  }
+
+  // 获取平台元信息
+  const platformMeta = {};
+  state.platforms.forEach(p => platformMeta[p.id] = p);
+
+  let html = '';
+  for (const [platformId, items] of Object.entries(byPlatform)) {
+    const meta = platformMeta[platformId] || { name: platformId, icon: '🔥' };
+    html += `
+      <div class="platform-panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="icon">${esc(meta.icon)}</span>${esc(meta.name)}</div>
+          <div class="panel-count">${fmt(items.length)} 条热搜</div>
+        </div>
+        ${items.slice(0, 20).map(item => `
+          <div class="hotspot-item" onclick="showItemDetail('${esc(item.id)}')">
+            <div style="display:flex;align-items:flex-start;gap:12px;">
+              <div class="hotspot-rank">#${item.rank || '--'}</div>
+              <div style="flex:1;">
+                <div class="hotspot-title">${esc(item.title)}</div>
+                <div class="hotspot-meta">
+                  <span class="hotspot-hot">${esc(item.hotValue || '')}</span>
+                  <span>出现 ${fmt(item.appearanceCount || 1)} 次</span>
+                </div>
+                ${item.keywords && item.keywords.length ? `<div class="hotspot-tags">${item.keywords.map(k => `<span class="badge blue">${esc(k)}</span>`).join('')}</div>` : ''}
+                ${item.aiAnalysis ? `<span class="badge green" style="margin-top:4px">已分析</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+  $('hotspotGrid').innerHTML = html;
+}
+
+// 加载历史热搜
+async function loadHistoryHotspots() {
+  try {
+    const keyword = $('searchInput').value;
+    const platform = $('platformSelect').value;
+    const timeRange = $('timeRange').value;
+
+    let startDate = '';
+    let endDate = '';
+    const now = new Date();
+    if (timeRange === 'today') startDate = now.toISOString().split('T')[0];
+    else if (timeRange === '7days') startDate = new Date(now - 7 * 86400000).toISOString().split('T')[0];
+    else if (timeRange === '30days') startDate = new Date(now - 30 * 86400000).toISOString().split('T')[0];
+
+    let url = `/api/hotspot/history?page=1&pageSize=50`;
+    if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+    if (platform) url += `&platform=${encodeURIComponent(platform)}`;
+    if (startDate) url += `&startDate=${startDate}`;
+
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+    state.historyHotspots = data.items || [];
+    $('historyCount').textContent = `共 ${fmt(data.total || 0)} 条`;
+    renderHistoryTable(data.items);
+  } catch (e) {
+    $('historyTable').innerHTML = `<tr><td colspan="7" class="empty">加载失败: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+// 渲染历史表格
+function renderHistoryTable(items) {
+  if (!items.length) {
+    $('historyTable').innerHTML = '<tr><td colspan="7" class="empty">暂无历史数据</td></tr>';
+    return;
+  }
+  const platformMeta = {};
+  state.platforms.forEach(p => platformMeta[p.id] = p);
+
+  $('historyTable').innerHTML = items.map(item => {
+    const meta = platformMeta[item.platform] || { name: item.platform, icon: '🔥' };
+    return `
+      <tr>
+        <td><strong>${esc(item.title)}</strong></td>
+        <td>${esc(meta.icon)} ${esc(meta.name)}</td>
+        <td class="hotspot-rank">#${item.rank || '--'}</td>
+        <td>${fmt(item.appearanceCount || 1)}</td>
+        <td>${item.firstSeenAt ? new Date(item.firstSeenAt).toLocaleString('zh-CN') : '--'}</td>
+        <td>${item.lastSeenAt ? new Date(item.lastSeenAt).toLocaleString('zh-CN') : '--'}</td>
+        <td>
+          <button class="btn btn-outline" style="padding:4px 8px;font-size:12px" onclick="analyzeItem('${esc(item.id)}')">AI分析</button>
+          <button class="btn btn-outline" style="padding:4px 8px;font-size:12px" onclick="showTrend('${esc(item.id)}')">趋势</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// 加载关键词结果
+async function loadKeywordResults() {
+  try {
+    const res = await fetch('/api/hotspot/stats', { credentials: 'include' });
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+    const hits = data.stats?.keywordHits || [];
+
+    $('keywordCount').textContent = `共追踪 ${fmt(state.settings.trackedKeywords?.length || 0)} 个关键词`;
+
+    if (!hits.length) {
+      $('keywordResults').innerHTML = '<div class="empty">请在设置中添加需要追踪的关键词</div>';
+      return;
+    }
+
+    $('keywordResults').innerHTML = hits.map(h => `
+      <div class="hotspot-item" onclick="searchByKeyword('${esc(h.keyword)}')">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span class="badge gold">${esc(h.keyword)}</span>
+          <span style="flex:1;color:var(--text1)">最近 7 天命中 ${fmt(h.count)} 条热搜</span>
+          <button class="btn btn-outline" style="padding:4px 8px;font-size:12px">查看详情</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    $('keywordResults').innerHTML = `<div class="empty">加载失败: ${esc(e.message)}</div>`;
+  }
+}
+
+// 搜索热搜
+async function searchHotspots() {
+  const keyword = $('searchInput').value;
+  const platform = $('platformSelect').value;
+
+  if (!keyword) {
+    loadCurrentHotspots();
+    return;
+  }
+
+  $('hotspotGrid').innerHTML = '<div class="loading"><span class="spinner"></span> 正在搜索...</div>';
+
+  try {
+    const days = $('timeRange').value === 'today' ? 1 : ($('timeRange').value === '7days' ? 7 : 30);
+    let url = `/api/hotspot/search?keyword=${encodeURIComponent(keyword)}&days=${days}`;
+    if (platform) url += `&platform=${encodeURIComponent(platform)}`;
+
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+
+    const byPlatform = {};
+    (data.items || []).forEach(item => {
+      if (!byPlatform[item.platform]) byPlatform[item.platform] = [];
+      byPlatform[item.platform].push(item);
+    });
+
+    renderHotspotGrid(byPlatform);
+  } catch (e) {
+    $('hotspotGrid').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>搜索失败: ${esc(e.message)}</div>`;
+  }
+}
+
+// 按关键词搜索
+function searchByKeyword(keyword) {
+  $('searchInput').value = keyword;
+  searchHotspots();
+}
+
+// 按平台筛选
+function filterByPlatform() {
+  state.selectedPlatform = $('platformSelect').value;
+  loadCurrentHotspots();
+}
+
+// AI 分析热搜
+async function analyzeItem(itemId) {
+  const item = state.currentHotspots.find(i => i.id === itemId) || state.historyHotspots.find(i => i.id === itemId);
+  if (!item) return;
+
+  $('analysisPanel').style.display = 'block';
+  $('analysisTitle').textContent = `AI 分析：${item.title}`;
+  $('analysisContent').innerHTML = '<div class="loading"><span class="spinner"></span> 正在生成分析...</div>';
+
+  try {
+    const res = await fetch('/api/hotspot/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ itemId, title: item.title, platform: item.platform })
+    });
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+    $('analysisContent').textContent = data.analysis || '分析失败';
+    // 更新本地状态
+    if (item) item.aiAnalysis = data.analysis;
+  } catch (e) {
+    $('analysisContent').textContent = `分析失败: ${e.message}`;
+  }
+}
+
+// 显示趋势图
+async function showTrend(itemId) {
+  try {
+    const res = await fetch(`/api/hotspot/trend?itemId=${encodeURIComponent(itemId)}`, { credentials: 'include' });
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+
+    // 简单展示趋势数据（可以后续用 canvas 绘制）
+    const trend = data.trend || [];
+    if (!trend.length) {
+      alert('暂无历史趋势数据');
+      return;
+    }
+
+    // 显示分析面板，展示趋势表格
+    $('analysisPanel').style.display = 'block';
+    $('analysisTitle').textContent = `历史趋势：${data.item.title}`;
+    $('analysisContent').innerHTML = `
+      <table class="history-table">
+        <thead><tr><th>时间</th><th>排名</th><th>热度值</th></tr></thead>
+        <tbody>
+          ${trend.map(t => `<tr>
+            <td>${new Date(t.time).toLocaleString('zh-CN')}</td>
+            <td>#${t.rank || '--'}</td>
+            <td>${esc(t.hotValue || '--')}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch (e) {
+    alert(`获取趋势失败: ${e.message}`);
+  }
+}
+
+// 关闭分析面板
+function closeAnalysis() {
+  $('analysisPanel').style.display = 'none';
+}
+
+// 显示设置
+function showSettings() {
+  loadSettings();
+  $('settingsModal').classList.add('active');
+}
+
+// 关闭设置
+function closeSettings() {
+  $('settingsModal').classList.remove('active');
+}
+
+// 渲染平台复选框
+function renderPlatformCheckboxes() {
+  const enabled = state.settings.enabledPlatforms || [];
+  $('platformCheckboxes').innerHTML = state.platforms.map(p => `
+    <label class="checkbox-item">
+      <input type="checkbox" value="${esc(p.id)}" ${enabled.includes(p.id) ? 'checked' : ''}>
+      ${esc(p.icon)} ${esc(p.name)}
+    </label>
+  `).join('');
+}
+
+// 渲染关键词标签
+function renderKeywordTags() {
+  const keywords = state.settings.trackedKeywords || [];
+  $('keywordTags').innerHTML = keywords.map(k => `
+    <span class="keyword-tag">${esc(k)}<span class="remove" onclick="removeKeyword('${esc(k)}')">×</span></span>
+  `).join('');
+}
+
+// 添加关键词
+function addKeyword() {
+  const input = $('newKeywordInput');
+  const keyword = input.value.trim();
+  if (!keyword) return;
+  if (!state.settings.trackedKeywords) state.settings.trackedKeywords = [];
+  if (!state.settings.trackedKeywords.includes(keyword)) {
+    state.settings.trackedKeywords.push(keyword);
+    renderKeywordTags();
+  }
+  input.value = '';
+}
+
+// 移除关键词
+function removeKeyword(keyword) {
+  if (!state.settings.trackedKeywords) return;
+  state.settings.trackedKeywords = state.settings.trackedKeywords.filter(k => k !== keyword);
+  renderKeywordTags();
+}
+
+// 保存设置
+async function saveSettings() {
+  // 收集选中的平台
+  const enabledPlatforms = [];
+  $('platformCheckboxes').querySelectorAll('input:checked').forEach(cb => enabledPlatforms.push(cb.value));
+
+  const settings = {
+    enabledPlatforms,
+    trackedKeywords: state.settings.trackedKeywords || [],
+    fetchIntervalMinutes: parseInt($('fetchInterval').value) || 60,
+    retentionDays: parseInt($('retentionDays').value) || 30,
+    autoAnalyze: false
+  };
+
+  try {
+    const res = await fetch('/api/hotspot/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(settings)
+    });
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+    state.settings = settings;
+    closeSettings();
+    alert('设置已保存');
+  } catch (e) {
+    alert(`保存失败: ${e.message}`);
+  }
+}
+
+// 初始化
+async function init() {
+  initTheme();
+  await loadPlatforms();
+  await loadStats();
+  await loadSettings();
+  await loadCurrentHotspots();
+}
+
+init();
+</script>
+</body>
+</html>

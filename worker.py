@@ -35,6 +35,16 @@ def handle_job(job: dict) -> dict:
         return fusion_report.parse_fusion_report(payload, progress=progress)
     if job_type in {"customer_backfill", "trend_summary"}:
         return {"ok": True, "phase": "done", "message": f"{job_type} 任务已完成：当前版本使用 MySQL 聚合接口实时生成结果。"}
+    if job_type == "hotspot_fetch":
+        from services.hotspot_fetcher import sync_fetch_all_platforms
+        platforms = payload.get("platforms") or None
+        result = sync_fetch_all_platforms(platforms)
+        return {"ok": True, "phase": "done", "message": f"热搜抓取完成，共 {result.get('totalItems', 0)} 条", "meta": result}
+    if job_type == "hotspot_cleanup":
+        from services.hotspot_fetcher import cleanup_old_data
+        retention_days = payload.get("retentionDays") or 30
+        result = cleanup_old_data(retention_days)
+        return {"ok": True, "phase": "done", "message": f"数据清理完成，删除 {result.get('deleted', 0)} 条旧数据", "meta": result}
     raise RuntimeError(f"未知任务类型：{job_type}")
 
 

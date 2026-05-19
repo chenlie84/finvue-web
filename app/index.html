@@ -1428,95 +1428,92 @@
         </div>
       </div>
       
-      <!-- ══ 热点追踪 ══ -->
+      <!-- ══ 热点追踪（入口页面） ══ -->
       <div class="sec" id="sec-hotspot">
         <div class="page-title">热点追踪</div>
-        <div class="page-sub">财经热点事件追踪，支持 AI 解读与直播话术建议</div>
+        <div class="page-sub">多平台热搜聚合 · 实时监控 · AI 解读 · 话术建议</div>
 
-        <!-- 搜索 + 筛选 -->
-        <div style="display:flex;gap:10px;margin-bottom:20px;">
-          <input class="inp" placeholder="搜索热点标题、关键词…" style="flex:1;"/>
-          <select class="sel"><option>全部来源</option><option>财经新闻</option><option>政策公告</option><option>市场动态</option><option>行业事件</option></select>
-          <select class="sel"><option>全部状态</option><option>进行中</option><option>已结束</option><option>待关注</option></select>
-          <button class="btn btn-gold" onclick="showToast('添加热点')">+ 添加热点</button>
-        </div>
-
-        <!-- 统计 -->
-        <div class="g4 mb">
-          <div class="kpi" style="--accent:var(--gold)"><div class="kpi-lbl">追踪热点</div><div class="kpi-val gold">12</div><div class="kpi-delta muted">本月收录</div></div>
-          <div class="kpi" style="--accent:var(--green)"><div class="kpi-lbl">进行中</div><div class="kpi-val">5</div><div class="kpi-delta green">需要关注</div></div>
-          <div class="kpi" style="--accent:var(--blue)"><div class="kpi-lbl">已解读</div><div class="kpi-val">8</div><div class="kpi-delta muted">AI 分析</div></div>
-          <div class="kpi" style="--accent:var(--purple)"><div class="kpi-lbl">话术建议</div><div class="kpi-val">15</div><div class="kpi-delta muted">可复用</div></div>
-        </div>
-
-        <!-- 热点列表 -->
-        <div class="g2 mb">
-          <div class="panel">
-            <div class="panel-hd"><div class="panel-title">当前热点</div><span class="panel-act">最近 7 天</span></div>
-            <div style="display:flex;flex-direction:column;gap:10px;">
-              <div class="hotspot-card" onclick="showToast('打开热点：美联储加息')" style="padding:14px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg1);cursor:pointer;">
-                <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;">
-                  <div>
-                    <div style="font-size:14px;font-weight:500;color:var(--text0);">美联储维持利率不变，鲍威尔讲话要点</div>
-                    <div style="font-size:12px;color:var(--text1);margin-top:6px;">2026-05-18 · 财经新闻</div>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"><span class="badge gold">进行中</span><span class="badge blue">宏观</span><span class="badge purple">美联储</span></div>
-                  </div>
-                  <div style="text-align:right;">
-                    <div style="font-size:11px;color:var(--text2);">热度指数</div>
-                    <div style="font-size:18px;color:var(--gold);font-weight:600;">87</div>
-                  </div>
-                </div>
-                <div style="font-size:12px;color:var(--text1);margin-top:10px;line-height:1.6;padding-top:10px;border-top:1px solid var(--border);">AI 解读：美联储维持利率符合市场预期，鲍威尔强调通胀仍需关注，建议直播时重点关注对 A 股资金面影响...</div>
+        <!-- 快捷入口卡片 -->
+        <div class="g3 mb" style="margin-bottom:20px;">
+          <div class="panel" style="cursor:pointer;transition:border-color .2s;" onclick="location.href='/hotspot.html'">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:48px;height:48px;border-radius:var(--r);background:var(--gold-dim);display:flex;align-items:center;justify-content:center;font-size:24px;">🔥</div>
+              <div style="flex:1;">
+                <div style="font-size:16px;font-weight:600;color:var(--text0);">实时热搜榜</div>
+                <div style="font-size:13px;color:var(--text1);margin-top:4px;">微博、知乎、抖音、B站等 11+ 平台热搜实时聚合</div>
               </div>
-              <div class="hotspot-card" onclick="showToast('打开热点：黄金新高')" style="padding:14px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg1);cursor:pointer;">
-                <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;">
-                  <div>
-                    <div style="font-size:14px;font-weight:500;color:var(--text0);">黄金突破 3200 美元创历史新高</div>
-                    <div style="font-size:12px;color:var(--text1);margin-top:6px;">2026-05-17 · 市场动态</div>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"><span class="badge green">已解读</span><span class="badge gold">黄金</span><span class="badge blue">大宗</span></div>
-                  </div>
-                  <div style="text-align:right;">
-                    <div style="font-size:11px;color:var(--text2);">热度指数</div>
-                    <div style="font-size:18px;color:var(--gold);font-weight:600;">92</div>
-                  </div>
-                </div>
-                <div style="font-size:12px;color:var(--text1);margin-top:10px;line-height:1.6;padding-top:10px;border-top:1px solid var(--border);">AI 解读：地缘避险情绪推动金价，建议直播话术侧重配置价值，可引用历史数据对比...</div>
-              </div>
-              <div class="hotspot-card" onclick="showToast('打开热点：新能源政策')" style="padding:14px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg1);cursor:pointer;">
-                <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;">
-                  <div>
-                    <div style="font-size:14px;font-weight:500;color:var(--text0);">新能源汽车下乡补贴政策落地</div>
-                    <div style="font-size:12px;color:var(--text1);margin-top:6px;">2026-05-15 · 政策公告</div>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"><span class="badge">待关注</span><span class="badge blue">新能源</span><span class="badge green">汽车</span></div>
-                  </div>
-                  <div style="text-align:right;">
-                    <div style="font-size:11px;color:var(--text2);">热度指数</div>
-                    <div style="font-size:18px;color:var(--blue);font-weight:600;">65</div>
-                  </div>
-                </div>
-                <div style="font-size:12px;color:var(--text2);margin-top:10px;line-height:1.6;padding-top:10px;border-top:1px solid var(--border);">待解读：点击生成 AI 分析与直播话术建议</div>
-              </div>
+              <div style="color:var(--gold);font-size:14px;">进入 →</div>
             </div>
           </div>
-          <div class="panel">
-            <div class="panel-hd"><div class="panel-title">话术建议库</div><span class="panel-act">从热点提取</span></div>
-            <div style="display:flex;flex-direction:column;gap:8px;">
-              <div style="padding:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);">
-                <div style="font-size:12px;color:var(--text1);margin-bottom:6px;">美联储加息解读</div>
-                <div style="font-size:13px;color:var(--text0);line-height:1.6;">"这次美联储维持利率，其实市场早有预期。大家看，最近北向资金流入明显增加，说明外资对国内市场信心增强..."</div>
-                <div style="display:flex;gap:6px;margin-top:8px;"><span class="badge gold">推荐</span><span class="badge blue">宏观</span></div>
+          <div class="panel" style="cursor:pointer;transition:border-color .2s;" onclick="location.href='/hotspot.html?tab=history'">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:48px;height:48px;border-radius:var(--r);background:rgba(74,144,217,.12);display:flex;align-items:center;justify-content:center;font-size:24px;">📊</div>
+              <div style="flex:1;">
+                <div style="font-size:16px;font-weight:600;color:var(--text0);">历史趋势对比</div>
+                <div style="font-size:13px;color:var(--text1);margin-top:4px;">查看热搜排名变化曲线，分析热点生命周期</div>
               </div>
-              <div style="padding:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);">
-                <div style="font-size:12px;color:var(--text1);margin-bottom:6px;">黄金新高解读</div>
-                <div style="font-size:13px;color:var(--text0);line-height:1.6;">"黄金这波上涨，核心还是避险需求。3200 美元这个关口，大家记住，是历史新高，说明什么？全球资金都在找安全的地方..."</div>
-                <div style="display:flex;gap:6px;margin-top:8px;"><span class="badge green">合规</span><span class="badge gold">黄金</span></div>
-              </div>
-              <div style="padding:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);">
-                <div style="font-size:12px;color:var(--text1);margin-bottom:6px;">市场波动解读</div>
-                <div style="font-size:13px;color:var(--text0);line-height:1.6;">"今天大盘震荡，大家不用慌。3300 点这个位置，本身就存在分歧，上有压力下有支撑，震荡整理很正常..."</div>
-                <div style="display:flex;gap:6px;margin-top:8px;"><span class="badge blue">稳健</span><span class="badge green">安抚</span></div>
-              </div>
+              <div style="color:var(--blue);font-size:14px;">进入 →</div>
             </div>
+          </div>
+          <div class="panel" style="cursor:pointer;transition:border-color .2s;" onclick="location.href='/hotspot.html?tab=keywords'">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:48px;height:48px;border-radius:var(--r);background:rgba(155,127,232,.12);display:flex;align-items:center;justify-content:center;font-size:24px;">🔍</div>
+              <div style="flex:1;">
+                <div style="font-size:16px;font-weight:600;color:var(--text0);">关键词追踪</div>
+                <div style="font-size:13px;color:var(--text1);margin-top:4px;">设置关键词，自动监控相关热点命中情况</div>
+              </div>
+              <div style="color:var(--purple);font-size:14px;">进入 →</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 快速统计 -->
+        <div class="panel mb">
+          <div class="panel-hd">
+            <div class="panel-title">热搜统计概览</div>
+            <span class="panel-act" onclick="location.href='/hotspot.html'" style="cursor:pointer;color:var(--gold)">查看完整看板</span>
+          </div>
+          <div class="g4" style="margin:0;">
+            <div class="kpi" style="--accent:var(--gold);margin:0;">
+              <div class="kpi-lbl">今日收录</div>
+              <div class="kpi-val gold" id="hotspotStatToday">--</div>
+              <div class="kpi-delta muted">热搜条目</div>
+            </div>
+            <div class="kpi" style="--accent:var(--green);margin:0;">
+              <div class="kpi-lbl">当前活跃</div>
+              <div class="kpi-val" id="hotspotStatActive">--</div>
+              <div class="kpi-delta green">2小时内</div>
+            </div>
+            <div class="kpi" style="--accent:var(--blue);margin:0;">
+              <div class="kpi-lbl">AI 已分析</div>
+              <div class="kpi-val" id="hotspotStatAnalyzed">--</div>
+              <div class="kpi-delta muted">解读完成</div>
+            </div>
+            <div class="kpi" style="--accent:var(--purple);margin:0;">
+              <div class="kpi-lbl">监控平台</div>
+              <div class="kpi-val" id="hotspotStatPlatforms">11</div>
+              <div class="kpi-delta muted">数据源</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 快速搜索 -->
+        <div class="panel mb">
+          <div class="panel-hd"><div class="panel-title">快速搜索热搜</div></div>
+          <div style="display:flex;gap:10px;">
+            <input class="inp" id="hotspotQuickSearch" placeholder="输入关键词搜索热搜..." style="flex:1;" onkeydown="if(event.key==='Enter')hotspotQuickSearch()">
+            <button class="btn btn-gold" onclick="hotspotQuickSearch()">🔍 搜索</button>
+          </div>
+        </div>
+
+        <!-- 使用说明 -->
+        <div class="panel">
+          <div class="panel-hd"><div class="panel-title">功能说明</div></div>
+          <div style="font-size:13px;color:var(--text1);line-height:1.8;">
+            <p><strong style="color:var(--gold)">实时热搜</strong>：自动抓取微博、知乎、抖音、B站、百度、今日头条、财联社、华尔街见闻等 11+ 平台的热搜榜，实时更新。</p>
+            <p><strong style="color:var(--blue)">历史趋势</strong>：保存最近 30 天的热搜数据，可查看排名变化曲线，分析热点事件的生命周期和热度变化趋势。</p>
+            <p><strong style="color:var(--purple)">关键词追踪</strong>：设置关注的股票、板块、事件关键词，系统自动监控相关热搜的命中情况并提醒。</p>
+            <p><strong style="color:var(--green)">AI 分析</strong>：点击任意热搜，AI 自动生成热点解读、投资关联分析、直播话术建议、合规提醒和互动建议。</p>
           </div>
         </div>
       </div>
@@ -6787,6 +6784,8 @@ async function afterAuth() {
   await loadSettings();
   // 加载工作台概览数据
   loadHomeOverview();
+  // 加载热搜统计
+  loadHotspotStats();
   if (hasDashboardPermission("anchor-library")) await loadAnchorProfiles();
   if (hasDashboardPermission("customer-library")) await loadCustomerLibrary();
   if (hasDashboardPermission("transcript-library")) await loadTranscriptLibrary();
@@ -12030,6 +12029,34 @@ async function sendAiDrawerMessage() {
 function openFullAiChat() {
   closeAiDrawer();
   showSec('ai-chat');
+}
+
+// ══ 热点追踪相关函数 ══
+
+// 加载热搜统计数据
+async function loadHotspotStats() {
+  try {
+    const res = await fetch('/api/hotspot/stats', { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    const stats = data.stats || {};
+    document.getElementById('hotspotStatToday').textContent = fmt(stats.todayNew || 0);
+    document.getElementById('hotspotStatActive').textContent = fmt(stats.active || 0);
+    document.getElementById('hotspotStatAnalyzed').textContent = fmt(stats.analyzed || 0);
+    document.getElementById('hotspotStatPlatforms').textContent = Object.keys(stats.platformStats || {}).length || 11;
+  } catch (e) {
+    console.log('热搜统计加载失败:', e);
+  }
+}
+
+// 快速搜索热搜
+function hotspotQuickSearch() {
+  const keyword = document.getElementById('hotspotQuickSearch').value.trim();
+  if (!keyword) {
+    showToast('请输入搜索关键词');
+    return;
+  }
+  location.href = `/hotspot.html?keyword=${encodeURIComponent(keyword)}`;
 }
 
 // 添加AI助手按钮到顶部导航
