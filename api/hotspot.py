@@ -476,9 +476,9 @@ async def analyze_hotspot(
 @router.post("/api/hotspot/fetch")
 async def fetch_hotspots(
     request: Request,
-    _: dict = Depends(security.require_permission("admin-api"))
+    session: dict = Depends(security.require_permission("hotspot"))
 ) -> dict:
-    """手动触发热搜抓取（管理员）"""
+    """手动触发热搜抓取"""
     body = await request.json()
     platforms = parse_json(body.get("platforms"), [])
 
@@ -494,6 +494,16 @@ async def fetch_hotspots(
     # 调用抓取服务
     from services.hotspot_fetcher import fetch_all_platforms
     result = await fetch_all_platforms(platforms)
+
+    # 记录操作日志
+    username = str(session.get("username") or "")
+    db.execute(
+        """
+        INSERT INTO finvue_action_logs (username, action, detail, created_at)
+        VALUES (%s, 'hotspot_fetch', %s, CURRENT_TIMESTAMP)
+        """,
+        (username, f"手动抓取热搜，平台: {','.join(platforms)}")
+    )
 
     return {"ok": True, "message": "热搜抓取完成", "result": result}
 

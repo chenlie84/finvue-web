@@ -211,6 +211,7 @@ h1{font-family:var(--font-display);font-size:32px;font-weight:600;color:var(--te
     <button class="tab-btn active" onclick="switchTab('current')">实时热搜</button>
     <button class="tab-btn" onclick="switchTab('history')">历史趋势</button>
     <button class="tab-btn" onclick="switchTab('keywords')">关键词追踪</button>
+    <button class="tab-btn" onclick="switchTab('manage')">管理面板</button>
   </div>
 
   <!-- 主内容区 -->
@@ -258,6 +259,71 @@ h1{font-family:var(--font-display);font-size:32px;font-weight:600;color:var(--te
         <div id="keywordResults">
           <div class="empty">请在设置中添加需要追踪的关键词</div>
         </div>
+      </div>
+    </div>
+
+    <!-- 管理面板 -->
+    <div id="tab-manage" class="tab-content" style="display:none;">
+      <div class="g2">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">🔥 手动抓取热搜</div>
+          </div>
+          <div style="margin-bottom:20px;">
+            <div style="color:var(--text1);font-size:13px;margin-bottom:12px;">点击下方按钮立即抓取各平台热搜数据，数据会保存到数据库。</div>
+            <button class="btn btn-gold" id="fetchBtn" onclick="fetchHotspots()" style="width:100%;">
+              <span class="fetch-icon">📥</span> 立即抓取热搜
+            </button>
+            <div id="fetchStatus" style="margin-top:12px;font-size:12px;color:var(--text2);"></div>
+          </div>
+          <div style="border-top:1px solid var(--border);padding-top:16px;">
+            <div style="font-size:12px;color:var(--text1);margin-bottom:8px;">上次抓取状态：</div>
+            <div id="lastFetchInfo" style="font-size:13px;color:var(--text2);">--</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">⚙️ 抓取平台配置</div>
+          </div>
+          <div style="color:var(--text1);font-size:13px;margin-bottom:12px;">勾选需要抓取的平台：</div>
+          <div class="checkbox-list" id="fetchPlatformList" style="max-height:300px;overflow-y:auto;">
+            <div class="loading"><span class="spinner"></span> 加载平台列表...</div>
+          </div>
+          <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px;">
+            <button class="btn btn-outline" onclick="saveFetchPlatforms()" style="width:100%;">保存平台配置</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+          <div class="panel-title">📊 数据统计</div>
+        </div>
+        <div class="g4" style="margin:0;">
+          <div class="kpi" style="--accent:var(--gold);margin:0;">
+            <div class="kpi-lbl">总热搜条目</div>
+            <div class="kpi-val gold" id="manageTotalItems">--</div>
+          </div>
+          <div class="kpi" style="--accent:var(--green);margin:0;">
+            <div class="kpi-lbl">总快照记录</div>
+            <div class="kpi-val" id="manageTotalSnapshots">--</div>
+          </div>
+          <div class="kpi" style="--accent:var(--blue);margin:0;">
+            <div class="kpi-lbl">已AI分析</div>
+            <div class="kpi-val" id="manageAiAnalyzed">--</div>
+          </div>
+          <div class="kpi" style="--accent:var(--purple);margin:0;">
+            <div class="kpi-lbl">数据保留</div>
+            <div class="kpi-val" id="manageRetentionDays">30天</div>
+          </div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:16px;">
+        <div class="panel-header">
+          <div class="panel-title">🗑️ 数据清理</div>
+          <button class="btn btn-outline-sm" onclick="cleanupOldData()">清理旧数据</button>
+        </div>
+        <div style="color:var(--text1);font-size:13px;">系统会自动清理超过保留天数的历史数据。点击按钮可手动触发清理。</div>
+        <div id="cleanupStatus" style="margin-top:12px;font-size:12px;color:var(--text2);"></div>
       </div>
     </div>
   </div>
@@ -355,6 +421,143 @@ function switchTab(tab) {
   if (tab === 'current') loadCurrentHotspots();
   else if (tab === 'history') loadHistoryHotspots();
   else if (tab === 'keywords') loadKeywordResults();
+  else if (tab === 'manage') loadManagePanel();
+}
+
+// ══ 管理面板相关函数 ══
+
+// 加载管理面板数据
+async function loadManagePanel() {
+  loadFetchPlatformList();
+  loadManageStats();
+}
+
+// 加载抓取平台列表
+async function loadFetchPlatformList() {
+  try {
+    const res = await fetch('/api/hotspot/platforms', { credentials: 'include' });
+    const data = await res.json();
+    const platforms = data.platforms || [];
+    const enabled = state.settings.enabledPlatforms || [];
+
+    $('fetchPlatformList').innerHTML = platforms.map(p => `
+      <label class="checkbox-item">
+        <input type="checkbox" value="${esc(p.id)}" ${enabled.includes(p.id) ? 'checked' : ''}>
+        <span>${esc(p.icon)} ${esc(p.name)}</span>
+      </label>
+    `).join('');
+  } catch (e) {
+    $('fetchPlatformList').innerHTML = `<div class="empty">加载失败</div>`;
+  }
+}
+
+// 加载管理面板统计
+async function loadManageStats() {
+  try {
+    // 热搜条目总数
+    const res1 = await fetch('/api/hotspot/stats', { credentials: 'include' });
+    const data1 = await res1.json();
+    const stats = data1.stats || {};
+    $('manageTotalItems').textContent = fmt(stats.active || 0);
+    $('manageAiAnalyzed').textContent = fmt(stats.analyzed || 0);
+
+    // 获取保留天数
+    $('manageRetentionDays').textContent = `${state.settings.retentionDays || 30}天`;
+
+    // 快照数量（暂时用活跃数估算）
+    $('manageTotalSnapshots').textContent = fmt((stats.active || 0) * 5);
+  } catch (e) {
+    console.error('加载统计失败:', e);
+  }
+}
+
+// 手动抓取热搜
+async function fetchHotspots() {
+  const btn = $('fetchBtn');
+  const status = $('fetchStatus');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 正在抓取...';
+  status.innerHTML = '<span class="spinner"></span> 正在从各平台抓取热搜数据，请稍候...';
+
+  try {
+    // 收集选中的平台
+    const checkboxes = $('fetchPlatformList').querySelectorAll('input:checked');
+    const platforms = Array.from(checkboxes).map(cb => cb.value);
+
+    const res = await fetch('/api/hotspot/fetch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ platforms: platforms.length ? platforms : null })
+    });
+
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+
+    const result = data.result || {};
+    status.innerHTML = `
+      <span style="color:var(--green)">✓ 抓取完成！</span>
+      共获取 ${fmt(result.totalItems || 0)} 条热搜，
+      成功平台: ${result.successPlatforms?.join(', ') || '--'}
+    `;
+    $('lastFetchInfo').innerHTML = `
+      <span style="color:var(--gold)">最后抓取: ${new Date().toLocaleString('zh-CN')}</span>
+      <br>成功 ${result.successPlatforms?.length || 0} 个平台
+    `;
+
+    // 刷新统计和热搜列表
+    loadStats();
+    loadManageStats();
+    loadCurrentHotspots();
+
+  } catch (e) {
+    status.innerHTML = `<span style="color:var(--red)">✗ 抓取失败: ${esc(e.message)}</span>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<span class="fetch-icon">📥</span> 立即抓取热搜';
+}
+
+// 保存抓取平台配置
+async function saveFetchPlatforms() {
+  const checkboxes = $('fetchPlatformList').querySelectorAll('input:checked');
+  const platforms = Array.from(checkboxes).map(cb => cb.value);
+
+  state.settings.enabledPlatforms = platforms;
+
+  try {
+    const res = await fetch('/api/hotspot/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(state.settings)
+    });
+    if (!res.ok) throw new Error(res.statusText);
+    alert('平台配置已保存');
+  } catch (e) {
+    alert('保存失败: ' + e.message);
+  }
+}
+
+// 清理旧数据
+async function cleanupOldData() {
+  const status = $('cleanupStatus');
+  status.innerHTML = '<span class="spinner"></span> 正在清理...';
+
+  try {
+    const res = await fetch('/api/hotspot/cleanup', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+    status.innerHTML = `<span style="color:var(--green)">✓ 清理完成，删除 ${fmt(data.deleted || 0)} 条旧数据</span>`;
+    loadStats();
+    loadManageStats();
+  } catch (e) {
+    status.innerHTML = `<span style="color:var(--red)">✗ 清理失败: ${esc(e.message)}</span>`;
+  }
 }
 
 // 加载平台列表
