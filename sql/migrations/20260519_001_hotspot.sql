@@ -35,8 +35,7 @@ CREATE TABLE IF NOT EXISTS finvue_hotspot_snapshots (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_item (item_id),
     INDEX idx_platform_time (platform, snapshot_time),
-    INDEX idx_snapshot_time (snapshot_time),
-    FOREIGN KEY (item_id) REFERENCES finvue_hotspot_items(id) ON DELETE CASCADE
+    INDEX idx_snapshot_time (snapshot_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='热搜排名快照表';
 
 -- 3. 热搜监控配置表：存储用户关注的平台和关键词
