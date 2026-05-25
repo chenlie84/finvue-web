@@ -1,4 +1,4 @@
-"""热搜抓取服务 - 从热点 API 获取多平台热搜数据"""
+"""热搜抓取服务 - 支持直接爬取各平台和外部 API"""
 from __future__ import annotations
 
 import hashlib
@@ -44,6 +44,49 @@ PLATFORM_CATEGORY_MAP = {
     "tieba": "social",
 }
 
+# 支持直接爬取的平台（公开 API，无需 Cookie）
+DIRECT_FETCH_PLATFORMS = {
+    "zhihu": {
+        "url": "https://www.zhihu.com/api/v3/feed/topstory/hot-list-web?limit=20&desktop=true",
+        "method": "api",
+        "parse": lambda data: [
+            {
+                "title": item.get("target", {}).get("title_area", {}).get("text", ""),
+                "url": item.get("target", {}).get("link", {}).get("url", ""),
+                "hot": item.get("target", {}).get("metrics_area", {}).get("text", "")
+            }
+            for item in data.get("data", [])
+            if item.get("target", {}).get("title_area", {}).get("text")
+        ],
+    },
+    "bilibili": {
+        "url": "https://s.search.bilibili.com/main/hotword?limit=30",
+        "method": "api",
+        "parse": lambda data: [
+            {
+                "title": item.get("keyword", "") or item.get("show_name", ""),
+                "url": f"https://search.bilibili.com/all?keyword={item.get('keyword', '')}",
+                "hot": str(item.get("heat_score", "") or item.get("score", ""))
+            }
+            for item in data.get("list", [])
+            if item.get("keyword") or item.get("show_name")
+        ],
+    },
+    "toutiao": {
+        "url": "https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc",
+        "method": "api",
+        "parse": lambda data: [
+            {
+                "title": item.get("Title", ""),
+                "url": item.get("Url", ""),
+                "hot": str(item.get("HotValue", ""))
+            }
+            for item in data.get("data", [])
+            if item.get("Title")
+        ],
+    },
+}
+
 
 def _id(prefix: str = "hotspot") -> str:
     """生成唯一 ID"""
@@ -76,30 +119,88 @@ def _extract_keywords(title: str) -> list[str]:
 
 
 def fetch_platform_hotspots(platform: str) -> dict:
-    """抓取单个平台的热搜数据（使用 TrendRadar 的 API）"""
+    """抓取单个平台的热搜数据（优先直接爬取，失败则使用外部 API）"""
+    import requests
+    import os
+
+    # 优先使用直接爬取（无需代理）
+    if platform in DIRECT_FETCH_PLATFORMS:
+        result = _fetch_direct(platform)
+        if result.get("ok"):
+            return result
+
+    # 直接爬取失败，尝试外部 API
+    return _fetch_via_api(platform)
+
+
+def _fetch_direct(platform: str) -> dict:
+    """直接爬取平台数据（无需代理）"""
+    import requests
+
+    config = DIRECT_FETCH_PLATFORMS.get(platform)
+    if not config:
+        return {"ok": False, "platform": platform, "error": "不支持直接爬取"}
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "zh-CN,zh;q=0.9",
+    }
+    # 合平台特定 headers
+    if config.get("headers"):
+        headers.update(config["headers"])
+
+    try:
+        resp = requests.get(config["url"], headers=headers, timeout=30)
+        if resp.status_code != 200:
+            return {"ok": False, "platform": platform, "error": f"HTTP {resp.status_code}"}
+
+        data = resp.json()
+        raw_items = config["parse"](data)
+
+        items = []
+        for idx, item in enumerate(raw_items):
+            title = item.get("title", "").strip()
+            if not title:
+                continue
+            items.append({
+                "id": _hash_title_platform(title, platform),
+                "title": title,
+                "url": item.get("url", ""),
+                "rank": idx + 1,
+                "hotValue": item.get("hot", ""),
+                "sourceId": "",
+                "sourceName": "",
+            })
+
+        return {"ok": True, "platform": platform, "items": items, "count": len(items)}
+
+    except Exception as e:
+        return {"ok": False, "platform": platform, "error": str(e)}
+
+
+def _fetch_via_api(platform: str) -> dict:
+    """通过外部 API 获取数据"""
     import requests
     import os
 
     newnow_id = PLATFORM_ID_MAP.get(platform, platform)
-    # TrendRadar API 格式: /api/s?id={id}&latest
     url = f"{HOTSPOT_API_BASE}?id={newnow_id}&latest"
 
-    # 正确处理代理配置：只有环境变量明确设置了非空代理才使用
-    # HOTSPOT_NO_PROXY=1 可以完全禁用代理
+    # 代理配置
     proxies = None
     if os.environ.get("HOTSPOT_NO_PROXY") != "1":
         http_proxy = os.environ.get("http_proxy") or os.environ.get("HTTP_PROXY")
         if http_proxy and http_proxy.strip() and "://" in http_proxy:
             proxies = {"http": http_proxy.strip(), "https": http_proxy.strip()}
 
-    # 设置请求头，模拟正常浏览器
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "application/json, text/plain, */*",
         "Accept-Language": "zh-CN,zh;q=0.9",
     }
 
-    # 重试策略：先尝试带代理（如果有），失败再尝试无代理
+    # 重试策略：先尝试带代理，失败再尝试无代理
     attempts = []
     if proxies:
         attempts.append(("proxy", proxies))
