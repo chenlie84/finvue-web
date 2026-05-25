@@ -1,4 +1,4 @@
-"""热搜抓取服务 - 从 newsnow API 获取多平台热搜数据"""
+"""热搜抓取服务 - 从热点 API 获取多平台热搜数据"""
 from __future__ import annotations
 
 import hashlib
@@ -11,8 +11,8 @@ import config
 import db
 
 
-# newsnow API 基础地址
-NEWSNOW_API_BASE = "https://api.v1.newnow.today/api/v1/buss/news/getNewsList"
+# 热点 API 基础地址（可通过环境变量 HOTSPOT_API_URL 配置）
+HOTSPOT_API_BASE = config.HOTSPOT_API_URL
 
 # 平台 ID 映射（newsnow 使用的 ID）
 PLATFORM_ID_MAP = {
@@ -76,56 +76,143 @@ def _extract_keywords(title: str) -> list[str]:
 
 
 def fetch_platform_hotspots(platform: str) -> dict:
-    """抓取单个平台的热搜数据（使用 requests）"""
+    """抓取单个平台的热搜数据（使用 TrendRadar 的 API）"""
     import requests
     import os
 
     newnow_id = PLATFORM_ID_MAP.get(platform, platform)
-    url = f"{NEWSNOW_API_BASE}?type={newnow_id}"
+    # TrendRadar API 格式: /api/s?id={id}&latest
+    url = f"{HOTSPOT_API_BASE}?id={newnow_id}&latest"
 
-    # 使用项目配置的代理（内部服务器访问外网需要走代理）
-    # 可通过环境变量 HOTSPOT_NO_PROXY=1 禁用代理
+    # 正确处理代理配置：只有环境变量明确设置了非空代理才使用
+    # HOTSPOT_NO_PROXY=1 可以完全禁用代理
     proxies = None
-    if not os.environ.get("HOTSPOT_NO_PROXY"):
-        if config.HTTP_PROXY:
-            proxies = {"http": config.HTTP_PROXY, "https": config.HTTP_PROXY}
+    if os.environ.get("HOTSPOT_NO_PROXY") != "1":
+        http_proxy = os.environ.get("http_proxy") or os.environ.get("HTTP_PROXY")
+        if http_proxy and http_proxy.strip() and "://" in http_proxy:
+            proxies = {"http": http_proxy.strip(), "https": http_proxy.strip()}
 
-    try:
-        resp = requests.get(url, proxies=proxies, timeout=30)
-        if resp.status_code != 200:
-            return {"ok": False, "platform": platform, "error": f"HTTP {resp.status_code}"}
+    # 设置请求头，模拟正常浏览器
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "zh-CN,zh;q=0.9",
+    }
 
-        data = resp.json()
-        if not data or data.get("code") != 200:
-            return {"ok": False, "platform": platform, "error": data.get("msg") or "API 返回错误"}
+    # 重试策略：先尝试带代理（如果有），失败再尝试无代理
+    attempts = []
+    if proxies:
+        attempts.append(("proxy", proxies))
+    attempts.append(("direct", None))
 
-        news_list = data.get("data") or []
-        items = []
-
-        for idx, news in enumerate(news_list):
-            title = news.get("title") or ""
-            if not title:
+    last_error = None
+    for attempt_name, attempt_proxies in attempts:
+        try:
+            resp = requests.get(url, proxies=attempt_proxies, headers=headers, timeout=30)
+            if resp.status_code != 200:
+                last_error = f"HTTP {resp.status_code}"
                 continue
 
-            items.append({
-                "id": _hash_title_platform(title, platform),
-                "title": title.strip(),
-                "url": news.get("url") or news.get("sourceUrl") or "",
-                "rank": idx + 1,
-                "hotValue": news.get("hotValue") or news.get("hot") or str(news.get("score") or ""),
-                "sourceId": news.get("sourceId") or news.get("id") or "",
-                "sourceName": news.get("sourceName") or "",
-            })
+            data = resp.json()
 
-        return {"ok": True, "platform": platform, "items": items, "count": len(items)}
+            # TrendRadar API 返回格式: {"status": "cache", "id": "weibo", "items": [{id, title, url, mobileUrl, extra}]}
+            # 或者旧格式: {"code": 200, "data": [...]}
+            items = []
 
-    except Exception as e:
-        return {"ok": False, "platform": platform, "error": str(e)}
+            if isinstance(data, dict):
+                # 新 API 格式 - items 数组
+                if "items" in data and isinstance(data["items"], list):
+                    for idx, news in enumerate(data["items"]):
+                        title = news.get("title") or ""
+                        if not title:
+                            continue
+                        items.append({
+                            "id": _hash_title_platform(title, platform),
+                            "title": title.strip(),
+                            "url": news.get("url") or news.get("mobileUrl") or "",
+                            "rank": idx + 1,
+                            "hotValue": "",
+                            "sourceId": news.get("id") or "",
+                            "sourceName": "",
+                        })
+                # 旧 API 格式 - code + data
+                elif data.get("code") == 200 and isinstance(data.get("data"), list):
+                    for idx, news in enumerate(data["data"]):
+                        title = news.get("title") or ""
+                        if not title:
+                            continue
+                        items.append({
+                            "id": _hash_title_platform(title, platform),
+                            "title": title.strip(),
+                            "url": news.get("url") or news.get("sourceUrl") or "",
+                            "rank": idx + 1,
+                            "hotValue": news.get("hotValue") or news.get("hot") or str(news.get("score") or ""),
+                            "sourceId": news.get("sourceId") or news.get("id") or "",
+                            "sourceName": news.get("sourceName") or "",
+                        })
+                # 嵌套格式 - {id_value: {title: {ranks, url, mobileUrl}}}
+                elif newnow_id in data and isinstance(data[newnow_id], dict):
+                    platform_data = data[newnow_id]
+                    for idx, (title, info) in enumerate(platform_data.items()):
+                        if not title or not isinstance(info, dict):
+                            continue
+                        ranks = info.get("ranks") or []
+                        current_rank = ranks[0] if ranks else (idx + 1)
+                        items.append({
+                            "id": _hash_title_platform(title, platform),
+                            "title": title.strip(),
+                            "url": info.get("url") or info.get("mobileUrl") or "",
+                            "rank": current_rank,
+                            "hotValue": "",
+                            "sourceId": "",
+                            "sourceName": "",
+                        })
+                    items.sort(key=lambda x: x["rank"])
+                else:
+                    last_error = "API 返回数据格式错误或无数据"
+                    continue
+            elif isinstance(data, list):
+                # 直接是数组格式
+                for idx, news in enumerate(data):
+                    title = news.get("title") or ""
+                    if not title:
+                        continue
+                    items.append({
+                        "id": _hash_title_platform(title, platform),
+                        "title": title.strip(),
+                        "url": news.get("url") or news.get("mobileUrl") or "",
+                        "rank": idx + 1,
+                        "hotValue": news.get("hotValue") or "",
+                        "sourceId": news.get("id") or "",
+                        "sourceName": "",
+                    })
+            else:
+                last_error = "API 返回数据格式错误"
+                continue
+
+            return {"ok": True, "platform": platform, "items": items, "count": len(items)}
+
+        except Exception as e:
+            last_error = str(e)
+            continue
+
+    return {"ok": False, "platform": platform, "error": last_error or "连接失败"}
 
 
 def fetch_all_platforms(platforms: list[str] | None = None) -> dict:
     """抓取所有启用平台的热搜数据（使用线程池并发）"""
     from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    # 检查 API 是否启用
+    if not config.HOTSPOT_API_ENABLED:
+        return {
+            "ok": False,
+            "error": "热点 API 已禁用。请在环境变量中设置 HOTSPOT_API_ENABLED=true 启用，或手动输入热点关键词。",
+            "totalItems": 0,
+            "successPlatforms": [],
+            "failedPlatforms": [],
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
 
     if not platforms:
         platforms = list(PLATFORM_ID_MAP.keys())

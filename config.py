@@ -88,3 +88,19 @@ def has_mysql_config() -> bool:
 
 def has_ceph_config() -> bool:
     return bool(USE_CEPH_S3 and CEPH_ACCESS_KEY and CEPH_SECRET_KEY and CEPH_URL and CEPH_BUCKET)
+
+# 远程数据源数据库配置（用于在线导入直播和短视频数据）
+REMOTE_DB_HOST = os.environ.get("REMOTE_DB_HOST", "10.170.32.218")
+REMOTE_DB_PORT = int(os.environ.get("REMOTE_DB_PORT", "3306"))
+REMOTE_DB_DATABASE = os.environ.get("REMOTE_DB_DATABASE", "demo")
+REMOTE_DB_USER = os.environ.get("REMOTE_DB_USER", "root")
+REMOTE_DB_PASSWORD = os.environ.get("REMOTE_DB_PASSWORD", "Python3.8")
+
+def has_remote_db_config() -> bool:
+    return bool(REMOTE_DB_HOST and REMOTE_DB_DATABASE and REMOTE_DB_USER)
+
+# 热点抓取配置
+# 设置 HOTSPOT_API_ENABLED=true 启用自动抓取
+# 数据源使用 newsnow.busiyi.world（与 TrendRadar 项目一致的稳定 API）
+HOTSPOT_API_ENABLED = os.environ.get("HOTSPOT_API_ENABLED", "false").lower() == "true"
+HOTSPOT_API_URL = os.environ.get("HOTSPOT_API_URL", "https://newsnow.busiyi.world/api/s")
