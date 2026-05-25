@@ -661,7 +661,9 @@ function renderHotspotGrid(byPlatform) {
             <div style="display:flex;align-items:flex-start;gap:12px;">
               <div class="hotspot-rank">#${item.rank || '--'}</div>
               <div style="flex:1;">
-                <div class="hotspot-title">${esc(item.title)}</div>
+                <div class="hotspot-title">
+                  ${item.url ? `<a href="${esc(item.url)}" target="_blank" style="color:var(--text0);text-decoration:none;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text0)'">${esc(item.title)} ↗</a>` : `${esc(item.title)}`}
+                </div>
                 <div class="hotspot-meta">
                   <span class="hotspot-hot">${esc(item.hotValue || '')}</span>
                   <span>出现 ${fmt(item.appearanceCount || 1)} 次</span>
