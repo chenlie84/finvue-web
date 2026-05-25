@@ -1762,6 +1762,17 @@
             正在加载热搜数据...
           </div>
         </div>
+
+        <!-- AI 分析结果容器 -->
+        <div id="hotspotAnalysisPanel" style="display:none;margin-top:16px;">
+          <div class="panel" style="border-color:var(--gold);">
+            <div class="panel-hd">
+              <div class="panel-title" style="color:var(--gold);">🤖 AI 分析结果</div>
+              <button class="btn btn-outline-sm" onclick="closeHotspotAnalysis()">关闭</button>
+            </div>
+            <div style="padding:16px;font-size:13px;color:var(--text0);line-height:1.8;white-space:pre-wrap;" id="hotspotAnalysisContent"></div>
+          </div>
+        </div>
       </div>
 
       <!-- 热搜列表样式 -->
@@ -12490,14 +12501,20 @@ async function analyzeHotspotMain(itemId, title) {
     if (!res.ok) throw new Error('分析失败');
     const data = await res.json();
     if (data.ok && data.analysis) {
-      // 跳转到热点详情页查看完整分析
-      location.href = `/hotspot.html?id=${itemId}`;
+      // 在当前页面显示分析结果
+      document.getElementById('hotspotAnalysisPanel').style.display = 'block';
+      document.getElementById('hotspotAnalysisContent').textContent = data.analysis;
+      showToast('分析完成');
     } else {
       showToast(data.error || '分析失败');
     }
   } catch(e) {
     showToast('分析失败: '+e.message);
   }
+}
+
+function closeHotspotAnalysis() {
+  document.getElementById('hotspotAnalysisPanel').style.display = 'none';
 }
 
 function formatTimeShort(d) {
