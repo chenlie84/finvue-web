@@ -180,9 +180,9 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         }
     ],
     "anchorRolePrompt": "你是一位资深的抖音直播运营分析专家和合规顾问，重点从直播结构、互动效率、合规边界、用户理解度和转化动作五个方面评估主播表现，并给出可直接复用的优化建议。",
-    "systemPrompt": "你是一位资深的抖音直播运营分析专家和合规顾问。所有结论必须引用原始数据或逐字稿证据，输出 Markdown，建议要具体可执行。",
+    "systemPrompt": "所有结论必须引用逐字稿原文证据，不要空泛评价，建议要具体可执行。",
     "userPrompt": "请基于完整直播数据和逐字稿，生成一份结构化直播分析报告，覆盖直播概况、合规风险、内容结构、互动承接、转化动作、主播画像和改进建议。",
-    "reportFormat": "输出 Markdown，标题清晰，表格优先，结论必须引用原始数据。",
+    "reportFormat": "输出 Markdown，标题清晰，表格优先，层级分明，短句为主。",
     "externalHotTopics": "",
 }
 
@@ -575,6 +575,34 @@ def get_anchor_roi_settings() -> dict[str, Any]:
 
 def save_anchor_roi_settings(payload: dict[str, Any]) -> dict[str, Any]:
     return set_kv("anchor-roi-settings", {"items": safe_object(payload.get("items")), "updatedAt": datetime.now(timezone.utc).isoformat()})
+
+
+def delete_anchor_profile(anchor_id: str, anchor_name: str) -> dict[str, Any]:
+    """删除主播及其所有关联数据：逐字稿、分析报告、合规库、案例库."""
+    # 删除主播资料
+    db.execute("DELETE FROM finvue_anchor_profiles WHERE id = %s OR anchor_name = %s", (anchor_id, anchor_name))
+
+    # 删除逐字稿
+    db.execute("DELETE FROM finvue_transcripts WHERE anchor_name = %s", (anchor_name,))
+
+    # 删除分析报告（主播蒸馏库）
+    db.execute("DELETE FROM finvue_analysis_reports WHERE anchor_name = %s", (anchor_name,))
+
+    # 删除合规库中该主播来源的条目（从 raw JSON 中筛选 anchorName 匹配的）
+    compliance_rows = db.fetch_all("SELECT id, raw FROM finvue_compliance_entries")
+    for row in compliance_rows:
+        raw = parse_json(row.get("raw"), {})
+        if raw.get("anchorName") == anchor_name or raw.get("anchor") == anchor_name:
+            db.execute("DELETE FROM finvue_compliance_entries WHERE id = %s", (row["id"],))
+
+    # 删除案例库中该主播来源的条目
+    case_rows = db.fetch_all("SELECT id, raw FROM finvue_case_entries")
+    for row in case_rows:
+        raw = parse_json(row.get("raw"), {})
+        if raw.get("anchorName") == anchor_name or raw.get("anchor") == anchor_name:
+            db.execute("DELETE FROM finvue_case_entries WHERE id = %s", (row["id"],))
+
+    return {"ok": True, "deletedAnchor": anchor_name}
 
 
 def _library_get(key: str, table: str, item_key: str, page: int | None = None, page_size: int | None = None, q: str = "") -> dict[str, Any]:

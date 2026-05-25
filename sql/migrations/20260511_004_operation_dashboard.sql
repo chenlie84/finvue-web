@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS finvue_operation_live_stats (
   UNIQUE KEY uk_finvue_operation_live_stats_room (room_id),
   INDEX idx_finvue_operation_live_stats_account_time (account, start_time),
   INDEX idx_finvue_operation_live_stats_time (start_time)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='直播数据统计';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='直播数据统计';
 
 -- 短视频数据表
 CREATE TABLE IF NOT EXISTS finvue_operation_video_stats (
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS finvue_operation_video_stats (
   UNIQUE KEY uk_finvue_operation_video_stats_account_time (account, publish_time, title(100)),
   INDEX idx_finvue_operation_video_stats_account_time (account, publish_time),
   INDEX idx_finvue_operation_video_stats_time (publish_time)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='短视频数据统计';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='短视频数据统计';
 
 -- TOP200粉丝数据表 (可选，用于粉丝趋势分析)
 CREATE TABLE IF NOT EXISTS finvue_operation_fans_stats (
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS finvue_operation_fans_stats (
   imported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '导入时间',
   UNIQUE KEY uk_finvue_operation_fans_stats_anchor_date (anchor_name, stat_date),
   INDEX idx_finvue_operation_fans_stats_anchor_time (anchor_name, stat_date)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='TOP200粉丝统计';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='TOP200粉丝统计';
 
 -- 导入记录表 (用于追踪导入历史)
 CREATE TABLE IF NOT EXISTS finvue_operation_import_logs (
@@ -119,4 +119,4 @@ CREATE TABLE IF NOT EXISTS finvue_operation_import_logs (
   imported_by VARCHAR(191) COMMENT '导入人',
   imported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '导入时间',
   INDEX idx_finvue_operation_import_logs_type_time (import_type, imported_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='数据导入日志';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='数据导入日志';

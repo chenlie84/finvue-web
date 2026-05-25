@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS finvue_sop_anchors (
   PRIMARY KEY (anchor_name),
   KEY idx_finvue_sop_operator (operator_name),
   KEY idx_finvue_sop_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS finvue_sop_action_progress (
   id BIGINT NOT NULL AUTO_INCREMENT,
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS finvue_sop_action_progress (
   UNIQUE KEY uk_finvue_sop_item (anchor_name, week, action_index, sub_index, child_index),
   CONSTRAINT fk_finvue_sop_progress_anchor FOREIGN KEY (anchor_name)
     REFERENCES finvue_sop_anchors(anchor_name) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS finvue_sop_week_completion (
   anchor_name VARCHAR(64) NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS finvue_sop_week_completion (
   PRIMARY KEY (anchor_name, week),
   CONSTRAINT fk_finvue_sop_completion_anchor FOREIGN KEY (anchor_name)
     REFERENCES finvue_sop_anchors(anchor_name) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE IF NOT EXISTS finvue_sop_custom_options (
   id BIGINT NOT NULL AUTO_INCREMENT,
@@ -52,4 +52,4 @@ CREATE TABLE IF NOT EXISTS finvue_sop_custom_options (
   PRIMARY KEY (id),
   UNIQUE KEY uk_finvue_sop_custom_option_path_label (week, action_index, sub_index, label),
   KEY idx_finvue_sop_custom_option_path (week, action_index, sub_index, sort_order)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

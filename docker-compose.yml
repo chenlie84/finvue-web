@@ -1,6 +1,7 @@
 services:
   finvue:
-    build: .
+    image: crachenlie/finvue-web:latest
+    # 如需本地构建，改用: build: .
     ports:
       - "8080:8080"
     environment:
@@ -16,8 +17,8 @@ services:
       - ADMIN_USERNAME=admin
       - ADMIN_PASSWORD=admin123
       - USE_CEPH_S3=false
-      - http_proxy=
-      - https_proxy=
+      # 热点抓取配置（知乎/B站/头条无需代理，其他平台需代理）
+      - HOTSPOT_API_ENABLED=true
       - HOTSPOT_NO_PROXY=1
       - OBJECT_STORAGE_DIR=/srv/finvue/objects
     volumes:

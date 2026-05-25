@@ -18,7 +18,7 @@ def _ensure_tracking_table(cursor) -> None:
         CREATE TABLE IF NOT EXISTS finvue_schema_migrations (
             filename   VARCHAR(128) NOT NULL PRIMARY KEY,
             applied_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
         """
     )
 

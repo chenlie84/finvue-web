@@ -20,4 +20,4 @@ CREATE TABLE IF NOT EXISTS `finvue_action_logs` (
   INDEX idx_finvue_action_logs_type (`action_type`, `created_at`),
   INDEX idx_finvue_action_logs_module (`module`, `created_at`),
   INDEX idx_finvue_action_logs_time (`created_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='操作日志表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='操作日志表';

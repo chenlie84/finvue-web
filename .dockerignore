@@ -3,7 +3,9 @@ __pycache__/
 *.pyc
 .DS_Store
 .env
+.env.local
 .env.production
+.env.production.local
 .git/
 .gitignore
 .node_modules/
@@ -11,9 +13,15 @@ __pycache__/
 .qwen/
 *.log
 *.csv
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
 export_all_data.js
 import_csv_to_production.py
 create_tables.sql
 deploy/
 docs/
 node_modules/
+finvue-deploy-source.zip

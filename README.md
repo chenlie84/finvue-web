@@ -16,7 +16,65 @@ python main.py
 
 默认端口是 `8080`。`python main.py` 会在启动时自动执行 `sql/migrations/*.sql` 中未执行过的迁移，然后启动服务。
 
-## 生产启动
+## Docker 部署
+
+### 拉取镜像
+
+```bash
+docker pull crachenlie/finvue-web:latest
+```
+
+镜像支持 **linux/amd64** 和 **linux/arm64**，Windows 和 Mac 都可使用。
+
+### 使用 docker-compose 启动
+
+```bash
+docker-compose up -d
+```
+
+### 环境变量配置
+
+生产环境需配置以下环境变量（参考 `.env.production.example`）：
+
+| 变量名 | 说明 |
+|--------|------|
+| `MYSQL_HOST` | MySQL 主机地址 |
+| `MYSQL_PORT` | MySQL 端口 |
+| `MYSQL_DATABASE` | 数据库名 |
+| `MYSQL_USER` | 数据库用户名 |
+| `MYSQL_PASSWORD` | 数据库密码 |
+| `AUTH_SECRET` | JWT 密钥（随机长字符串） |
+| `ADMIN_USERNAME` | 管理员用户名 |
+| `ADMIN_PASSWORD` | 管理员密码 |
+
+---
+
+## 镜像发布（维护者）
+
+### 构建并推送多架构镜像
+
+```bash
+# 构建 amd64 + arm64 双架构镜像并推送
+docker buildx build --platform linux/amd64,linux/arm64 -t crachenlie/finvue-web:latest --push .
+```
+
+### 带版本号发布
+
+```bash
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t crachenlie/finvue-web:v1.0.0 \
+  -t crachenlie/finvue-web:latest \
+  --push .
+```
+
+### 注意事项
+
+- `.dockerignore` 已排除敏感文件（`.env`、`.env.local`、密钥等）
+- 镜像不包含源代码，用户无法通过镜像获取代码
+
+---
+
+## 生产启动（非 Docker）
 
 ```bash
 cd /srv/finvue/finvue-web

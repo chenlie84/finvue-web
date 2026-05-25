@@ -178,6 +178,10 @@
       <span class="ni">📅</span>
       <span>直播日历</span>
     </div>
+    <div class="nav-item" onclick="switchTab('live-details', this)">
+      <span class="ni">📋</span>
+      <span>直播明细</span>
+    </div>
     <div class="s-section">其他</div>
     <div class="nav-item" onclick="location.href='/'">
       <span class="ni">←</span>
@@ -286,6 +290,72 @@
       </div>
     </div>
 
+    <!-- 直播明细 -->
+    <div id="tab-live-details" class="tab-content">
+      <h1 class="page-title">直播明细</h1>
+      <p class="page-sub" id="live-details-sub">直播场次统计 · 涨粉汇总</p>
+      
+      <!-- 统计卡片 -->
+      <div class="g4 mb">
+        <div class="kpi" style="--accent:var(--gold)"><div class="kpi-lbl">直播场次</div><div class="kpi-val gold" id="live-detail-count">—</div></div>
+        <div class="kpi" style="--accent:var(--green)"><div class="kpi-lbl">总涨粉</div><div class="kpi-val" id="live-detail-follow">—</div></div>
+        <div class="kpi" style="--accent:var(--blue)"><div class="kpi-lbl">平均时长</div><div class="kpi-val" id="live-detail-duration">—</div><div class="kpi-delta muted">分钟</div></div>
+        <div class="kpi" style="--accent:var(--purple)"><div class="kpi-lbl">平均峰值</div><div class="kpi-val" id="live-detail-pcu">—</div></div>
+      </div>
+
+      <!-- AI 分析区域（可折叠） -->
+      <details class="prompt-detail mb" open>
+        <summary style="font-size:15px;font-weight:500;padding:12px;background:var(--bg2);border-radius:var(--r);">
+          🤖 AI 数据分析助手
+          <button class="btn btn-outline" onclick="clearAIChatHistory();event.stopPropagation();" style="font-size:11px;margin-left:8px;">清空</button>
+        </summary>
+        <div style="padding:12px;">
+          <!-- 对话历史区域 -->
+          <div id="ai-analysis-result" style="min-height:100px;max-height:350px;overflow-y:auto;background:var(--bg2);border-radius:var(--r);padding:12px;">
+            <div class="muted" style="text-align:center;padding:20px;">
+              输入您的问题，AI 将基于当前筛选的直播数据进行分析<br>
+              <span style="font-size:11px;">例如：分析涨粉趋势、对比主播表现、给出优化建议</span>
+            </div>
+          </div>
+          <!-- 知识库选择 -->
+          <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+            <select id="ai-knowledge-select" class="sel" style="width:200px;font-size:13px;" onchange="updateKnowledgeStatus()">
+              <option value="">不使用知识库</option>
+            </select>
+            <span id="ai-knowledge-status" class="muted" style="font-size:11px;"></span>
+          </div>
+          <!-- 输入区域 -->
+          <div style="margin-top:8px;display:flex;gap:8px;align-items:flex-end;">
+            <textarea id="ai-input-prompt" 
+              placeholder="输入问题...例如：哪个主播表现最好？" 
+              style="flex:1;min-height:50px;max-height:120px;padding:10px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg);color:var(--text);resize:vertical;font-size:13px;"
+              onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendAIPrompt();}"></textarea>
+            <button class="btn" id="btn-ai-send" onclick="sendAIPrompt()" style="background:var(--gold);padding:10px 16px;">发送</button>
+            <button class="btn btn-outline" id="btn-ai-batch" onclick="analyzeAllAnchors()" style="padding:10px 16px;">分析全部主播</button>
+          </div>
+        </div>
+      </details>
+      
+      <!-- 篩选器 -->
+      <div class="filter-bar">
+        <select id="live-details-account" class="sel" onchange="loadLiveDetails()">
+          <option value="">全部主播</option>
+        </select>
+        <div style="display:flex;gap:4px;">
+          <button class="btn btn-outline" onclick="setLiveDetailsDateRange('day')" id="btn-live-day" style="padding:6px 12px;font-size:12px;">日</button>
+          <button class="btn btn-outline" onclick="setLiveDetailsDateRange('week')" id="btn-live-week" style="padding:6px 12px;font-size:12px;">周</button>
+          <button class="btn btn-outline" onclick="setLiveDetailsDateRange('month')" id="btn-live-month" style="padding:6px 12px;font-size:12px;">月</button>
+          <button class="btn btn-outline" onclick="setLiveDetailsDateRange('year')" id="btn-live-year" style="padding:6px 12px;font-size:12px;">年</button>
+          <button class="btn btn-outline" onclick="setLiveDetailsDateRange('all')" id="btn-live-all" style="padding:6px 12px;font-size:12px;">全部</button>
+        </div>
+        <input type="date" id="live-details-start" class="sel" onchange="loadLiveDetails()" style="width:120px;">
+        <input type="date" id="live-details-end" class="sel" onchange="loadLiveDetails()" style="width:120px;">
+      </div>
+      
+      <!-- 主播分组展示区域 -->
+      <div id="live-details-content">加载中...</div>
+    </div>
+
     <!-- 粉丝趋势 -->
     <div id="tab-fans-trend" class="tab-content">
       <h1 class="page-title">粉丝趋势分析</h1>
@@ -309,6 +379,7 @@ function esc(v) {
   if (!v) return "";
   return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 }
+const escapeHtml = esc;  // 别名
 function fmt(n) { return Number(n || 0).toLocaleString("zh-CN"); }
 
 // 主题切换
@@ -340,7 +411,9 @@ function getThemeColors() {
     gold: isLight ? '#D97706' : '#C8922A',
     gold2: isLight ? '#F59E0B' : '#E5B84A',
     blue: isLight ? '#2563EB' : '#4A90D9',
-    green: isLight ? '#059669' : '#2DBD85'
+    green: isLight ? '#059669' : '#2DBD85',
+    red: isLight ? '#DC2626' : '#E05252',
+    purple: isLight ? '#7C3AED' : '#9B7FE8'
   };
 }
 
@@ -1477,6 +1550,732 @@ function exportFansTrendHTML() {
   URL.revokeObjectURL(url);
 }
 
+
+// ============= 直播明细功能 =============
+
+let liveDetailsChartInstances = {};
+
+// 日期范围设置函数
+function setLiveDetailsDateRange(range) {
+  const today = new Date();
+  let startDate, endDate;
+  
+  endDate = today.toISOString().slice(0, 10);
+  
+  switch(range) {
+    case 'day':
+      startDate = endDate;
+      break;
+    case 'week':
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - 7);
+      startDate = weekStart.toISOString().slice(0, 10);
+      break;
+    case 'month':
+      startDate = today.toISOString().slice(0, 8) + '01';
+      break;
+    case 'year':
+      startDate = today.toISOString().slice(0, 5) + '01-01';
+      break;
+    case 'all':
+      startDate = '';
+      endDate = '';
+      break;
+  }
+  
+  $('live-details-start').value = startDate;
+  $('live-details-end').value = endDate;
+  
+  // 更新按钮状态
+  ['day', 'week', 'month', 'year', 'all'].forEach(r => {
+    const btn = $('btn-live-' + r);
+    if (btn) {
+      if (r === range) {
+        btn.style.background = 'var(--gold)';
+        btn.style.color = '#fff';
+        btn.style.borderColor = 'var(--gold)';
+      } else {
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }
+    }
+  });
+  
+  loadLiveDetails();
+}
+
+async function loadLiveDetails() {
+  const account = $('live-details-account').value;
+  const startDate = $('live-details-start').value;
+  const endDate = $('live-details-end').value;
+  const contentEl = $('live-details-content');
+
+  contentEl.innerHTML = '<div class="panel"><div class="empty">加载中...</div></div>';
+
+  // 加载统计汇总
+  fetch(`/api/operation/live-detail-stats?account=${encodeURIComponent(account)}`, { credentials: 'include' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok) {
+        $('live-detail-count').textContent = data.total_sessions;
+        $('live-detail-follow').textContent = data.total_follow;
+        $('live-detail-duration').textContent = data.avg_duration;
+        $('live-detail-pcu').textContent = Math.round(data.avg_pcu);
+        $('live-details-sub').textContent = `${data.total_sessions} 场直播 · 总涨粉 ${data.total_follow}`;
+      }
+    });
+
+  // 加载明细列表
+  fetch(`/api/operation/live-details?page=1&limit=500&account=${encodeURIComponent(account)}&start_date=${startDate}&end_date=${endDate}`, { credentials: 'include' })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.ok) {
+        contentEl.innerHTML = `<div class="panel"><div class="empty" style="color:var(--red);">加载失败: ${escapeHtml(data.error)}</div></div>`;
+        return;
+      }
+
+      if (data.details.length === 0) {
+        contentEl.innerHTML = '<div class="panel"><div class="empty">暂无直播数据</div></div>';
+        return;
+      }
+
+      // 按主播分组
+      const byAccount = {};
+      for (const row of data.details) {
+        const acc = row.account || '未知';
+        if (!byAccount[acc]) {
+          byAccount[acc] = { liveCount: 0, totalWatch: 0, totalFollow: 0, totalEarn: 0, totalDuration: 0, lives: [] };
+        }
+        byAccount[acc].liveCount++;
+        byAccount[acc].totalWatch += row.watch_ucnt || 0;
+        byAccount[acc].totalFollow += row.follow_ucnt || 0;
+        byAccount[acc].totalEarn += row.earn_score || 0;
+        byAccount[acc].totalDuration += row.duration || 0;
+        byAccount[acc].lives.push(row);
+      }
+
+      // 按涨粉排序
+      const sortedAccounts = Object.entries(byAccount).sort((a, b) => b[1].totalFollow - a[1].totalFollow);
+
+      // 渲染 - 增加获取数量到500
+      let html = '';
+      let chartIndex = 0;
+      for (const [accName, accData] of sortedAccounts) {
+        const chartId = `live-detail-chart-${chartIndex}`;
+        chartIndex++;
+        
+        // 基础数据计算（用于显示）
+        const avgFollow = accData.liveCount > 0 ? Math.round(accData.totalFollow / accData.liveCount) : 0;
+        const avgWatch = accData.liveCount > 0 ? Math.round(accData.totalWatch / accData.liveCount) : 0;
+        const followRate = accData.totalWatch > 0 ? (accData.totalFollow / accData.totalWatch * 100).toFixed(2) : 0;
+        
+        html += `
+          <div class="panel mb" id="anchor-card-${chartIndex}">
+            <div class="panel-hd">
+              <div class="panel-title">👤 ${escapeHtml(accName)}</div>
+              <span class="badge gold">${accData.liveCount} 场</span>
+            </div>
+            <!-- AI 一句话总结（分析后填充） -->
+            <div id="anchor-summary-${chartIndex}" style="font-size:13px;padding:10px 12px;background:var(--bg2);border-radius:var(--r);margin-bottom:12px;border-left:3px solid var(--gold);">
+              <span class="muted">💡 点击"分析全部主播"生成 AI 评价</span>
+            </div>
+            <div class="g4" style="margin-bottom:12px;">
+              <div class="kpi" style="--accent:var(--gold);padding:12px;">
+                <div class="kpi-lbl">观看总数</div>
+                <div class="kpi-val gold" style="font-size:20px;">${fmt(accData.totalWatch)}</div>
+              </div>
+              <div class="kpi" style="--accent:var(--green);padding:12px;">
+                <div class="kpi-lbl">涨粉总数</div>
+                <div class="kpi-val green" style="font-size:20px;">${fmt(accData.totalFollow)}</div>
+              </div>
+              <div class="kpi" style="--accent:var(--blue);padding:12px;">
+                <div class="kpi-lbl">总时长</div>
+                <div class="kpi-val" style="font-size:20px;">${fmt(accData.totalDuration)}分</div>
+              </div>
+              <div class="kpi" style="--accent:var(--purple);padding:12px;">
+                <div class="kpi-lbl">音浪收入</div>
+                <div class="kpi-val" style="font-size:20px;">${fmt(accData.totalEarn)}</div>
+              </div>
+            </div>
+            <!-- 图表区域 -->
+            <div id="${chartId}" style="height:220px;background:var(--bg2);border-radius:var(--r);margin-bottom:12px;"></div>
+            <details class="prompt-detail">
+              <summary>直播明细 (${accData.liveCount} 场)</summary>
+              <div style="overflow-x:auto;">
+                <table class="tbl" style="font-size:11px;">
+                  <tr>
+                    <th>开播时间</th><th>时长</th><th>曝光</th><th>峰值</th><th>平均</th>
+                    <th>观看</th><th>粉观看</th><th>非粉观看</th>
+                    <th>涨粉</th><th>加团</th>
+                    <th>停留</th><th>粉停留</th><th>非粉停留</th>
+                    <th>点赞</th><th>涨粉率</th><th>评论率</th>
+                    <th>群内</th><th>群外</th><th>群内率</th>
+                  </tr>
+                  ${accData.lives.map(row => {
+                    let startTime = row.start_time ? row.start_time.split('.')[0].replace('T', ' ').slice(0, 16) : '—';
+                    const followRate = row.follow_u_rate || 0;
+                    const commentRate = row.comment_u_rate || 0;
+                    const groupRate = row.fans_in_group_rate || 0;
+                    return `<tr>
+                      <td class="mono">${startTime}</td>
+                      <td>${row.duration || 0}</td>
+                      <td class="mono">${fmt(row.show_ucnt || 0)}</td>
+                      <td class="mono">${fmt(row.pcu || 0)}</td>
+                      <td class="mono">${fmt(row.acu || 0)}</td>
+                      <td class="mono">${fmt(row.watch_ucnt || 0)}</td>
+                      <td class="mono" style="color:var(--gold);">${fmt(row.fans_watch_ucnt || 0)}</td>
+                      <td class="mono" style="color:var(--blue);">${fmt(row.non_fans_watch_ucnt || 0)}</td>
+                      <td class="green mono" style="font-weight:500;">${fmt(row.follow_ucnt || 0)}</td>
+                      <td class="mono">${fmt(row.join_fansclub_ucnt || 0)}</td>
+                      <td class="mono">${(row.avg_watch_duration || 0).toFixed(1)}</td>
+                      <td class="mono" style="color:var(--gold);">${(row.fans_avg_watch_duration || 0).toFixed(1)}</td>
+                      <td class="mono" style="color:var(--blue);">${(row.non_fans_avg_watch_duration || 0).toFixed(1)}</td>
+                      <td class="mono">${fmt(row.like_cnt || 0)}</td>
+                      <td class="mono">${followRate}%</td>
+                      <td class="mono">${commentRate}%</td>
+                      <td class="mono">${fmt(row.fans_in_group || 0)}</td>
+                      <td class="mono">${fmt(row.fans_out_group || 0)}</td>
+                      <td class="mono">${groupRate}%</td>
+                    </tr>`;
+                  }).join('')}
+                </table>
+              </div>
+            </details>
+            <!-- AI 详细分析结果（可折叠） -->
+            <details class="prompt-detail" id="anchor-ai-${chartIndex}" style="display:none;margin-top:12px;">
+              <summary style="background:var(--bg2);padding:10px 12px;border-radius:var(--r);font-size:13px;">
+                🤖 AI 详细分析报告
+              </summary>
+              <div style="padding:12px;">
+                <!-- 核心要点 -->
+                <div class="anchor-ai-points" style="margin-bottom:12px;padding:12px;background:rgba(45,189,133,0.1);border-radius:var(--r);border-left:3px solid var(--green);">
+                  <div style="font-size:12px;color:var(--green);margin-bottom:6px;font-weight:500;">✅ 核心要点</div>
+                  <div style="font-size:13px;line-height:1.6;"></div>
+                </div>
+                <!-- 存在问题 -->
+                <div class="anchor-ai-issues" style="margin-bottom:12px;padding:12px;background:rgba(224,82,82,0.1);border-radius:var(--r);border-left:3px solid var(--red);">
+                  <div style="font-size:12px;color:var(--red);margin-bottom:6px;font-weight:500;">⚠️ 存在问题</div>
+                  <div style="font-size:13px;line-height:1.6;"></div>
+                </div>
+                <!-- 优化建议 -->
+                <div class="anchor-ai-suggestions" style="padding:12px;background:rgba(200,146,42,0.1);border-radius:var(--r);border-left:3px solid var(--gold);">
+                  <div style="font-size:12px;color:var(--gold);margin-bottom:6px;font-weight:500;">💡 优化建议</div>
+                  <div style="font-size:13px;line-height:1.6;"></div>
+                </div>
+              </div>
+            </details>
+          </div>`;
+        
+        // 保存图表数据和主播信息
+        liveDetailsChartInstances[chartId] = accData.lives;
+        liveDetailsChartInstances['anchor-' + chartIndex] = { name: accName, data: accData };
+      }
+      
+      contentEl.innerHTML = html;
+      
+      // 初始化图表
+      setTimeout(() => {
+        const colors = getThemeColors();
+        for (const [chartId, lives] of Object.entries(liveDetailsChartInstances)) {
+          const chartEl = document.getElementById(chartId);
+          if (!chartEl || lives.length === 0) continue;
+          
+          // 按日期排序
+          const sortedLives = lives.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+          
+          const dates = sortedLives.map(l => l.start_time ? l.start_time.slice(5, 10) : '');
+          const followData = sortedLives.map(l => l.follow_ucnt || 0);
+          const watchData = sortedLives.map(l => l.watch_ucnt || 0);
+          const durationData = sortedLives.map(l => l.duration || 0);
+          const pcuData = sortedLives.map(l => l.pcu || 0);
+          const joinData = sortedLives.map(l => l.join_fansclub_ucnt || 0);
+          
+          const chart = echarts.init(chartEl);
+          chart.setOption({
+            tooltip: { 
+              trigger: 'axis', 
+              backgroundColor: colors.bg, 
+              textStyle: { color: colors.text },
+              formatter: function(params) {
+                let result = params[0].axisValue + '<br/>';
+                params.forEach(p => {
+                  result += p.marker + p.seriesName + ': ' + fmt(p.value) + '<br/>';
+                });
+                return result;
+              }
+            },
+            legend: { data: ['涨粉', '观看', '峰值', '时长', '加团'], textStyle: { color: colors.textMuted, fontSize: 11 }, top: 5, itemWidth: 15 },
+            grid: { left: 55, right: 25, top: 35, bottom: 25 },
+            xAxis: { type: 'category', data: dates, axisLabel: { color: colors.textMuted, fontSize: 10 }, axisLine: { lineStyle: { color: colors.border } } },
+            yAxis: [
+              { type: 'value', name: '人数', nameTextStyle: { color: colors.textMuted, fontSize: 10 }, axisLabel: { color: colors.textMuted, fontSize: 10 }, axisLine: { lineStyle: { color: colors.border } }, splitLine: { lineStyle: { color: colors.border, type: 'dashed' } } },
+              { type: 'value', name: '分钟', nameTextStyle: { color: colors.textMuted, fontSize: 10 }, axisLabel: { color: colors.textMuted, fontSize: 10 }, axisLine: { lineStyle: { color: colors.border } }, splitLine: { show: false } }
+            ],
+            series: [
+              { name: '涨粉', type: 'bar', data: followData, itemStyle: { color: colors.green }, barWidth: '15%' },
+              { name: '加团', type: 'bar', data: joinData, itemStyle: { color: colors.purple }, barWidth: '15%' },
+              { name: '观看', type: 'line', data: watchData, lineStyle: { color: colors.gold, width: 2 }, itemStyle: { color: colors.gold }, smooth: true, symbol: 'circle', symbolSize: 4 },
+              { name: '峰值', type: 'line', data: pcuData, lineStyle: { color: colors.red, width: 2 }, itemStyle: { color: colors.red }, smooth: true, symbol: 'circle', symbolSize: 4 },
+              { name: '时长', type: 'line', data: durationData, lineStyle: { color: colors.blue, width: 2 }, itemStyle: { color: colors.blue }, smooth: true, yAxisIndex: 1, symbol: 'circle', symbolSize: 4 }
+            ]
+          });
+        }
+      }, 100);
+    })
+    .catch(e => {
+      contentEl.innerHTML = `<div class="panel"><div class="empty" style="color:var(--red);">请求失败: ${e.message || e}</div></div>`;
+    });
+}
+
+function initLiveDetailsAccounts(accounts) {
+  const select = $('live-details-account');
+  select.innerHTML = '<option value="">全部主播</option>';
+  accounts.forEach(acc => {
+    // accounts 是包含 account 字段的字典数组
+    const name = typeof acc === 'object' ? (acc.account || acc) : acc;
+    if (name) {
+      select.innerHTML += `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
+    }
+  });
+}
+
+// AI 对话分析直播数据
+let liveDetailsDataForAI = null;
+let aiChatHistory = [];
+let aiDataContext = '';
+
+// 清空对话历史
+function clearAIChatHistory() {
+  aiChatHistory = [];
+  aiDataContext = '';
+  $('ai-analysis-result').innerHTML = '<div class="muted" style="text-align:center;padding:30px;">对话已清空，输入新问题开始分析</div>';
+}
+
+// 知识库数据缓存
+let aiKnowledgeList = [];
+
+// 加载知识库列表
+async function loadAIKnowledgeList() {
+  try {
+    const resp = await fetch('/api/ai-chat/knowledge', { credentials: 'include' });
+    const data = await resp.json();
+    
+    const select = $('ai-knowledge-select');
+    select.innerHTML = '<option value="">不使用知识库</option>';
+    
+    if (data && data.length > 0) {
+      aiKnowledgeList = data;
+      
+      // 添加主播蒸馏库选项（包含逐字稿）
+      for (const kb of data) {
+        if (kb.file_type === 'distill' || kb.id?.startsWith('distill:')) {
+          const name = kb.id.replace('distill:', '');
+          const transcriptCount = kb.transcript_count || 0;
+          const hasProfile = kb.has_profile || false;
+          let desc = '';
+          if (hasProfile && transcriptCount > 0) {
+            desc = `（资料+${transcriptCount}份逐字稿）`;
+          } else if (transcriptCount > 0) {
+            desc = `（${transcriptCount}份逐字稿）`;
+          } else if (hasProfile) {
+            desc = '（主播资料）';
+          }
+          select.innerHTML += `<option value="${kb.id}">📚 ${name}${desc}</option>`;
+        } else if (kb.id?.startsWith('anchor:')) {
+          const name = kb.id.replace('anchor:', '');
+          select.innerHTML += `<option value="${kb.id}">👤 ${name}（主播资料）</option>`;
+        } else if (kb.id?.startsWith('transcript:')) {
+          const name = kb.id.replace('transcript:', '');
+          select.innerHTML += `<option value="${kb.id}">📝 ${name}（逐字稿）</option>`;
+        } else if (kb.file_type !== 'distill') {
+          // 普通知识库
+          select.innerHTML += `<option value="${kb.id}">📁 ${kb.name}</option>`;
+        }
+      }
+    }
+  } catch (e) {
+    console.log('加载知识库失败:', e);
+  }
+}
+
+// 更新知识库状态显示
+function updateKnowledgeStatus() {
+  const select = $('ai-knowledge-select');
+  const statusEl = $('ai-knowledge-status');
+  const kbId = select.value;
+  
+  if (!kbId) {
+    statusEl.textContent = '';
+    return;
+  }
+  
+  if (kbId.startsWith('distill:')) {
+    statusEl.textContent = '将结合主播资料和逐字稿分析';
+    statusEl.style.color = 'var(--gold)';
+  } else if (kbId.startsWith('transcript:')) {
+    statusEl.textContent = '将结合逐字稿分析话术技巧';
+    statusEl.style.color = 'var(--blue)';
+  } else {
+    statusEl.textContent = '已选择知识库';
+    statusEl.style.color = 'var(--textMuted)';
+  }
+}
+
+// 获取知识库内容
+async function getKnowledgeContent(kbId) {
+  if (!kbId) return '';
+  
+  // 直接使用知识库ID，API会自动处理
+  // 对于主播蒸馏库，会自动获取主播资料和逐字稿
+  return kbId;
+}
+
+// 发送用户提示词
+async function sendAIPrompt() {
+  const inputEl = $('ai-input-prompt');
+  const userPrompt = inputEl.value.trim();
+  
+  if (!userPrompt) return;
+  
+  const btn = $('btn-ai-send');
+  const resultEl = $('ai-analysis-result');
+  
+  btn.disabled = true;
+  btn.textContent = '思考中...';
+  
+  // 显示用户消息
+  if (aiChatHistory.length === 0) {
+    resultEl.innerHTML = '';
+  }
+  resultEl.innerHTML += `<div style="margin-bottom:12px;padding:12px;background:var(--bg);border-radius:var(--r);border-left:3px solid var(--blue);">
+    <div style="font-size:12px;color:var(--blue);margin-bottom:4px;">👤 您</div>
+    <div style="line-height:1.5;">${escapeHtml(userPrompt)}</div>
+  </div>`;
+  resultEl.innerHTML += `<div id="ai-loading" style="margin-bottom:12px;padding:12px;background:var(--bg2);border-radius:var(--r);border-left:3px solid var(--gold);">
+    <div style="font-size:12px;color:var(--gold);margin-bottom:4px;">🤖 AI</div>
+    <div style="color:var(--textMuted);">思考中...</div>
+  </div>`;
+  
+  // 滚动到底部
+  resultEl.scrollTop = resultEl.scrollHeight;
+  
+  try {
+    // 如果没有数据，先获取
+    if (!liveDetailsDataForAI) {
+      const account = $('live-details-account').value;
+      const startDate = $('live-details-start').value;
+      const endDate = $('live-details-end').value;
+      
+      const listUrl = `/api/operation/live-details?page=1&limit=500&account=${encodeURIComponent(account)}&start_date=${startDate}&end_date=${endDate}`;
+      const dataResp = await fetch(listUrl, { credentials: 'include' });
+      const data = await dataResp.json();
+      
+      if (!data.ok || !data.details || data.details.length === 0) {
+        $('ai-loading').innerHTML = `<div style="color:var(--red);">当前筛选条件下没有直播数据，请调整筛选条件后再提问</div>`;
+        btn.disabled = false;
+        btn.textContent = '发送';
+        return;
+      }
+      
+      liveDetailsDataForAI = data.details;
+      
+      // 构建数据上下文
+      const byAccount = {};
+      for (const row of data.details) {
+        const acc = row.account || '未知';
+        if (!byAccount[acc]) {
+          byAccount[acc] = { liveCount: 0, totalWatch: 0, totalFollow: 0, totalEarn: 0, totalDuration: 0, totalPcu: 0, totalShow: 0, lives: [] };
+        }
+        byAccount[acc].liveCount++;
+        byAccount[acc].totalWatch += row.watch_ucnt || 0;
+        byAccount[acc].totalFollow += row.follow_ucnt || 0;
+        byAccount[acc].totalEarn += row.earn_score || 0;
+        byAccount[acc].totalDuration += row.duration || 0;
+        byAccount[acc].totalPcu += row.pcu || 0;
+        byAccount[acc].totalShow += row.show_ucnt || 0;
+        byAccount[acc].lives.push(row);
+      }
+
+      aiDataContext = `【直播数据】筛选条件：主播=${account || '全部'}，日期=${startDate || '不限'} 至 ${endDate || '不限'}，共${data.details.length}场直播
+
+`;
+      
+      for (const [accName, accData] of Object.entries(byAccount)) {
+        aiDataContext += `主播【${accName}】：${accData.liveCount}场直播，观看${fmt(accData.totalWatch)}，涨粉${fmt(accData.totalFollow)}，时长${accData.totalDuration}分，音浪${fmt(accData.totalEarn)}，平均峰值${Math.round(accData.totalPcu/accData.liveCount)}
+`;
+        aiDataContext += `最近场次：${accData.lives.slice(-10).map(l => `${l.start_time?.slice(0,10)}|涨粉${l.follow_ucnt}|观看${l.watch_ucnt}|峰值${l.pcu}`).join('; ')}
+
+`;
+      }
+    }
+    
+    // 构建系统提示词
+    const systemPrompt = `你是一位专业的直播数据分析专家。以下是用户的直播数据摘要，请基于这些数据回答用户的问题。
+${aiDataContext}
+回答要求：
+1. 基于数据事实进行分析，不要编造数据
+2. 给出具体数字和对比
+3. 提供专业的优化建议
+4. 用清晰简洁的中文回答`;
+
+    // 获取知识库ID
+    const kbId = $('ai-knowledge-select')?.value || '';
+    
+    // 调用 AI（使用 ai-chat API 支持知识库）
+    const aiResp = await fetch('/api/ai-chat/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        sessionId: '',  // 新对话
+        message: userPrompt,
+        systemPrompt: systemPrompt,
+        knowledgeBaseId: kbId,  // 传入知识库ID，支持逐字稿
+        model: ''
+      })
+    });
+    
+    const aiResult = await aiResp.json();
+    // ai-chat API 返回 message 字段，generate API 返回 markdown 字段
+    const markdown = aiResult.message || aiResult.markdown || aiResult.output_text || '分析完成';
+    
+    // 记录对话历史
+    aiChatHistory.push({ role: 'user', content: userPrompt });
+    aiChatHistory.push({ role: 'assistant', content: markdown });
+    
+    // 显示 AI 回复
+    $('ai-loading').innerHTML = `<div style="font-size:12px;color:var(--gold);margin-bottom:4px;">🤖 AI</div>
+      <div style="line-height:1.6;">${renderSimpleMarkdown(markdown)}</div>`;
+    
+    // 滚动到底部
+    resultEl.scrollTop = resultEl.scrollHeight;
+    
+    inputEl.value = '';
+    
+  } catch (e) {
+    $('ai-loading').innerHTML = `<div style="color:var(--red);">分析失败: ${escapeHtml(e.message || e)}</div>`;
+  }
+  
+  btn.disabled = false;
+  btn.textContent = '发送';
+}
+
+
+// 批量分析所有主播
+async function analyzeAllAnchors() {
+  const btn = $('btn-ai-batch');
+  const resultEl = $('ai-analysis-result');
+  
+  btn.disabled = true;
+  btn.textContent = '分析中...';
+  
+  resultEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--textMuted);">正在为每个主播生成分析建议...</div>';
+  
+  try {
+    // 获取所有主播数据
+    const anchors = [];
+    for (const key of Object.keys(liveDetailsChartInstances)) {
+      if (key.startsWith('anchor-')) {
+        anchors.push({
+          index: key.replace('anchor-', ''),
+          name: liveDetailsChartInstances[key].name,
+          data: liveDetailsChartInstances[key].data
+        });
+      }
+    }
+    
+    if (anchors.length === 0) {
+      resultEl.innerHTML = '<div style="color:var(--red);text-align:center;padding:20px;">请先加载直播数据</div>';
+      btn.disabled = false;
+      btn.textContent = '分析全部主播';
+      return;
+    }
+    
+    resultEl.innerHTML = '';
+    
+    // 逐个分析主播
+    for (let i = 0; i < anchors.length; i++) {
+      const anchor = anchors[i];
+      resultEl.innerHTML += `<div style="margin-bottom:8px;font-size:12px;color:var(--textMuted);">正在分析 ${anchor.name} (${i+1}/${anchors.length})...</div>`;
+      resultEl.scrollTop = resultEl.scrollHeight;
+      
+      // 构建分析提示词
+      const avgFollow = anchor.data.liveCount > 0 ? Math.round(anchor.data.totalFollow / anchor.data.liveCount) : 0;
+      const avgWatch = anchor.data.liveCount > 0 ? Math.round(anchor.data.totalWatch / anchor.data.liveCount) : 0;
+      const avgPcu = anchor.data.liveCount > 0 ? Math.round(anchor.data.totalPcu / anchor.data.liveCount) : 0;
+      const avgDuration = anchor.data.liveCount > 0 ? Math.round(anchor.data.totalDuration / anchor.data.liveCount) : 0;
+      const followRate = anchor.data.totalWatch > 0 ? (anchor.data.totalFollow / anchor.data.totalWatch * 100).toFixed(2) : 0;
+      
+      
+
+      const systemPrompt = `你是一位专业的直播数据分析专家。请根据主播的直播数据，进行深入分析。
+
+请按以下格式回复（JSON格式）：
+{
+  "summary": "一句话总结评价（20-30字）",
+  "points": ["核心要点1（具体数据支撑）", "核心要点2", "核心要点3"],
+  "issues": ["存在的问题1（具体说明）", "存在的问题2"],
+  "suggestions": ["优化建议1（可执行）", "优化建议2", "优化建议3"]
+}
+
+分析要点：
+1. 结合具体数据分析涨粉、观看、停留时长等指标
+2. 对比行业平均水平给出评价
+3. 提出切实可行的优化建议
+4. 总结要突出主播的核心特点`;
+
+      // 构建数据详情
+      const recentLives = anchor.data.lives.slice(-10).map(l => 
+        `${l.start_time?.slice(0,10)}: 涨粉${l.follow_ucnt}|观看${l.watch_ucnt}|峰值${l.pcu}|时长${l.duration}分`
+      ).join('\n');
+
+      // 计算平均停留时长
+      const avgStay = anchor.data.lives.reduce((sum, l) => sum + (l.avg_watch_duration || 0), 0) / anchor.data.liveCount || 0;
+      const avgFansStay = anchor.data.lives.reduce((sum, l) => sum + (l.fans_avg_watch_duration || 0), 0) / anchor.data.liveCount || 0;
+      const avgNonFansStay = anchor.data.lives.reduce((sum, l) => sum + (l.non_fans_avg_watch_duration || 0), 0) / anchor.data.liveCount || 0;
+      
+      const anchorDataText = `主播【${anchor.name}】直播数据分析：
+
+【基础数据】
+- 直播场次：${anchor.data.liveCount}场
+- 总涨粉：${anchor.data.totalFollow}人，场均涨粉${avgFollow}人
+- 总观看：${anchor.data.totalWatch}人，场均观看${avgWatch}人
+- 涨粉率：${followRate}%（观看转关注比例）
+- 平均峰值：${avgPcu}人
+- 平均时长：${avgDuration}分钟
+- 人均停留：${avgStay.toFixed(1)}分钟（粉丝${avgFansStay.toFixed(1)}分/非粉${avgNonFansStay.toFixed(1)}分）
+- 音浪收入：${anchor.data.totalEarn}
+
+【近10场直播明细】
+${recentLives}`;
+
+      try {
+        const aiResp = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            systemPrompt: systemPrompt,
+            userPrompt: anchorDataText,
+            model: ''
+          })
+        });
+        
+        const aiResult = await aiResp.json();
+        let markdown = aiResult.markdown || aiResult.output_text || '';
+        
+        // 尝试解析 JSON 结果
+        let analysis = null;
+        try {
+          // 提取 JSON 部分
+          const jsonMatch = markdown.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            analysis = JSON.parse(jsonMatch[0]);
+          }
+        } catch (e) {
+          // JSON 解析失败，使用原始文本
+        }
+        
+        // 填充一句话总结
+        const summaryEl = $('anchor-summary-' + anchor.index);
+        if (summaryEl) {
+          if (analysis && analysis.summary) {
+            summaryEl.innerHTML = '💡 ' + analysis.summary;
+          } else {
+            summaryEl.innerHTML = '💡 ' + (markdown.slice(0, 100) || '分析完成');
+          }
+        }
+        
+        // 填充详细分析报告
+        const anchorAiEl = $('anchor-ai-' + anchor.index);
+        if (anchorAiEl) {
+          anchorAiEl.style.display = 'block';
+          
+          if (analysis) {
+            // 使用解析后的结构化数据
+            anchorAiEl.querySelector('.anchor-ai-points div:last-child').innerHTML = 
+              analysis.points?.map(p => '• ' + p).join('<br>') || '-';
+            anchorAiEl.querySelector('.anchor-ai-issues div:last-child').innerHTML = 
+              analysis.issues?.map(p => '• ' + p).join('<br>') || '-';
+            anchorAiEl.querySelector('.anchor-ai-suggestions div:last-child').innerHTML = 
+              analysis.suggestions?.map(p => '• ' + p).join('<br>') || '-';
+          } else {
+            // 使用原始文本，尝试分段
+            const lines = markdown.split('\n').filter(l => l.trim());
+            let points = [], issues = [], suggestions = [];
+            
+            for (const line of lines) {
+              if (line.includes('优点') || line.includes('要点') || line.includes('表现') || line.includes('良好')) {
+                points.push(line);
+              } else if (line.includes('问题') || line.includes('不足') || line.includes('待改进') || line.includes('需提升')) {
+                issues.push(line);
+              } else if (line.includes('建议') || line.includes('优化') || line.includes('调整')) {
+                suggestions.push(line);
+              }
+            }
+            
+            anchorAiEl.querySelector('.anchor-ai-points div:last-child').innerHTML = 
+              points.map(p => '• ' + p).join('<br>') || markdown.slice(0, 200);
+            anchorAiEl.querySelector('.anchor-ai-issues div:last-child').innerHTML = 
+              issues.map(p => '• ' + p).join('<br>') || '无明显问题';
+            anchorAiEl.querySelector('.anchor-ai-suggestions div:last-child').innerHTML = 
+              suggestions.map(p => '• ' + p).join('<br>') || '继续保持现有策略';
+          }
+        }
+        
+        resultEl.innerHTML += `<div style="margin-bottom:8px;font-size:12px;color:var(--green);">✓ ${anchor.name} 分析完成</div>`;
+        
+      } catch (e) {
+        resultEl.innerHTML += `<div style="margin-bottom:8px;font-size:12px;color:var(--red);">✗ ${anchor.name} 分析失败: ${escapeHtml(e.message || e)}</div>`;
+      }
+      
+      // 小延迟避免请求过快
+      if (i < anchors.length - 1) {
+        await new Promise(r => setTimeout(r, 300));
+      }
+    }
+    
+    resultEl.innerHTML += `<div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:var(--r);text-align:center;color:var(--green);">全部主播分析完成！结果已显示在各主播卡片下方</div>`;
+    
+  } catch (e) {
+    resultEl.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px;">分析失败: ${escapeHtml(e.message || e)}</div>`;
+  }
+  
+  btn.disabled = false;
+  btn.textContent = '分析全部主播';
+}
+
+// 简单的 Markdown 渲染
+function renderSimpleMarkdown(md) {
+  if (!md) return '';
+  
+  // 代码块
+  md = md.replace(/```([\s\S]*?)```/g, '<pre style="background:var(--bg2);padding:12px;border-radius:var(--r);overflow-x:auto;font-size:13px;"><code>$1</code></pre>');
+  
+  // 行内代码
+  md = md.replace(/`([^`]+)`/g, '<code style="background:var(--bg2);padding:2px 6px;border-radius:3px;font-size:13px;">$1</code>');
+  
+  // 标题
+  md = md.replace(/^### (.+)$/gm, '<h4 style="margin:16px 0 8px;font-weight:500;">$1</h4>');
+  md = md.replace(/^## (.+)$/gm, '<h3 style="margin:20px 0 12px;font-weight:600;">$1</h3>');
+  md = md.replace(/^# (.+)$/gm, '<h2 style="margin:24px 0 16px;font-weight:600;font-size:18px;">$1</h2>');
+  
+  // 列表
+  md = md.replace(/^\* (.+)$/gm, '<li style="margin:4px 0;">$1</li>');
+  md = md.replace(/^- (.+)$/gm, '<li style="margin:4px 0;">$1</li>');
+  md = md.replace(/^(\d+)\. (.+)$/gm, '<li style="margin:4px 0;">$2</li>');
+  
+  // 粗体和斜体
+  md = md.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  md = md.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  
+  // 段落
+  md = md.replace(/\n\n/g, '</p><p style="margin:12px 0;">');
+  
+  return '<p style="margin:12px 0;">' + md + '</p>';
+}
+
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
@@ -1484,6 +2283,19 @@ document.addEventListener('DOMContentLoaded', () => {
   initMonthSelector();
   loadAccounts();
   loadWeeklyReport();
+  
+  // 初始化直播明细
+  loadLiveDetails();
+  // 加载知识库列表
+  loadAIKnowledgeList();
+  // 等待 loadAccounts 完成后初始化主播下拉框
+  fetch('/api/operation/accounts', { credentials: 'include' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok && data.accounts) {
+        initLiveDetailsAccounts(data.accounts);
+      }
+    });
 });
 </script>
 </body>

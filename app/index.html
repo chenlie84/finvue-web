@@ -494,6 +494,342 @@
   .report-shell.style-liveAnalysis .tag-cloud{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;}
   .report-shell.style-liveAnalysis .tag{padding:6px 12px;background:rgba(139,92,246,.15);border-radius:20px;font-size:13px;color:#c4b5fd;border:1px solid rgba(139,92,246,.2);}
   .report-shell.style-liveAnalysis .footnote{font-size:13px;color:#64748b;margin-top:24px;}
+
+  /* ══════════════ 青蓝色风格 - 综合分析报告 ══════════════ */
+  .report-shell.style-teal{background:linear-gradient(180deg, rgba(17,19,26,0.98), rgba(13,15,20,0.98));border-radius:24px;padding:36px 40px;}
+  .report-shell.style-teal .report-shell-header{border-bottom-color:#14b8a6;}
+  .report-shell.style-teal .report-shell-header::after{background:linear-gradient(90deg, transparent, #14b8a6, transparent);width:96px;}
+  .report-shell.style-teal .report-shell-header h1{font-size:26px;border-left:5px solid #14b8a6;padding-left:20px;text-align:left;}
+  .report-shell.style-teal .report-shell-body{background:rgba(24,27,36,.92);border:1px solid rgba(20,184,166,.15);border-radius:14px;padding:26px 24px;}
+  .report-shell.style-teal .report-shell-body h2{font-size:20px;font-weight:600;color:#5eead4;margin:28px 0 12px;padding-left:12px;border-left:3px solid #14b8a6;padding-bottom:6px;border-bottom:none;}
+  .report-shell.style-teal .report-shell-body h3{font-size:17px;font-weight:600;color:#99f6e4;margin:22px 0 10px;}
+  .report-shell.style-teal .report-shell-body h4{font-size:15px;font-weight:600;color:#2dd4bf;margin:16px 0 8px;}
+  .report-shell.style-teal .report-shell-body p{color:#e2e8f0;line-height:1.7;font-size:14px;}
+  .report-shell.style-teal .report-shell-body ul,.report-shell.style-teal .report-shell-body ol{padding-left:24px;}
+  .report-shell.style-teal .report-shell-body li{margin:6px 0;color:#cbd5e1;}
+  .report-shell.style-teal .report-shell-body li::marker{color:#14b8a6;}
+  .report-shell.style-teal .report-shell-body strong{color:#5eead4;}
+  .report-shell.style-teal .report-shell-body table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;overflow:hidden;border-radius:10px;border:1px solid rgba(20,184,166,.15);}
+  .report-shell.style-teal .report-shell-body thead th{background:linear-gradient(135deg, rgba(20,184,166,.9), rgba(13,148,136,.9));color:#fff;font-weight:700;padding:11px 14px;text-align:left;font-size:12px;letter-spacing:.02em;}
+  .report-shell.style-teal .report-shell-body tbody td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.06);color:#e2e8f0;vertical-align:top;}
+  .report-shell.style-teal .report-shell-body tbody tr:nth-child(even){background:rgba(20,184,166,.04);}
+  .report-shell.style-teal .report-shell-body tbody tr:hover{background:rgba(20,184,166,.08);}
+  .report-shell.style-teal .insight-box{background:rgba(20,184,166,.08);border-radius:16px;padding:20px 24px;margin:24px 0;border-left:4px solid #14b8a6;}
+  .report-shell.style-teal .insight-box.warning{background:rgba(245,158,11,.08);border-left-color:#f97316;}
+  .report-shell.style-teal .insight-box.success{background:rgba(16,185,129,.08);border-left-color:#10b981;}
+  .report-shell.style-teal .insight-box strong{color:#99f6e4;}
+  .report-shell.style-teal .quote{margin:16px 0;padding:12px 16px;border-left:3px solid #14b8a6;background:rgba(20,184,166,.06);border-radius:0 10px 10px 0;color:#cbd5e1;font-style:italic;font-size:14px;}
+  .report-shell.style-teal .stat-highlight{font-size:22px;font-weight:700;color:#5eead4;}
+  .report-shell.style-teal .badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;}
+  .report-shell.style-teal .badge-teal{background:rgba(20,184,166,.15);color:#5eead4;}
+  .report-shell.style-teal .badge-green{background:rgba(16,185,129,.15);color:#6ee7b7;}
+  .report-shell.style-teal .badge-yellow{background:rgba(245,158,11,.15);color:#fcd34d;}
+  .report-shell.style-teal .badge-red{background:rgba(239,68,68,.15);color:#fca5a5;}
+  .report-shell.style-teal .badge-blue{background:rgba(59,130,246,.15);color:#93c5fd;}
+  .report-shell.style-teal .data-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0 24px;}
+  .report-shell.style-teal .data-card{background:rgba(20,184,166,.06);border-radius:12px;padding:16px;border:1px solid rgba(20,184,166,.15);text-align:center;}
+  .report-shell.style-teal .data-card .num{font-size:24px;font-weight:700;color:#5eead4;margin-top:4px;}
+  .report-shell.style-teal .data-card .label{color:#94a3b8;font-size:13px;}
+  .report-shell.style-teal .framework-layer{display:flex;align-items:center;gap:12px;padding:10px 16px;background:rgba(255,255,255,.03);border-radius:12px;margin:8px 0;border:1px solid rgba(20,184,166,.1);}
+  .report-shell.style-teal .layer-num{width:28px;height:28px;background:#14b8a6;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
+  .report-shell.style-teal .layer-name{font-weight:600;color:#5eead4;min-width:120px;}
+  .report-shell.style-teal .layer-desc{color:#94a3b8;font-size:13px;}
+  .report-shell.style-teal .divider{height:1px;background:linear-gradient(90deg, transparent, rgba(20,184,166,.3), transparent);margin:26px 0;}
+  .report-shell.style-teal .section-box{background:rgba(20,184,166,.06);border-radius:12px;padding:16px;margin:16px 0;border:1px solid rgba(20,184,166,.15);}
+  .report-shell.style-teal .timeline-row{display:flex;align-items:flex-start;gap:16px;padding:14px 0;border-bottom:1px solid rgba(20,184,166,.1);}
+  .report-shell.style-teal .timeline-time{min-width:100px;font-weight:700;color:#5eead4;font-size:13px;}
+  .report-shell.style-teal .timeline-content{flex:1;}
+  .report-shell.style-teal .timeline-tag{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;margin-right:6px;}
+  .report-shell.style-teal .tag-content{background:rgba(59,130,246,.15);color:#93c5fd;}
+  .report-shell.style-teal .tag-interact{background:rgba(245,158,11,.15);color:#fcd34d;}
+  .report-shell.style-teal .tag-analysis{background:rgba(20,184,166,.15);color:#5eead4;}
+  .report-shell.style-teal .footnote{font-size:13px;color:#64748b;margin-top:24px;}
+
+  /* ══════════════ 暖橙色风格 - 新人面试分析 ══════════════ */
+  .report-shell.style-orange{background:linear-gradient(180deg, rgba(17,19,26,0.98), rgba(13,15,20,0.98));border-radius:24px;padding:36px 40px;}
+  .report-shell.style-orange .report-shell-header{border-bottom-color:#f97316;}
+  .report-shell.style-orange .report-shell-header::after{background:linear-gradient(90deg, transparent, #f97316, transparent);width:96px;}
+  .report-shell.style-orange .report-shell-header h1{font-size:26px;border-left:5px solid #f97316;padding-left:20px;text-align:left;}
+  .report-shell.style-orange .report-shell-body{background:rgba(24,27,36,.92);border:1px solid rgba(249,115,22,.15);border-radius:14px;padding:26px 24px;}
+  .report-shell.style-orange .report-shell-body h2{font-size:20px;font-weight:600;color:#fdba74;margin:28px 0 12px;padding-left:12px;border-left:3px solid #f97316;padding-bottom:6px;border-bottom:none;}
+  .report-shell.style-orange .report-shell-body h3{font-size:17px;font-weight:600;color:#fed7aa;margin:22px 0 10px;}
+  .report-shell.style-orange .report-shell-body h4{font-size:15px;font-weight:600;color:#fb923c;margin:16px 0 8px;}
+  .report-shell.style-orange .report-shell-body p{color:#e2e8f0;line-height:1.7;font-size:14px;}
+  .report-shell.style-orange .report-shell-body ul,.report-shell.style-orange .report-shell-body ol{padding-left:24px;}
+  .report-shell.style-orange .report-shell-body li{margin:6px 0;color:#cbd5e1;}
+  .report-shell.style-orange .report-shell-body li::marker{color:#f97316;}
+  .report-shell.style-orange .report-shell-body strong{color:#fdba74;}
+  .report-shell.style-orange .report-shell-body table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;overflow:hidden;border-radius:10px;border:1px solid rgba(249,115,22,.15);}
+  .report-shell.style-orange .report-shell-body thead th{background:linear-gradient(135deg, rgba(249,115,22,.9), rgba(234,88,12,.9));color:#fff;font-weight:700;padding:11px 14px;text-align:left;font-size:12px;letter-spacing:.02em;}
+  .report-shell.style-orange .report-shell-body tbody td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.06);color:#e2e8f0;vertical-align:top;}
+  .report-shell.style-orange .report-shell-body tbody tr:nth-child(even){background:rgba(249,115,22,.04);}
+  .report-shell.style-orange .report-shell-body tbody tr:hover{background:rgba(249,115,22,.08);}
+  .report-shell.style-orange .insight-box{background:rgba(249,115,22,.08);border-radius:16px;padding:20px 24px;margin:24px 0;border-left:4px solid #f97316;}
+  .report-shell.style-orange .insight-box.warning{background:rgba(239,68,68,.08);border-left-color:#dc2626;}
+  .report-shell.style-orange .insight-box.success{background:rgba(16,185,129,.08);border-left-color:#10b981;}
+  .report-shell.style-orange .insight-box.neutral{background:rgba(148,163,184,.08);border-left-color:#64748b;}
+  .report-shell.style-orange .insight-box strong{color:#fed7aa;}
+  .report-shell.style-orange .quote{margin:16px 0;padding:12px 16px;border-left:3px solid #f97316;background:rgba(249,115,22,.06);border-radius:0 10px 10px 0;color:#cbd5e1;font-style:italic;font-size:14px;}
+  .report-shell.style-orange .stat-highlight{font-size:22px;font-weight:700;color:#fdba74;}
+  .report-shell.style-orange .badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;}
+  .report-shell.style-orange .badge-orange{background:rgba(249,115,22,.15);color:#fdba74;}
+  .report-shell.style-orange .badge-green{background:rgba(16,185,129,.15);color:#6ee7b7;}
+  .report-shell.style-orange .badge-yellow{background:rgba(245,158,11,.15);color:#fcd34d;}
+  .report-shell.style-orange .badge-red{background:rgba(239,68,68,.15);color:#fca5a5;}
+  .report-shell.style-orange .badge-blue{background:rgba(59,130,246,.15);color:#93c5fd;}
+  .report-shell.style-orange .skill-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0 24px;}
+  .report-shell.style-orange .skill-card{background:rgba(249,115,22,.06);border-radius:12px;padding:16px;border:1px solid rgba(249,115,22,.15);text-align:center;}
+  .report-shell.style-orange .skill-card .score{font-size:28px;font-weight:700;margin-top:4px;}
+  .report-shell.style-orange .skill-card .score.high{color:#10b981;}
+  .report-shell.style-orange .skill-card .score.mid{color:#f97316;}
+  .report-shell.style-orange .skill-card .score.low{color:#dc2626;}
+  .report-shell.style-orange .skill-card .label{color:#94a3b8;font-size:13px;}
+  .report-shell.style-orange .assessment-box{background:rgba(249,115,22,.06);border-radius:12px;padding:16px;margin:16px 0;border:1px solid rgba(249,115,22,.15);}
+  .report-shell.style-orange .assessment-box.pass{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.2);}
+  .report-shell.style-orange .assessment-box.fail{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.2);}
+  .report-shell.style-orange .timeline-row{display:flex;align-items:flex-start;gap:16px;padding:14px 0;border-bottom:1px solid rgba(249,115,22,.1);}
+  .report-shell.style-orange .timeline-time{min-width:100px;font-weight:700;color:#fdba74;font-size:13px;}
+  .report-shell.style-orange .timeline-content{flex:1;}
+  .report-shell.style-orange .timeline-tag{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;margin-right:6px;}
+  .report-shell.style-orange .tag-question{background:rgba(59,130,246,.15);color:#93c5fd;}
+  .report-shell.style-orange .tag-answer{background:rgba(249,115,22,.15);color:#fdba74;}
+  .report-shell.style-orange .tag-evidence{background:rgba(16,185,129,.15);color:#6ee7b7;}
+  .report-shell.style-orange .divider{height:1px;background:linear-gradient(90deg, transparent, rgba(249,115,22,.3), transparent);margin:26px 0;}
+  .report-shell.style-orange .footnote{font-size:13px;color:#64748b;margin-top:24px;}
+
+  /* ══════════════ 合规红色风格 - 合规专项检测 ══════════════ */
+  .report-shell.style-compliance{background:linear-gradient(180deg, rgba(17,19,26,0.98), rgba(13,15,20,0.98));border-radius:24px;padding:36px 40px;}
+  .report-shell.style-compliance .report-shell-header{border-bottom-color:#dc2626;}
+  .report-shell.style-compliance .report-shell-header::after{background:linear-gradient(90deg, transparent, #dc2626, transparent);width:96px;}
+  .report-shell.style-compliance .report-shell-header h1{font-size:26px;border-left:5px solid #dc2626;padding-left:20px;text-align:left;}
+  .report-shell.style-compliance .report-shell-body{background:rgba(24,27,36,.92);border:1px solid rgba(220,38,38,.15);border-radius:14px;padding:26px 24px;}
+  .report-shell.style-compliance .report-shell-body h2{font-size:20px;font-weight:600;color:#fca5a5;margin:28px 0 12px;padding-left:12px;border-left:3px solid #dc2626;padding-bottom:6px;border-bottom:none;}
+  .report-shell.style-compliance .report-shell-body h3{font-size:17px;font-weight:600;color:#fecaca;margin:22px 0 10px;}
+  .report-shell.style-compliance .report-shell-body h4{font-size:15px;font-weight:600;color:#f87171;margin:16px 0 8px;}
+  .report-shell.style-compliance .report-shell-body p{color:#e2e8f0;line-height:1.7;font-size:14px;}
+  .report-shell.style-compliance .report-shell-body ul,.report-shell.style-compliance .report-shell-body ol{padding-left:24px;}
+  .report-shell.style-compliance .report-shell-body li{margin:6px 0;color:#cbd5e1;}
+  .report-shell.style-compliance .report-shell-body li::marker{color:#dc2626;}
+  .report-shell.style-compliance .report-shell-body strong{color:#fca5a5;}
+  .report-shell.style-compliance .report-shell-body table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;overflow:hidden;border-radius:10px;border:1px solid rgba(220,38,38,.15);}
+  .report-shell.style-compliance .report-shell-body thead th{background:linear-gradient(135deg, rgba(220,38,38,.9), rgba(185,28,28,.9));color:#fff;font-weight:700;padding:11px 14px;text-align:left;font-size:12px;letter-spacing:.02em;}
+  .report-shell.style-compliance .report-shell-body tbody td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.06);color:#e2e8f0;vertical-align:top;}
+  .report-shell.style-compliance .report-shell-body tbody tr:nth-child(even){background:rgba(220,38,38,.04);}
+  .report-shell.style-compliance .report-shell-body tbody tr:hover{background:rgba(220,38,38,.08);}
+  .report-shell.style-compliance .insight-box{background:rgba(220,38,38,.08);border-radius:16px;padding:20px 24px;margin:24px 0;border-left:4px solid #dc2626;}
+  .report-shell.style-compliance .insight-box.warning{background:rgba(245,158,11,.08);border-left-color:#f97316;}
+  .report-shell.style-compliance .insight-box.safe{background:rgba(16,185,129,.08);border-left-color:#10b981;}
+  .report-shell.style-compliance .insight-box.gray{background:rgba(148,163,184,.08);border-left-color:#64748b;}
+  .report-shell.style-compliance .insight-box strong{color:#fecaca;}
+  .report-shell.style-compliance .quote{margin:16px 0;padding:12px 16px;border-left:3px solid #dc2626;background:rgba(220,38,38,.06);border-radius:0 10px 10px 0;color:#cbd5e1;font-style:italic;font-size:14px;}
+  .report-shell.style-compliance .quote-safe{border-left-color:#10b981;background:rgba(16,185,129,.06);}
+  .report-shell.style-compliance .quote-gray{border-left-color:#f97316;background:rgba(245,158,11,.06);}
+  .report-shell.style-compliance .stat-highlight{font-size:22px;font-weight:700;color:#fca5a5;}
+  .report-shell.style-compliance .badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;}
+  .report-shell.style-compliance .badge-red{background:rgba(220,38,38,.2);color:#fca5a5;}
+  .report-shell.style-compliance .badge-orange{background:rgba(249,115,22,.15);color:#fdba74;}
+  .report-shell.style-compliance .badge-yellow{background:rgba(245,158,11,.15);color:#fcd34d;}
+  .report-shell.style-compliance .badge-green{background:rgba(16,185,129,.15);color:#6ee7b7;}
+  .report-shell.style-compliance .badge-gray{background:rgba(148,163,184,.15);color:#cbd5e1;}
+  .report-shell.style-compliance .risk-level{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-weight:600;font-size:13px;}
+  .report-shell.style-compliance .risk-high{background:rgba(220,38,38,.15);color:#fca5a5;border:1px solid rgba(220,38,38,.3);}
+  .report-shell.style-compliance .risk-medium{background:rgba(245,158,11,.15);color:#fdba74;border:1px solid rgba(245,158,11,.3);}
+  .report-shell.style-compliance .risk-low{background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.3);}
+  .report-shell.style-compliance .risk-gray{background:rgba(148,163,184,.15);color:#cbd5e1;border:1px solid rgba(148,163,184,.3);}
+  .report-shell.style-compliance .risk-summary{background:rgba(220,38,38,.06);border-radius:14px;padding:20px;border:1px solid rgba(220,38,38,.15);margin:20px 0;}
+  .report-shell.style-compliance .risk-summary .count{font-size:32px;font-weight:700;}
+  .report-shell.style-compliance .risk-summary .count.high{color:#dc2626;}
+  .report-shell.style-compliance .risk-summary .count.medium{color:#f97316;}
+  .report-shell.style-compliance .risk-summary .count.low{color:#10b981;}
+  .report-shell.style-compliance .risk-item{display:flex;align-items:flex-start;gap:12px;padding:14px;background:rgba(220,38,38,.04);border-radius:12px;margin:12px 0;border:1px solid rgba(220,38,38,.1);}
+  .report-shell.style-compliance .risk-item.high{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.2);}
+  .report-shell.style-compliance .risk-item.medium{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.2);}
+  .report-shell.style-compliance .risk-item.low{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.2);}
+  .report-shell.style-compliance .risk-badge{min-width:60px;text-align:center;}
+  .report-shell.style-compliance .risk-content{flex:1;}
+  .report-shell.style-compliance .risk-original{font-size:14px;color:#e2e8f0;margin-bottom:8px;padding:8px 12px;background:rgba(0,0,0,.2);border-radius:8px;}
+  .report-shell.style-compliance .risk-analysis{font-size:13px;color:#94a3b8;line-height:1.6;}
+  .report-shell.style-compliance .divider{height:1px;background:linear-gradient(90deg, transparent, rgba(220,38,38,.3), transparent);margin:26px 0;}
+  .report-shell.style-compliance .footnote{font-size:13px;color:#64748b;margin-top:24px;}
+
+  /* ══════════════ 蓝金色风格 - 六维评分体系 ══════════════ */
+  .report-shell.style-evaluation{background:linear-gradient(180deg, rgba(17,19,26,0.98), rgba(13,15,20,0.98));border-radius:24px;padding:36px 40px;}
+  .report-shell.style-evaluation .report-shell-header{border-bottom-color:#2563eb;}
+  .report-shell.style-evaluation .report-shell-header::after{background:linear-gradient(90deg, transparent, #2563eb, transparent);width:96px;}
+  .report-shell.style-evaluation .report-shell-header h1{font-size:26px;border-left:5px solid #2563eb;padding-left:20px;text-align:left;}
+  .report-shell.style-evaluation .report-shell-body{background:rgba(24,27,36,.92);border:1px solid rgba(37,99,235,.15);border-radius:14px;padding:26px 24px;}
+  .report-shell.style-evaluation .report-shell-body h2{font-size:20px;font-weight:600;color:#60a5fa;margin:28px 0 12px;padding-left:12px;border-left:3px solid #2563eb;padding-bottom:6px;border-bottom:none;}
+  .report-shell.style-evaluation .report-shell-body h3{font-size:17px;font-weight:600;color:#93c5fd;margin:22px 0 10px;}
+  .report-shell.style-evaluation .report-shell-body h4{font-size:15px;font-weight:600;color:#3b82f6;margin:16px 0 8px;}
+  .report-shell.style-evaluation .report-shell-body p{color:#e2e8f0;line-height:1.7;font-size:14px;}
+  .report-shell.style-evaluation .report-shell-body ul,.report-shell.style-evaluation .report-shell-body ol{padding-left:24px;}
+  .report-shell.style-evaluation .report-shell-body li{margin:6px 0;color:#cbd5e1;}
+  .report-shell.style-evaluation .report-shell-body li::marker{color:#2563eb;}
+  .report-shell.style-evaluation .report-shell-body strong{color:#60a5fa;}
+  .report-shell.style-evaluation .report-shell-body table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;overflow:hidden;border-radius:10px;border:1px solid rgba(37,99,235,.15);}
+  .report-shell.style-evaluation .report-shell-body thead th{background:linear-gradient(135deg, rgba(37,99,235,.9), rgba(29,78,216,.9));color:#fff;font-weight:700;padding:11px 14px;text-align:left;font-size:12px;letter-spacing:.02em;}
+  .report-shell.style-evaluation .report-shell-body tbody td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.06);color:#e2e8f0;vertical-align:top;}
+  .report-shell.style-evaluation .report-shell-body tbody tr:nth-child(even){background:rgba(37,99,235,.04);}
+  .report-shell.style-evaluation .report-shell-body tbody tr:hover{background:rgba(37,99,235,.08);}
+  .report-shell.style-evaluation .insight-box{background:rgba(37,99,235,.08);border-radius:16px;padding:20px 24px;margin:24px 0;border-left:4px solid #2563eb;}
+  .report-shell.style-evaluation .insight-box.warning{background:rgba(245,158,11,.08);border-left-color:#f97316;}
+  .report-shell.style-evaluation .insight-box.success{background:rgba(16,185,129,.08);border-left-color:#10b981;}
+  .report-shell.style-evaluation .insight-box strong{color:#93c5fd;}
+  .report-shell.style-evaluation .quote{margin:16px 0;padding:12px 16px;border-left:3px solid #2563eb;background:rgba(37,99,235,.06);border-radius:0 10px 10px 0;color:#cbd5e1;font-style:italic;font-size:14px;}
+  .report-shell.style-evaluation .stat-highlight{font-size:22px;font-weight:700;color:#60a5fa;}
+  .report-shell.style-evaluation .badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;}
+  .report-shell.style-evaluation .badge-blue{background:rgba(37,99,235,.15);color:#60a5fa;}
+  .report-shell.style-evaluation .badge-green{background:rgba(16,185,129,.15);color:#6ee7b7;}
+  .report-shell.style-evaluation .badge-yellow{background:rgba(245,158,11,.15);color:#fcd34d;}
+  .report-shell.style-evaluation .badge-red{background:rgba(239,68,68,.15);color:#fca5a5;}
+  .report-shell.style-evaluation .badge-purple{background:rgba(139,92,246,.15);color:#c4b5fd;}
+  .report-shell.style-evaluation .score-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:18px 0 24px;}
+  .report-shell.style-evaluation .score-card{background:rgba(37,99,235,.06);border-radius:12px;padding:16px;border:1px solid rgba(37,99,235,.15);text-align:center;}
+  .report-shell.style-evaluation .score-card .num{font-size:28px;font-weight:700;margin-top:4px;}
+  .report-shell.style-evaluation .score-card .num.high{color:#10b981;}
+  .report-shell.style-evaluation .score-card .num.mid{color:#f97316;}
+  .report-shell.style-evaluation .score-card .num.low{color:#dc2626;}
+  .report-shell.style-evaluation .score-card .label{color:#94a3b8;font-size:13px;}
+  .report-shell.style-evaluation .dimension-bar{height:8px;background:rgba(37,99,235,.1);border-radius:4px;margin-top:8px;overflow:hidden;}
+  .report-shell.style-evaluation .dimension-fill{height:100%;border-radius:4px;background:linear-gradient(90deg, #2563eb, #60a5fa);}
+  .report-shell.style-evaluation .tag-row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;}
+  .report-shell.style-evaluation .tag{padding:6px 12px;background:rgba(37,99,235,.1);border-radius:20px;font-size:13px;color:#60a5fa;border:1px solid rgba(37,99,235,.2);}
+  .report-shell.style-evaluation .divider{height:1px;background:linear-gradient(90deg, transparent, rgba(37,99,235,.3), transparent);margin:26px 0;}
+  .report-shell.style-evaluation .section-box{background:rgba(37,99,235,.06);border-radius:12px;padding:16px;margin:16px 0;border:1px solid rgba(37,99,235,.15);}
+  .report-shell.style-evaluation .footnote{font-size:13px;color:#64748b;margin-top:24px;}
+
+  /* ══════════════ 靛蓝色风格 - 评分对比报告 ══════════════ */
+  .report-shell.style-compare-v2{background:linear-gradient(180deg, rgba(17,19,26,0.98), rgba(13,15,20,0.98));border-radius:24px;padding:36px 40px;}
+  .report-shell.style-compare-v2 .report-shell-header{border-bottom-color:#4f46e5;}
+  .report-shell.style-compare-v2 .report-shell-header::after{background:linear-gradient(90deg, transparent, #4f46e5, transparent);width:96px;}
+  .report-shell.style-compare-v2 .report-shell-header h1{font-size:26px;border-left:5px solid #4f46e5;padding-left:20px;text-align:left;}
+  .report-shell.style-compare-v2 .report-shell-body{background:rgba(24,27,36,.92);border:1px solid rgba(79,70,229,.15);border-radius:14px;padding:26px 24px;}
+  .report-shell.style-compare-v2 .report-shell-body h2{font-size:20px;font-weight:600;color:#818cf8;margin:28px 0 12px;padding-left:12px;border-left:3px solid #4f46e5;padding-bottom:6px;border-bottom:none;}
+  .report-shell.style-compare-v2 .report-shell-body h3{font-size:17px;font-weight:600;color:#a5b4fc;margin:22px 0 10px;}
+  .report-shell.style-compare-v2 .report-shell-body h4{font-size:15px;font-weight:600;color:#6366f1;margin:16px 0 8px;}
+  .report-shell.style-compare-v2 .report-shell-body p{color:#e2e8f0;line-height:1.7;font-size:14px;}
+  .report-shell.style-compare-v2 .report-shell-body strong{color:#818cf8;}
+  .report-shell.style-compare-v2 .report-shell-body ul,.report-shell.style-compare-v2 .report-shell-body ol{padding-left:24px;}
+  .report-shell.style-compare-v2 .report-shell-body li{margin:6px 0;color:#cbd5e1;}
+  .report-shell.style-compare-v2 .report-shell-body li::marker{color:#4f46e5;}
+  .report-shell.style-compare-v2 .report-shell-body table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;overflow:hidden;border-radius:10px;border:1px solid rgba(79,70,229,.15);}
+  .report-shell.style-compare-v2 .report-shell-body thead th{background:linear-gradient(135deg, rgba(79,70,229,.9), rgba(67,56,202,.9));color:#fff;font-weight:700;padding:11px 14px;text-align:left;font-size:12px;letter-spacing:.02em;}
+  .report-shell.style-compare-v2 .report-shell-body tbody td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.06);color:#e2e8f0;vertical-align:top;}
+  .report-shell.style-compare-v2 .report-shell-body tbody tr:nth-child(even){background:rgba(79,70,229,.04);}
+  .report-shell.style-compare-v2 .report-shell-body tbody tr:hover{background:rgba(79,70,229,.08);}
+  .report-shell.style-compare-v2 .insight-box{background:rgba(79,70,229,.08);border-radius:16px;padding:20px 24px;margin:24px 0;border-left:4px solid #4f46e5;}
+  .report-shell.style-compare-v2 .insight-box.warning{background:rgba(245,158,11,.08);border-left-color:#f97316;}
+  .report-shell.style-compare-v2 .insight-box.danger{background:rgba(239,68,68,.08);border-left-color:#ef4444;}
+  .report-shell.style-compare-v2 .insight-box.progress{background:rgba(139,92,246,.08);border-left-color:#8b5cf6;}
+  .report-shell.style-compare-v2 .insight-box strong{color:#a5b4fc;}
+  .report-shell.style-compare-v2 .quote{margin:16px 0;padding:12px 16px;border-left:3px solid #4f46e5;background:rgba(79,70,229,.06);border-radius:0 10px 10px 0;color:#cbd5e1;font-style:italic;font-size:14px;}
+  .report-shell.style-compare-v2 .quote-good{border-left:3px solid #4f46e5;}
+  .report-shell.style-compare-v2 .quote-bad{border-left:3px solid #ef4444;}
+  .report-shell.style-compare-v2 .quote-neutral{border-left:3px solid #94a3b8;}
+  .report-shell.style-compare-v2 .stat-card{background:rgba(79,70,229,.06);border-radius:14px;padding:16px 20px;margin:12px 0;display:flex;align-items:center;gap:16px;border:1px solid rgba(79,70,229,.15);}
+  .report-shell.style-compare-v2 .stat-number{font-size:32px;font-weight:700;min-width:80px;text-align:center;}
+  .report-shell.style-compare-v2 .stat-card.success .stat-number{color:#10b981;}
+  .report-shell.style-compare-v2 .stat-card.danger .stat-number{color:#ef4444;}
+  .report-shell.style-compare-v2 .stat-card.purple .stat-number{color:#8b5cf6;}
+  .report-shell.style-compare-v2 .stat-card.blue .stat-number{color:#818cf8;}
+  .report-shell.style-compare-v2 .badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;}
+  .report-shell.style-compare-v2 .badge-indigo{background:rgba(79,70,229,.15);color:#818cf8;}
+  .report-shell.style-compare-v2 .badge-green{background:rgba(16,185,129,.15);color:#6ee7b7;}
+  .report-shell.style-compare-v2 .badge-yellow{background:rgba(245,158,11,.15);color:#fcd34d;}
+  .report-shell.style-compare-v2 .badge-red{background:rgba(239,68,68,.15);color:#fca5a5;}
+  .report-shell.style-compare-v2 .badge-blue{background:rgba(59,130,246,.15);color:#93c5fd;}
+  .report-shell.style-compare-v2 .badge-purple{background:rgba(139,92,246,.15);color:#c4b5fd;}
+  .report-shell.style-compare-v2 .timeline{display:flex;gap:12px;margin:20px 0;flex-wrap:wrap;}
+  .report-shell.style-compare-v2 .timeline-item{flex:1;min-width:140px;background:rgba(79,70,229,.06);border-radius:12px;padding:14px;border:1px solid rgba(79,70,229,.15);}
+  .report-shell.style-compare-v2 .timeline-date{font-size:12px;color:#94a3b8;margin-bottom:6px;}
+  .report-shell.style-compare-v2 .timeline-title{font-weight:600;font-size:14px;margin-bottom:8px;color:#e2e8f0;}
+  .report-shell.style-compare-v2 .timeline-score{font-size:18px;font-weight:700;}
+  .report-shell.style-compare-v2 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0 24px;}
+  .report-shell.style-compare-v2 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0 24px;}
+  .report-shell.style-compare-v2 .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:18px 0 24px;}
+  .report-shell.style-compare-v2 .card{background:rgba(79,70,229,.06);border:1px solid rgba(79,70,229,.15);border-radius:12px;padding:15px;}
+  .report-shell.style-compare-v2 .card .num{font-size:24px;font-weight:700;color:#818cf8;margin-top:4px;}
+  .report-shell.style-compare-v2 .card .label{color:#94a3b8;font-size:13px;}
+  .report-shell.style-compare-v2 .section-box{background:rgba(79,70,229,.06);border-radius:12px;padding:16px;margin:16px 0;border:1px solid rgba(79,70,229,.15);}
+  .report-shell.style-compare-v2 .comparison-box{display:flex;gap:20px;margin:16px 0;}
+  .report-shell.style-compare-v2 .comparison-col{flex:1;border-radius:12px;padding:16px;background:rgba(79,70,229,.06);border:1px solid rgba(79,70,229,.15);}
+  .report-shell.style-compare-v2 .comparison-col.best{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.2);}
+  .report-shell.style-compare-v2 .comparison-col.current{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.2);}
+  .report-shell.style-compare-v2 .arrow-up{color:#10b981;font-weight:700;}
+  .report-shell.style-compare-v2 .arrow-down{color:#ef4444;font-weight:700;}
+  .report-shell.style-compare-v2 .arrow-same{color:#64748b;font-weight:700;}
+  .report-shell.style-compare-v2 .highlight-indigo{background:rgba(79,70,229,.15);padding:2px 6px;border-radius:4px;}
+  .report-shell.style-compare-v2 .highlight-purple{background:rgba(139,92,246,.15);padding:2px 6px;border-radius:4px;}
+  .report-shell.style-compare-v2 .highlight-yellow{background:rgba(245,158,11,.15);padding:2px 6px;border-radius:4px;}
+  .report-shell.style-compare-v2 .divider{height:1px;background:linear-gradient(90deg, transparent, rgba(79,70,229,.3), transparent);margin:26px 0;}
+  .report-shell.style-compare-v2 .footnote{font-size:13px;color:#64748b;margin-top:24px;}
+
+  /* ══════════════ 玫瑰红风格 - 主播孵化报告 ══════════════ */
+  .report-shell.style-incubation{background:linear-gradient(180deg, rgba(17,19,26,0.98), rgba(13,15,20,0.98));border-radius:24px;padding:36px 40px;}
+  .report-shell.style-incubation .report-shell-header{border-bottom-color:#e11d48;}
+  .report-shell.style-incubation .report-shell-header::after{background:linear-gradient(90deg, transparent, #e11d48, transparent);width:96px;}
+  .report-shell.style-incubation .report-shell-header h1{font-size:26px;border-left:5px solid #e11d48;padding-left:20px;text-align:left;}
+  .report-shell.style-incubation .report-shell-body{background:rgba(24,27,36,.92);border:1px solid rgba(225,29,72,.15);border-radius:14px;padding:26px 24px;}
+  .report-shell.style-incubation .report-shell-body h2{font-size:20px;font-weight:600;color:#fda4af;margin:28px 0 12px;padding-left:12px;border-left:3px solid #e11d48;padding-bottom:6px;border-bottom:none;}
+  .report-shell.style-incubation .report-shell-body h3{font-size:17px;font-weight:600;color:#fecdd3;margin:22px 0 10px;}
+  .report-shell.style-incubation .report-shell-body h4{font-size:15px;font-weight:600;color:#e11d48;margin:16px 0 8px;}
+  .report-shell.style-incubation .report-shell-body p{color:#e2e8f0;line-height:1.7;font-size:14px;}
+  .report-shell.style-incubation .report-shell-body strong{color:#fda4af;}
+  .report-shell.style-incubation .report-shell-body ul,.report-shell.style-incubation .report-shell-body ol{padding-left:24px;}
+  .report-shell.style-incubation .report-shell-body li{margin:6px 0;color:#cbd5e1;}
+  .report-shell.style-incubation .report-shell-body li::marker{color:#e11d48;}
+  .report-shell.style-incubation .report-shell-body table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;overflow:hidden;border-radius:10px;border:1px solid rgba(225,29,72,.15);}
+  .report-shell.style-incubation .report-shell-body thead th{background:linear-gradient(135deg, rgba(225,29,72,.9), rgba(185,28,28,.9));color:#fff;font-weight:700;padding:11px 14px;text-align:left;font-size:12px;letter-spacing:.02em;}
+  .report-shell.style-incubation .report-shell-body tbody td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.06);color:#e2e8f0;vertical-align:top;}
+  .report-shell.style-incubation .report-shell-body tbody tr:nth-child(even){background:rgba(225,29,72,.04);}
+  .report-shell.style-incubation .report-shell-body tbody tr:hover{background:rgba(225,29,72,.08);}
+  .report-shell.style-incubation .insight-box{background:rgba(225,29,72,.08);border-radius:16px;padding:20px 24px;margin:24px 0;border-left:4px solid #e11d48;}
+  .report-shell.style-incubation .insight-box.warning{background:rgba(245,158,11,.08);border-left-color:#f97316;}
+  .report-shell.style-incubation .insight-box.success{background:rgba(16,185,129,.08);border-left-color:#10b981;}
+  .report-shell.style-incubation .insight-box.progress{background:rgba(139,92,246,.08);border-left-color:#8b5cf6;}
+  .report-shell.style-incubation .insight-box strong{color:#fecdd3;}
+  .report-shell.style-incubation .quote{margin:16px 0;padding:12px 16px;border-left:3px solid #e11d48;background:rgba(225,29,72,.06);border-radius:0 10px 10px 0;color:#cbd5e1;font-style:italic;font-size:14px;}
+  .report-shell.style-incubation .quote-good{border-left:3px solid #e11d48;}
+  .report-shell.style-incubation .quote-bad{border-left:3px solid #ef4444;}
+  .report-shell.style-incubation .quote-neutral{border-left:3px solid #94a3b8;}
+  .report-shell.style-incubation .stat-card{background:rgba(225,29,72,.06);border-radius:14px;padding:16px 20px;margin:12px 0;display:flex;align-items:center;gap:16px;border:1px solid rgba(225,29,72,.15);}
+  .report-shell.style-incubation .stat-number{font-size:32px;font-weight:700;min-width:80px;text-align:center;}
+  .report-shell.style-incubation .stat-card.success .stat-number{color:#10b981;}
+  .report-shell.style-incubation .stat-card.danger .stat-number{color:#ef4444;}
+  .report-shell.style-incubation .stat-card.purple .stat-number{color:#8b5cf6;}
+  .report-shell.style-incubation .badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;}
+  .report-shell.style-incubation .badge-rose{background:rgba(225,29,72,.15);color:#fda4af;}
+  .report-shell.style-incubation .badge-green{background:rgba(16,185,129,.15);color:#6ee7b7;}
+  .report-shell.style-incubation .badge-yellow{background:rgba(245,158,11,.15);color:#fcd34d;}
+  .report-shell.style-incubation .badge-red{background:rgba(239,68,68,.15);color:#fca5a5;}
+  .report-shell.style-incubation .badge-blue{background:rgba(59,130,246,.15);color:#93c5fd;}
+  .report-shell.style-incubation .badge-purple{background:rgba(139,92,246,.15);color:#c4b5fd;}
+  .report-shell.style-incubation .phase-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin:18px 0 24px;}
+  .report-shell.style-incubation .phase-card{background:rgba(225,29,72,.06);border-radius:10px;padding:12px;border:1px solid rgba(225,29,72,.15);text-align:center;position:relative;}
+  .report-shell.style-incubation .phase-card.current{background:rgba(225,29,72,.12);border-color:#e11d48;}
+  .report-shell.style-incubation .phase-num{width:24px;height:24px;background:#e11d48;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;margin:0 auto 8px;}
+  .report-shell.style-incubation .phase-card.current .phase-num{background:#be123c;}
+  .report-shell.style-incubation .phase-label{font-size:11px;color:#94a3b8;}
+  .report-shell.style-incubation .phase-card.current .phase-label{color:#fda4af;font-weight:600;}
+  .report-shell.style-incubation .timeline{display:flex;gap:12px;margin:20px 0;flex-wrap:wrap;}
+  .report-shell.style-incubation .timeline-item{flex:1;min-width:140px;background:rgba(225,29,72,.06);border-radius:12px;padding:14px;border:1px solid rgba(225,29,72,.15);}
+  .report-shell.style-incubation .timeline-date{font-size:12px;color:#94a3b8;margin-bottom:6px;}
+  .report-shell.style-incubation .timeline-title{font-weight:600;font-size:14px;margin-bottom:8px;color:#e2e8f0;}
+  .report-shell.style-incubation .timeline-score{font-size:18px;font-weight:700;}
+  .report-shell.style-incubation .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0 24px;}
+  .report-shell.style-incubation .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0 24px;}
+  .report-shell.style-incubation .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:18px 0 24px;}
+  .report-shell.style-incubation .card{background:rgba(225,29,72,.06);border:1px solid rgba(225,29,72,.15);border-radius:12px;padding:15px;}
+  .report-shell.style-incubation .card .num{font-size:24px;font-weight:700;color:#fda4af;margin-top:4px;}
+  .report-shell.style-incubation .card .label{color:#94a3b8;font-size:13px;}
+  .report-shell.style-incubation .section-box{background:rgba(225,29,72,.06);border-radius:12px;padding:16px;margin:16px 0;border:1px solid rgba(225,29,72,.15);}
+  .report-shell.style-incubation .difficulty-bar{height:6px;background:rgba(225,29,72,.1);border-radius:3px;margin-top:6px;overflow:hidden;}
+  .report-shell.style-incubation .difficulty-fill{height:100%;border-radius:3px;}
+  .report-shell.style-incubation .difficulty-fill.easy{background:#10b981;}
+  .report-shell.style-incubation .difficulty-fill.medium{background:#f97316;}
+  .report-shell.style-incubation .difficulty-fill.hard{background:#e11d48;}
+  .report-shell.style-incubation .divider{height:1px;background:linear-gradient(90deg, transparent, rgba(225,29,72,.3), transparent);margin:26px 0;}
+  .report-shell.style-incubation .footnote{font-size:13px;color:#64748b;margin-top:24px;}
 </style>
   <link rel="stylesheet" href="/static/modules/anchor-dashboard.css">
 </head>
@@ -765,19 +1101,19 @@
 
         <!-- ══ 报告风格 ══ -->
         <div class="panel mb">
-          <div class="panel-hd"><div class="panel-title">报告风格</div><div class="muted" style="font-size:12px;">选择输出报告的结构和样式风格</div></div>
+          <div class="panel-hd"><div class="panel-title">报告风格</div><div class="muted" style="font-size:12px;">选择报告的视觉配色风格</div></div>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <select class="sel" id="reportStyleSelect" style="width:100%;" onchange="handleReportStyleChange()">
-              <option value="evaluation">📊 六维评分体系</option>
-              <option value="compare">📈 评分对比报告</option>
-              <option value="comprehensive">📝 综合拆解报告</option>
-              <option value="liveAnalysis">🔍 直播拆解分析</option>
-              <option value="incubation">🧬 主播孵化报告</option>
-              <option value="compliance">⚠️ 合规专项检测</option>
-              <option value="newbie">🧑‍💼 新人面试分析</option>
+              <option value="evaluation">🎨 蓝金版本</option>
+              <option value="compare">🎨 靛蓝版本</option>
+              <option value="comprehensive">🎨 青蓝版本</option>
+              <option value="liveAnalysis">🎨 深紫版本</option>
+              <option value="incubation">🎨 玫瑰版本</option>
+              <option value="compliance">🎨 红色版本</option>
+              <option value="newbie">🎨 橙色版本</option>
             </select>
             <div id="reportStyleDesc" class="muted" style="font-size:12px;padding:10px 12px;border:1px solid var(--border2);border-radius:12px;background:var(--bg2);">
-              六维评分、主播画像标签、合规与转化归因三层结果
+              蓝金配色，专业稳重的经典风格
             </div>
           </div>
         </div>
@@ -799,64 +1135,35 @@
                 </div>
                 <div class="panel" style="margin:0;padding:16px;">
                   <div class="panel-hd">
-                    <div class="panel-title">当前生效角色提示词</div>
-                    <div style="display:flex;gap:8px;">
-                      <button class="btn btn-outline" id="createRolePresetBtn" style="font-size:12px;padding:6px 12px;">新建角色</button>
-                      <button class="btn btn-outline" id="deleteRolePresetBtn" style="font-size:12px;padding:6px 12px;">删除角色</button>
-                      <button class="btn btn-gold" id="saveRolePresetBtn" style="font-size:12px;padding:6px 12px;">保存当前角色</button>
-                    </div>
+                    <div class="panel-title">角色预设</div>
+                    <div class="muted" style="font-size:11px;">选择分析视角（不影响提示词内容）</div>
                   </div>
-                  <div class="muted" style="font-size:12px;margin-bottom:10px;">角色项支持新建、删除和保存。当前文本就是该角色的实际内容。</div>
-                  <div class="lbl">当前角色设定</div>
-                  <select class="sel" id="rolePresetSelect" style="width:100%;margin-bottom:8px;"></select>
-                  <div style="display:flex;gap:8px;margin-bottom:8px;">
-                    <label class="btn btn-outline" style="font-size:12px;padding:6px 12px;cursor:pointer;">
-                      上传 md/txt 导入角色提示词
-                      <input id="rolePromptFileInput" type="file" accept=".md,.markdown,.txt" style="display:none;" onchange="handlePromptFileUpload(this,'role')"/>
-                    </label>
-                  </div>
-                  <details class="prompt-detail">
-                    <summary>展开编辑角色提示词</summary>
-                    <textarea class="textarea" id="rolePrompt" rows="4" placeholder="你是一位资深投资顾问分析专家，拥有15年从业经验…">你是一位资深投资顾问评估专家，精通A股、基金、固收等资产，具备CFA等专业资质。请对投顾直播内容进行客观、专业的全维度评估。</textarea>
-                  </details>
+                  <div id="rolePresetButtons" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
                 </div>
                 <div class="panel" style="margin:0;padding:16px;">
                   <div class="panel-hd">
-                    <div class="panel-title">当前生效任务提示词</div>
+                    <div class="panel-title">分析提示词</div>
                     <div style="display:flex;gap:8px;">
-                      <button class="btn btn-outline" id="createTaskPresetBtn" style="font-size:12px;padding:6px 12px;">新建任务</button>
-                      <button class="btn btn-outline" id="deleteTaskPresetBtn" style="font-size:12px;padding:6px 12px;">删除任务</button>
-                      <button class="btn btn-gold" id="saveTaskPresetBtn" style="font-size:12px;padding:6px 12px;">保存当前任务</button>
+                      <button class="btn btn-outline" id="createTaskPresetBtn" style="font-size:12px;padding:6px 12px;">新建</button>
+                      <button class="btn btn-outline" id="deleteTaskPresetBtn" style="font-size:12px;padding:6px 12px;">删除</button>
+                      <button class="btn btn-gold" id="saveTaskPresetBtn" style="font-size:12px;padding:6px 12px;">保存</button>
                     </div>
                   </div>
-                  <div class="muted" style="font-size:12px;margin-bottom:10px;">任务项支持新建、删除和保存。当前文本就是该任务的实际内容。</div>
-                  <select class="sel" id="taskPresetSelect" style="width:100%;margin-bottom:8px;"></select>
-                  <div style="display:flex;gap:8px;margin-bottom:8px;">
-                    <label class="btn btn-outline" style="font-size:12px;padding:6px 12px;cursor:pointer;">
-                      上传 md/txt 提取提示词
-                      <input id="taskPromptFileInput" type="file" accept=".md,.markdown,.txt" style="display:none;" onchange="handlePromptFileUpload(this,'task')"/>
-                    </label>
-                  </div>
+                  <select class="sel" id="taskPresetSelect" style="width:100%;margin-bottom:10px;"></select>
                   <details class="prompt-detail">
-                    <summary>展开编辑任务提示词</summary>
-                    <textarea class="textarea" id="taskPrompt" rows="4" placeholder="分析任务描述…">请输出一份“主播评价体系分析报告”，并严格包含六维评分、主播画像标签、合规与转化归因三层结果。</textarea>
-                  </details>
-                </div>
-                <div class="panel" style="margin:0;padding:16px;">
-                  <div class="panel-hd"><div class="panel-title">系统提示词</div></div>
-                  <div class="muted" style="font-size:12px;margin-bottom:10px;">系统级约束继续保留为全局设置，不跟角色和任务拆分。</div>
-                  <div style="display:flex;gap:8px;margin-bottom:8px;">
-                    <label class="btn btn-outline" style="font-size:12px;padding:6px 12px;cursor:pointer;">
-                      上传 md/txt 导入系统提示词
-                      <input id="systemPromptFileInput" type="file" accept=".md,.markdown,.txt" style="display:none;" onchange="handlePromptFileUpload(this,'system')"/>
-                    </label>
-                  </div>
-                  <details class="prompt-detail">
-                    <summary>展开编辑系统提示词</summary>
-                    <textarea class="textarea" id="liveSystemPromptMirror" rows="6" placeholder="系统提示词"></textarea>
+                    <summary>展开编辑提示词</summary>
+                    <textarea class="textarea" id="taskPrompt" rows="12" placeholder="完整的分析提示词…">你是一位资深的抖音直播运营分析专家和合规顾问，重点从直播结构、互动效率、合规边界、用户理解度和转化动作五个方面评估主播表现，并给出可直接复用的优化建议。
+
+所有结论必须引用逐字稿原文证据，不要空泛评价，建议要具体可执行。
+
+请基于完整直播数据和逐字稿，生成一份结构化直播分析报告，覆盖直播概况、合规风险、内容结构、互动承接、转化动作、主播画像和改进建议。输出 Markdown，标题清晰，表格优先。</textarea>
                   </details>
                   <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;">
-                    <button class="btn btn-outline" id="optimizePromptLibraryBtn" style="font-size:12px;padding:6px 12px;">AI 优化提示词</button>
+                    <label class="btn btn-outline" style="font-size:12px;padding:6px 12px;cursor:pointer;">
+                      上传 md/txt 导入
+                      <input id="taskPromptFileInput" type="file" accept=".md,.markdown,.txt" style="display:none;" onchange="handlePromptFileUpload(this,'task')"/>
+                    </label>
+                    <button class="btn btn-outline" id="optimizePromptLibraryBtn" style="font-size:12px;padding:6px 12px;">AI 优化</button>
                   </div>
                 </div>
               </div>
@@ -1917,11 +2224,11 @@
                 </div>
                 <div id="promptPresetDesc" class="muted" style="font-size:11px;margin-top:8px;"></div>
               </div>
-              <div class="lbl">当前角色默认稿</div>
+              <div class="lbl">当前角色默认稿 <span class="muted" style="font-size:11px;">（你是谁、用什么方法分析）</span></div>
               <textarea class="textarea" id="anchorRolePrompt" rows="4" placeholder="主播角色设定"></textarea>
-              <div class="lbl">系统提示词</div>
+              <div class="lbl">系统提示词 <span class="muted" style="font-size:11px;">（通用准则：引用证据、建议可执行）</span></div>
               <textarea class="textarea" id="systemPrompt" rows="6" placeholder="系统提示词"></textarea>
-              <div class="lbl">任务提示词</div>
+              <div class="lbl">任务提示词 <span class="muted" style="font-size:11px;">（具体要做什么、输出什么报告）</span></div>
               <textarea class="textarea" id="userPrompt" rows="6" placeholder="任务提示词"></textarea>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div style="display:flex;flex-direction:column;gap:8px;">
@@ -1929,7 +2236,7 @@
                   <textarea class="textarea" id="externalHotTopics" rows="5" placeholder="每行一个热点"></textarea>
                 </div>
                 <div style="display:flex;flex-direction:column;gap:8px;">
-                  <div class="lbl">输出说明</div>
+                  <div class="lbl">输出格式 <span class="muted" style="font-size:11px;">（Markdown规范）</span></div>
                   <input class="inp" id="reportFormat" type="text" placeholder="输出 Markdown，标题清晰，表格优先">
                   <div class="admin-note"><div class="muted" style="font-size:11px;">配置摘要</div><div id="adminConfigSummary" style="margin-top:8px;font-size:13px;line-height:1.7;color:var(--text1);">保存后会自动更新当前工作台的全局设置。</div></div>
                 </div>
@@ -2002,16 +2309,28 @@
           </div>
           <div class="muted" style="font-size:12px;margin-top:8px;">增量导入会追加/更新数据，覆盖导入会先清空表再导入（谨慎使用）</div>
         </div>
+        <div class="panel mb" style="padding:16px;background:linear-gradient(135deg,#fef3c7,#fde68a);">
+          <div class="panel-hd" style="margin-bottom:12px;"><div class="panel-title" style="color:#92400e;">⚡ 在线导入</div></div>
+          <div class="muted" style="font-size:12px;margin-bottom:12px;color:#a16207;">直接从远程数据库拉取直播、短视频和客户数据，无需上传 CSV 文件。数据会自动导入到本地数据库。</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <button class="btn btn-outline" style="background:#fff;border-color:#d97706;color:#92400e;" onclick="onlineImportLiveData()">导入直播数据</button>
+            <button class="btn btn-outline" style="background:#fff;border-color:#d97706;color:#92400e;" onclick="onlineImportVideoData()">导入短视频数据</button>
+            <button class="btn btn-outline" style="background:#fff;border-color:#d97706;color:#92400e;" onclick="onlineImportCustomerProfiles()">导入客户档案</button>
+            <button class="btn btn-outline" style="background:#fff;border-color:#d97706;color:#92400e;" onclick="onlineImportCustomerSessions()">导入客户会话</button>
+            <button class="btn btn-gold" style="background:#d97706;color:#fff;" onclick="onlineImportAllData()">一键导入全部数据</button>
+          </div>
+          <div id="online-import-result" style="margin-top:12px;font-size:13px;"></div>
+        </div>
         <div class="g2 mb">
           <div class="panel">
-            <div class="panel-hd"><div class="panel-title">直播数据导入</div></div>
+            <div class="panel-hd"><div class="panel-title">直播数据导入</div><button class="btn btn-outline-sm" onclick="downloadLiveTemplate()">下载模板</button></div>
             <div class="muted" style="font-size:12px;margin-bottom:12px;">支持字段：账号名称、直播ID、开播时间、观看人数、涨粉数等。自动识别中英字段名。</div>
             <input type="file" id="op-live-csv-input" accept=".csv" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);color:var(--text0);margin-bottom:12px;">
             <button class="btn btn-gold" style="width:100%;" onclick="uploadOperationLiveCSV()">上传直播数据 CSV</button>
             <div id="op-live-result" style="margin-top:12px;font-size:13px;"></div>
           </div>
           <div class="panel">
-            <div class="panel-hd"><div class="panel-title">短视频数据导入</div></div>
+            <div class="panel-hd"><div class="panel-title">短视频数据导入</div><button class="btn btn-outline-sm" onclick="downloadVideoTemplate()">下载模板</button></div>
             <div class="muted" style="font-size:12px;margin-bottom:12px;">支持字段：账号名称、作品名称、发布时间、播放量、涨粉数等。</div>
             <input type="file" id="op-video-csv-input" accept=".csv" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);color:var(--text0);margin-bottom:12px;">
             <button class="btn btn-gold" style="width:100%;" onclick="uploadOperationVideoCSV()">上传短视频数据 CSV</button>
@@ -2020,14 +2339,14 @@
         </div>
         <div class="g2 mb">
           <div class="panel">
-            <div class="panel-hd"><div class="panel-title">客户档案导入</div></div>
+            <div class="panel-hd"><div class="panel-title">客户档案导入</div><button class="btn btn-outline-sm" onclick="downloadCustomerProfileTemplate()">下载模板</button></div>
             <div class="muted" style="font-size:12px;margin-bottom:12px;">支持字段：客户ID、客户名称、主播名称、最近分析时间、最佳排名、平均观看时长等。</div>
             <input type="file" id="customer-profile-csv-input" accept=".csv" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);color:var(--text0);margin-bottom:12px;">
             <button class="btn btn-gold" style="width:100%;" onclick="uploadCustomerProfileCSV()">上传客户档案 CSV</button>
             <div id="customer-profile-result" style="margin-top:12px;font-size:13px;"></div>
           </div>
           <div class="panel">
-            <div class="panel-hd"><div class="panel-title">客户会话导入</div></div>
+            <div class="panel-hd"><div class="panel-title">客户会话导入</div><button class="btn btn-outline-sm" onclick="downloadCustomerSessionTemplate()">下载模板</button></div>
             <div class="muted" style="font-size:12px;margin-bottom:12px;">支持字段：场次ID、客户ID、主播名称、直播间ID、观看排名、观看时长秒等。</div>
             <input type="file" id="customer-session-csv-input" accept=".csv" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);color:var(--text0);margin-bottom:12px;">
             <button class="btn btn-gold" style="width:100%;" onclick="uploadCustomerSessionCSV()">上传客户会话 CSV</button>
@@ -2170,7 +2489,8 @@ const ROLE_LABELS = {
   fund: "基金顾问",
   compliance: "合规专家",
   director: "运营总监",
-  talent: "面试官"
+  talent: "面试官",
+  liveAnalyzer: "直播拆解"
 };
 
 const TASK_LABELS = {
@@ -2652,243 +2972,53 @@ const TASK_SOURCE_DOCS = {
 // ══════════════ 报告风格配置 ══════════════
 const REPORT_STYLE_PRESETS = {
   evaluation: {
-    label: "六维评分体系",
-    description: "六维评分、主播画像标签、合规与转化归因三层结果",
-    styleClass: "", // 默认深色风格
+    label: "蓝金版本",
+    description: "蓝金配色，专业稳重的经典风格",
+    styleClass: "style-evaluation",
     taskKey: "evaluation",
-    icon: "📊"
+    icon: "🎨"
   },
   compare: {
-    label: "评分对比报告",
-    description: "历史评分对比、改进轨迹、核心改进分析、可执行性评估",
-    styleClass: "style-compare",
+    label: "靛蓝版本",
+    description: "靛蓝配色，沉稳大气的专业风格",
+    styleClass: "style-compare-v2",
     taskKey: "evaluation",
-    icon: "📈",
-    extraPrompt: `请按照"评分对比报告"格式输出，包含以下模块：
-
-## 一、历史评分轨迹
-使用 timeline 样式展示历史版本评分变化
-
-## 二、六维度评分对比
-输出对比表格，包含历史版本和当前版本的评分变化
-
-## 三、核心改进
-逐项分析改进点，使用 grid-2 展示对比
-
-## 四、综合评价
-使用 stat-card 展示最终评分和评价
-
-## 五、可执行性评估
-输出可执行性评估表格
-
-输出风格要求：
-- 使用短句，一句话不超过25字
-- 每句判断后面跟原文证据
-- 禁止"首先、其次、最后"、"综上所述"等AI味表达`
+    icon: "🎨"
   },
   comprehensive: {
-    label: "综合拆解报告",
-    description: "六层递进拆解：骨架层→血肉层→价值层→表达层→灵魂层→迁移层",
-    styleClass: "",
+    label: "青蓝版本",
+    description: "青蓝配色，清新自然的现代风格",
+    styleClass: "style-teal",
     taskKey: "comprehensive",
-    icon: "📝",
-    extraPrompt: `请按照"财经直播六层递进拆解框架"输出完整分析报告：
-
-### 第一层：骨架层 · 结构拆解
-- 整体结构模型（树干隐喻）
-- 时间分配表
-- 发散-收束节奏分析
-
-### 第二层：血肉层 · 内容拆解
-- 逐段拆解表（时间段|内容标签|原话引用|拆解分析）
-- 话题清单表
-- 论证结构分析
-
-### 第三层：价值层 · 策略拆解
-- 板块扫描模板发现
-- 可执行建议表
-
-### 第四层：表达层 · 话术拆解
-- 四类话术矩阵（互动/情绪/风险/钩子）
-- 高光话术提取
-
-### 第五层：灵魂层 · 风格拆解
-- 风格三标签
-- 人设信号分析
-- 合规边界分析
-
-### 第六层：迁移层 · 模板提取
-- 直播结构SOP
-- 可复用原则
-- 改进建议`
+    icon: "🎨"
   },
   liveAnalysis: {
-    label: "直播拆解分析",
-    description: "全景鸟瞰·结构拆解·内容逐段拆解·策略分析·话术分析·风格提炼",
+    label: "深紫版本",
+    description: "深紫配色，神秘优雅的高端风格",
     styleClass: "style-liveAnalysis",
     taskKey: "evaluation",
-    icon: "🔍",
-    extraPrompt: `请按照"直播拆解分析"格式输出完整报告，严格按照以下结构：
-
-## 一、全景鸟瞰：核心指标快速诊断
-输出一张诊断表格，包含以下维度：
-| 维度 | 本场直播数据 | 行业标准 | 判断 |
-| --- | --- | --- | --- |
-- 首次互动时间
-- 首次干货时间
-- 互动次数
-- 最长干货段
-- 互动设计类型
-- 点赞号召次数
-- 合规压力
-
-最后输出一句总结（一句话总结本场直播的核心特点）
-
-## 二、骨架层：结构拆解
-
-### 整体结构模型
-用"树干-枝杈-叶片"比喻描述直播的信息架构：
-- 树干：贯穿全场的核心锚点
-- 枝杈：分支话题
-- 叶片：每个结论的双面性
-
-### 时间分配表
-| 阶段 | 时间段 | 时长 | 核心任务 |
-
-### 结构特征分析
-| 特征 | 说明 | 效果判断 |
-
-## 三、血肉层：内容逐段拆解
-按时间轴逐段拆解，每段包含：
-- 时间段
-- 内容标签（干货/互动/情绪/风险/钩子）
-- 核心内容概述
-- 原话引用（精彩片段）
-- 拆解分析（目的/手法/效果/亮点/建议）
-
-## 四、价值层：策略拆解
-
-### 模板化发现
-发现博主对板块分析使用的统一模板（如：定性→定因→定策）
-
-### 可执行建议表
-| 建议内容 | 适用人群 | 风险提示 |
-
-### 方法论输出评估
-评估是否既有理念又有具体方法
-
-## 五、表达层：话术拆解
-
-### 四类话术矩阵
-| 类型 | 原文示例 | 功能分析 | 出现频次 |
-| --- | --- | --- | --- |
-- 互动引导话术
-- 点赞号召话术
-- 情绪话术
-- 风险话术
-- 下钩子话术
-
-### 高光话术提取
-选取最值得学习的3-5句话，提取：
-- 原文
-- 拆解（目的/手法/效果/可迁移性）
-
-### 话术节奏分析
-| 维度 | 本场表现 | 判断 |
-
-## 六、灵魂层：风格拆解
-
-### 风格三标签
-用三个可感知、可描述、可学习的标签定义主播风格
-
-### 人设信号分析
-| 人设信号 | 原文示例 | 效果 |
-
-### 合规边界分析
-| 原表达 | 风险类型 | 定级 | 说明 |
-
-## 七、迁移层：模板提取
-
-### 直播前准备清单
-| 序号 | 准备事项 | 本场应用 |
-| --- | --- | --- |
-
-### 直播结构SOP
-| 阶段 | 时长 | 任务 | 话术模板 |
-
-### 关键原则提取
-提炼3-5条可复用的核心原则
-
-报告输出要求：
-- 使用短句，一句话不超过30字
-- 每项分析必须有逐字稿原文佐证
-- 表格优先呈现关键数据
-- 禁止"首先、其次、最后"、"综上所述"等AI味表达
-- 风格参考财经葛先生直播拆解分析报告的专业深度`
+    icon: "🎨"
   },
   incubation: {
-    label: "主播孵化报告",
-    description: "新人主播深度分析、竞品对标、复制难度排序、起号流程",
-    styleClass: "style-compare",
+    label: "玫瑰版本",
+    description: "玫红配色，温暖活力的热情风格",
+    styleClass: "style-incubation",
     taskKey: "evaluation",
-    icon: "🧬",
-    extraPrompt: `请输出一份"主播孵化分析报告"，严格按照以下七章结构：
-
-### 第一章：新人主播风格深度分析
-- 语速节奏分析（字/分钟数据）
-- 情绪基调分析
-- 内容逻辑结构
-- 互动能力分析
-- 口头禅/高频词汇盘点
-- 优势亮点与核心问题
-
-### 第二章：竞品主播逐字稿深度拆解
-每位竞品主播提供：开场话术/内容结构模板/互动节点/转化引导话术
-
-### 第三章：对标主播匹配与复制难度排序
-从易到难排序，给出"本周可执行任务"
-
-### 第四章：新人主播人设打造方案
-人设定位、账号简介文案、直播间布置建议
-
-### 第五章：起号流程与第一场直播脚本
-第一场直播完整脚本框架（开场词→内容段落→互动节点→结尾引导）
-
-### 第六章：转化效率提升方案
-转化话术模板库
-
-### 第七章：总结与行动优先级
-
-报告规则：
-- 所有分析必须有逐字稿原文佐证
-- 禁止出现没有原文支撑的定性描述`
+    icon: "🎨"
   },
   compliance: {
-    label: "合规专项检测",
-    description: "合规边界专项分析、风险定级、合规改进建议",
-    styleClass: "",
+    label: "红色版本",
+    description: "红色配色，警示醒目的风险风格",
+    styleClass: "style-compliance",
     taskKey: "risk",
-    icon: "⚠️",
-    extraPrompt: `请对本场直播话术进行合规性审查，按"投顾口径"标准检查。
-
-重点检查：
-- 个股推荐风险
-- 方向推荐风险
-- 操作指令风险
-- 收益承诺风险
-- 市场预测风险
-
-输出格式：
-| 原表达 | 风险类型 | 风险定级 | 说明 | 改进建议 |
-
-风险定级：高风险（明确违规）/ 中风险（灰色地带）/ 低风险（基本安全）/ 安全（完全合规）`
+    icon: "🎨"
   },
   newbie: {
-    label: "新人面试分析",
-    description: "结合简历与面试逐字稿评估胜任力、7天训练计划",
-    styleClass: "",
+    label: "橙色版本",
+    description: "暖橙配色，亲切友好的温暖风格",
+    styleClass: "style-orange",
     taskKey: "newbie",
-    icon: "🧑‍💼"
+    icon: "🎨"
   }
 };
 
@@ -2902,6 +3032,38 @@ const REPORT_TYPE_META = {
     description: "结合简历与面试逐字稿评估胜任力"
   }
 };
+
+// ══════════════ 系统 UI 样式参考（自动注入给 AI，适配深色主题） ══════════════
+const SYSTEM_UI_STYLE_REFERENCE = `
+【系统 UI 样式参考 - 如果提示词有格式要求，必须遵守】
+
+FinVue 系统采用深色主题。如果提示词要求输出 HTML 格式或特定样式，请遵循以下规范：
+
+### CSS 变量（深色主题）
+- 背景：var(--bg0) #0A0B0E / var(--bg1) #11131A / var(--bg2) #181B24
+- 边框：var(--border) #252836
+- 文字：var(--text0) #EAE6DD（主）/ var(--text1) #9B97A0（次）/ var(--text2) #5A566A（辅）
+- 状态色：var(--green) #2DBD85 / var(--red) #E05252 / var(--blue) #4A90D9 / var(--purple) #9B7FE8
+- 金色强调：var(--gold) #C8922A
+
+### 样式模板（使用 inline style）
+- 卡片：style="background:var(--bg1);border:1px solid var(--border);border-radius:12px;padding:16px"
+- 标题：style="color:var(--text0);font-size:18px;font-weight:700;margin-bottom:14px"
+- 正文：style="color:var(--text0);font-size:14px;line-height:1.8"
+- 表头：style="background:var(--bg2);color:var(--text2);padding:10px;border:1px solid var(--border)"
+- 表格单元格：style="background:var(--bg1);color:var(--text0);padding:10px;border:1px solid var(--border)"
+- 引用：style="background:var(--bg1);border-left:3px solid var(--gold);padding:12px;color:var(--text1)"
+- 绿色标签：style="background:rgba(45,189,133,0.12);color:var(--green);padding:4px 10px;border-radius:4px"
+- 红色标签：style="background:rgba(224,82,82,0.12);color:var(--red);padding:4px 10px;border-radius:4px"
+- 分隔线：<hr style="border:none;height:1px;background:var(--border);margin:16px 0">
+
+### 输出规则
+- 不要输出完整 <!DOCTYPE html> 文档，只输出 HTML 内容片段
+- 不要包含 <style> 标签定义样式
+- 所有样式使用 inline style，使用上述 CSS 变量或颜色值
+- 禁止使用白色背景（#fff）、黑色文字等浅色主题样式
+- 如果提示词没有格式要求，请输出 Markdown 格式，系统会自动渲染
+`;
 
 const state = {
   authUser: null,
@@ -3114,34 +3276,35 @@ function updateAdminDashboardSummary() {
   const latestCase = [...state.caseEntries].sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")))[0];
   const providers = getAiProviders().map(normalizeAiProviderDraft);
   const enabledProviders = providers.filter((item) => item.enabled);
-  els.adminUserCount.textContent = String(userCount);
-  els.adminPromptCount.textContent = `${roleCount}/${taskCount}`;
-  els.adminAssetCount.textContent = String(profilesCount + transcriptCount + complianceCount + caseCount);
-  els.adminRiskCount.textContent = String(highRiskCount);
-  els.adminProfilesCount.textContent = String(profilesCount);
-  els.adminTranscriptsCount.textContent = String(transcriptCount);
-  els.adminComplianceCount.textContent = String(complianceCount);
-  els.adminCaseCount.textContent = String(caseCount);
-  els.adminAdminCount.textContent = String(adminCount);
-  els.adminLatestSync.textContent = latestSync ? formatDateTime(latestSync) : "--";
-  els.adminHotCount.textContent = String(state.hotArr.length);
-  els.adminReportFormatSummary.textContent = els.reportFormat?.value?.trim() || "未设置";
-  els.adminRiskSummary.textContent = highRiskCount
+  // 安全设置每个元素（避免 null 报错）
+  if (els.adminUserCount) els.adminUserCount.textContent = String(userCount);
+  if (els.adminPromptCount) els.adminPromptCount.textContent = `${roleCount}/${taskCount}`;
+  if (els.adminAssetCount) els.adminAssetCount.textContent = String(profilesCount + transcriptCount + complianceCount + caseCount);
+  if (els.adminRiskCount) els.adminRiskCount.textContent = String(highRiskCount);
+  if (els.adminProfilesCount) els.adminProfilesCount.textContent = String(profilesCount);
+  if (els.adminTranscriptsCount) els.adminTranscriptsCount.textContent = String(transcriptCount);
+  if (els.adminComplianceCount) els.adminComplianceCount.textContent = String(complianceCount);
+  if (els.adminCaseCount) els.adminCaseCount.textContent = String(caseCount);
+  if (els.adminAdminCount) els.adminAdminCount.textContent = String(adminCount);
+  if (els.adminLatestSync) els.adminLatestSync.textContent = latestSync ? formatDateTime(latestSync) : "--";
+  if (els.adminHotCount) els.adminHotCount.textContent = String(state.hotArr.length);
+  if (els.adminReportFormatSummary) els.adminReportFormatSummary.textContent = els.reportFormat?.value?.trim() || "未设置";
+  if (els.adminRiskSummary) els.adminRiskSummary.textContent = highRiskCount
     ? `当前共有 ${highRiskCount} 条灰区或红区话术沉淀，优先复查最近新增条目。`
     : "当前没有灰区或红区话术堆积。";
-  els.adminAssetSummary.textContent = `人物档案 ${profilesCount} 条，逐字稿 ${transcriptCount} 条，合规 ${complianceCount} 条，案例 ${caseCount} 条。`;
-  els.adminPromptSummary.textContent = `当前共维护 ${roleCount} 个角色项、${taskCount} 个任务项；热点 ${state.hotArr.length} 条。`;
-  els.adminConfigSummary.textContent = `已配置 ${providers.length} 条 AI 路由，其中启用 ${enabledProviders.length} 条；角色项 ${roleCount} 个，任务项 ${taskCount} 个，热点 ${state.hotArr.length} 条。保存后会同步影响当前工作台分析。`;
-  els.adminProfileActivity.textContent = latestProfile
+  if (els.adminAssetSummary) els.adminAssetSummary.textContent = `人物档案 ${profilesCount} 条，逐字稿 ${transcriptCount} 条，合规 ${complianceCount} 条，案例 ${caseCount} 条。`;
+  if (els.adminPromptSummary) els.adminPromptSummary.textContent = `当前共维护 ${roleCount} 个角色项、${taskCount} 个任务项；热点 ${state.hotArr.length} 条。`;
+  if (els.adminConfigSummary) els.adminConfigSummary.textContent = `已配置 ${providers.length} 条 AI 路由，其中启用 ${enabledProviders.length} 条；角色项 ${roleCount} 个，任务项 ${taskCount} 个，热点 ${state.hotArr.length} 条。保存后会同步影响当前工作台分析。`;
+  if (els.adminProfileActivity) els.adminProfileActivity.textContent = latestProfile
     ? `${latestProfile.name || "未命名人物"} 最近一次快照时间：${formatDateTime(latestProfile.updatedAt || latestProfile.createdAt)}。`
     : "暂无人物档案更新。";
-  els.adminTranscriptActivity.textContent = latestTranscript
+  if (els.adminTranscriptActivity) els.adminTranscriptActivity.textContent = latestTranscript
     ? `${latestTranscript.anchorName || "未命名逐字稿"} 最近沉淀于 ${formatDateTime(latestTranscript.analyzedAt || latestTranscript.updatedAt || latestTranscript.createdAt)}。`
     : "暂无逐字稿沉淀。";
-  els.adminKnowledgeActivity.textContent = latestCompliance || latestCase
+  if (els.adminKnowledgeActivity) els.adminKnowledgeActivity.textContent = latestCompliance || latestCase
     ? `最近知识沉淀：${latestCompliance ? `合规 ${formatDateTime(latestCompliance.updatedAt || latestCompliance.createdAt)}` : ""}${latestCompliance && latestCase ? " / " : ""}${latestCase ? `案例 ${formatDateTime(latestCase.updatedAt || latestCase.createdAt)}` : ""}。`
     : "暂无合规或案例更新。";
-  els.adminPageSub.textContent = latestSync
+  if (els.adminPageSub) els.adminPageSub.textContent = latestSync
     ? `系统运行状态 · 最后同步 ${formatDateTime(latestSync)}`
     : "系统运行状态 · 暂无本地沉淀数据";
   const adminRoleStats = document.getElementById("adminRoleStats");
@@ -4018,6 +4181,87 @@ function showAdminSec(id, btn) {
   if (id === "logs") loadActionLogs();
 }
 
+// ══════════════ CSV模板下载函数 ══════════════
+
+function downloadLiveTemplate() {
+  const headers = [
+    "账号名称", "直播id", "直播标题", "开播时间", "关播时间", "直播时长",
+    "峰值人数", "平均人数", "收获音浪", "粉丝音浪", "非粉音浪", "首次送礼用户音浪",
+    "送礼人数", "送礼粉丝人数", "送礼非粉人数", "首次送礼人数", "预计收入",
+    "曝光人数", "观看人数", "观看粉丝人数", "观看非粉人数",
+    "涨粉人数", "掉粉人数", "加团人数",
+    "人均停留时长", "粉丝人均停留时长", "非粉人均停留时长",
+    "评论人数", "评论粉丝人数", "评论非粉人数",
+    "点赞次数", "点赞粉丝次数", "点赞非粉次数",
+    "分享次数", "分享粉丝次数", "分享非粉次数",
+    "群内粉丝", "群外粉丝", "观看率", "涨粉率", "评论率", "送礼率",
+    "粉丝观看率", "粉丝评论率", "粉丝点赞率", "粉丝分享率", "粉丝送礼率", "群内粉丝率", "创建时间"
+  ];
+  const exampleData = [
+    "主播A", "7641131919299578651", "晚间直播", "2026-05-18 18:00:00", "2026-05-18 21:00:00", "180",
+    "5000", "3000", "10000", "8000", "2000", "500",
+    "100", "80", "20", "10", "5000",
+    "10000", "8000", "6000", "2000",
+    "500", "50", "30",
+    "300", "3600", "1800",
+    "200", "150", "50",
+    "1000", "800", "200",
+    "10", "8", "2",
+    "0", "0", "0.2756", "0.0067", "0.0248", "0.0136",
+    "0.1132", "0.6951", "0.9709", "0.5000", "0.9111", "0.0000", "2026-05-18 21:00:00"
+  ];
+  downloadCSVTemplate("直播数据导入模板.csv", headers, exampleData);
+}
+
+function downloadVideoTemplate() {
+  const headers = [
+    "视频ID", "主播账号", "视频标题", "体裁", "发布时间",
+    "播放量", "点赞数", "完播率", "5s完播率", "2s跳出率",
+    "分享数", "评论数", "粉丝增量", "创建时间"
+  ];
+  const exampleData = [
+    "1907229", "主播A", "财经热点分析", "1-3min视频", "2026-05-18 18:00:00",
+    "100000", "5000", "0.15", "0.60", "0.25",
+    "100", "200", "500", "2026-05-18 19:00:00"
+  ];
+  downloadCSVTemplate("短视频数据导入模板.csv", headers, exampleData);
+}
+
+function downloadCustomerProfileTemplate() {
+  const headers = [
+    "客户ID", "客户名称", "主播名称", "最近分析时间", "最近直播主题",
+    "最近排名", "最佳排名", "平均观看时长", "标签", "标签2"
+  ];
+  const exampleData = [
+    "customer-001", "张三", "主播A", "2026-05-18 20:30:00", "财经分析专场",
+    "15", "8", "3600", "点赞榜,粉丝团", "点赞榜,粉丝团"
+  ];
+  downloadCSVTemplate("客户档案导入模板.csv", headers, exampleData);
+}
+
+function downloadCustomerSessionTemplate() {
+  const headers = [
+    "场次ID", "客户ID", "主播名称", "直播间ID", "直播主题",
+    "报告类型", "指标类型", "指标值", "观看排名", "观看时长秒", "分析时间"
+  ];
+  const exampleData = [
+    "db::7641131919299578651::点赞榜::001", "customer-001", "主播A", "7641131919299578651", "财经分析",
+    "dbLiveAnalytics", "点赞榜", "1", "15", "3600", "2026-05-18 20:30:00"
+  ];
+  downloadCSVTemplate("客户会话导入模板.csv", headers, exampleData);
+}
+
+function downloadCSVTemplate(filename, headers, exampleData) {
+  const csvContent = headers.join(",") + "\n" + exampleData.join(",");
+  const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function loadOperationImportLogs() {
   const container = document.getElementById("op-import-logs");
   container.innerHTML = '<div class="muted" style="padding:12px;">正在加载...</div>';
@@ -4300,6 +4544,103 @@ function uploadCustomerSessionCSV() {
     });
 }
 
+// ══════════════ 在线导入函数 ══════════════
+
+function onlineImportLiveData() {
+  const resultEl = document.getElementById("online-import-result");
+  resultEl.innerHTML = `<span style="color:#d97706;">正在从远程数据库导入直播数据...</span>`;
+
+  fetch("/api/operation/online-import-live", { method: "POST", credentials: "include" })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.ok) {
+        resultEl.innerHTML = `<span style="color:var(--green);">✓ ${data.message}</span>`;
+        loadOperationImportLogs();
+      } else {
+        resultEl.innerHTML = `<span style="color:var(--red);">导入失败: ${escapeHtml(data.error)}</span>`;
+      }
+    })
+    .catch((e) => {
+      resultEl.innerHTML = `<span style="color:var(--red);">请求失败: ${escapeHtml(e.message)}</span>`;
+    });
+}
+
+function onlineImportVideoData() {
+  const resultEl = document.getElementById("online-import-result");
+  resultEl.innerHTML = `<span style="color:#d97706;">正在从远程数据库导入短视频数据...</span>`;
+
+  fetch("/api/operation/online-import-video", { method: "POST", credentials: "include" })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.ok) {
+        resultEl.innerHTML = `<span style="color:var(--green);">✓ ${data.message}</span>`;
+        loadOperationImportLogs();
+      } else {
+        resultEl.innerHTML = `<span style="color:var(--red);">导入失败: ${escapeHtml(data.error)}</span>`;
+      }
+    })
+    .catch((e) => {
+      resultEl.innerHTML = `<span style="color:var(--red);">请求失败: ${escapeHtml(e.message)}</span>`;
+    });
+}
+
+function onlineImportAllData() {
+  const resultEl = document.getElementById("online-import-result");
+  resultEl.innerHTML = `<span style="color:#d97706;">正在从远程数据库导入所有数据...</span>`;
+
+  fetch("/api/operation/online-import-all", { method: "POST", credentials: "include" })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.ok) {
+        resultEl.innerHTML = `<span style="color:var(--green);">✓ ${data.message}</span>`;
+        loadOperationImportLogs();
+      } else {
+        resultEl.innerHTML = `<span style="color:var(--red);">导入失败: ${escapeHtml(data.error)}</span>`;
+      }
+    })
+    .catch((e) => {
+      resultEl.innerHTML = `<span style="color:var(--red);">请求失败: ${escapeHtml(e.message)}</span>`;
+    });
+}
+
+function onlineImportCustomerProfiles() {
+  const resultEl = document.getElementById("online-import-result");
+  resultEl.innerHTML = `<span style="color:#d97706;">正在从远程数据库导入客户档案...</span>`;
+
+  fetch("/api/operation/online-import-customer-profiles", { method: "POST", credentials: "include" })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.ok) {
+        resultEl.innerHTML = `<span style="color:var(--green);">✓ ${data.message}</span>`;
+        loadOperationImportLogs();
+      } else {
+        resultEl.innerHTML = `<span style="color:var(--red);">导入失败: ${escapeHtml(data.error)}</span>`;
+      }
+    })
+    .catch((e) => {
+      resultEl.innerHTML = `<span style="color:var(--red);">请求失败: ${escapeHtml(e.message)}</span>`;
+    });
+}
+
+function onlineImportCustomerSessions() {
+  const resultEl = document.getElementById("online-import-result");
+  resultEl.innerHTML = `<span style="color:#d97706;">正在从远程数据库导入客户会话...</span>`;
+
+  fetch("/api/operation/online-import-customer-sessions", { method: "POST", credentials: "include" })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data.ok) {
+        resultEl.innerHTML = `<span style="color:var(--green);">✓ ${data.message}</span>`;
+        loadOperationImportLogs();
+      } else {
+        resultEl.innerHTML = `<span style="color:var(--red);">导入失败: ${escapeHtml(data.error)}</span>`;
+      }
+    })
+    .catch((e) => {
+      resultEl.innerHTML = `<span style="color:var(--red);">请求失败: ${escapeHtml(e.message)}</span>`;
+    });
+}
+
 function canAccessAdmin() {
   return isAdmin() || hasDashboardPermission("admin-api");
 }
@@ -4506,8 +4847,21 @@ async function loadConnectedAnchorMetrics() {
 
 function updatePromptEditingStatus() {
   if (!els.promptEditingStatus) return;
+  
+  // 获取角色名字
   const roleLabel = getRoleDefinition(state.currentRoleKey)?.label || "未命名角色";
-  const taskLabel = getTaskDefinition(state.currentTaskKey)?.label || "未命名任务";
+  
+  // 获取提示词名字
+  let taskLabel = "未选择提示词";
+  if (state.currentTaskKey.startsWith('preset:')) {
+    const presetId = state.currentTaskKey.replace('preset:', '');
+    const preset = state.promptPresets.find(p => p.id === presetId);
+    taskLabel = preset?.name || "预设提示词";
+  } else if (state.currentTaskKey) {
+    const taskDef = getTaskDefinition(state.currentTaskKey);
+    taskLabel = taskDef?.label || "自定义提示词";
+  }
+  
   els.promptEditingStatus.textContent = `当前编辑：${roleLabel} / ${taskLabel}`;
 }
 
@@ -4899,104 +5253,66 @@ function parseViewingDurationRows(text) {
 
 function renderRolePresetButtons() {
   const definitions = Object.values(getRoleDefinitions());
-  if (els.rolePresetSelect) {
-    els.rolePresetSelect.innerHTML = definitions.map((item) => `
-      <option value="${escapeHtml(item.key)}" ${item.key === state.currentRoleKey ? "selected" : ""}>${escapeHtml(item.label)}${item.builtin ? "" : " · 自定义"}</option>
-    `).join("");
-  }
-  if (els.rolePresetList) {
-    els.rolePresetList.innerHTML = definitions.map((item) => `
-      <button
-        class="bt-chip bt-chip-sm role-preset-btn${item.key === state.currentRoleKey ? " active" : ""}"
-        onclick="selectRolePresetByKey('${item.key}')"
-      >${escapeHtml(item.label)}</button>
-    `).join("");
-  }
+  const container = document.getElementById("rolePresetButtons");
+  if (!container) return;
+  
+  container.innerHTML = definitions.map((item) => `
+    <button
+      class="btn btn-outline-sm${item.key === state.currentRoleKey ? " active" : ""}"
+      onclick="selectRolePresetByKey('${item.key}')"
+      style="font-size:12px;padding:5px 10px;${item.key === state.currentRoleKey ? 'background:var(--gold);color:#fff;border-color:var(--gold);' : ''}"
+    >${escapeHtml(item.label)}</button>
+  `).join("");
 }
 
-async function renderTaskPresetButtons() {
+function renderTaskPresetButtons() {
   const definitions = Object.values(getTaskDefinitions());
 
-  // 如果没有预设数据，先获取
-  if (state.promptPresets.length === 0) {
-    try {
-      const response = await apiFetch("/api/prompts");
-      const data = await response.json();
-      if (data.ok) {
-        // 显示所有 md 文件，不做 hasContent 过滤
-        state.promptPresets = data.prompts || [];
-      }
-    } catch (e) {
-      console.error("获取预设提示词列表失败:", e);
-    }
-  }
-
   if (els.taskPresetSelect) {
-    // 只显示预设提示词
     let options = '<option value="">选择预设提示词...</option>';
+    // 预设提示词（md文件）
     if (state.promptPresets.length > 0) {
-      options += state.promptPresets.map(p => `
-        <option value="preset:${escapeHtml(p.id)}" ${'preset:' + p.id === state.currentTaskKey ? "selected" : ""}>${escapeHtml(p.name)}</option>
-      `).join("");
-    } else {
-      options += '<option value="" disabled>暂无预设提示词</option>';
+      options += '<optgroup label="预设提示词">';
+      for (const p of state.promptPresets) {
+        const isSelected = state.currentTaskKey === `preset:${p.id}`;
+        options += `<option value="preset:${escapeHtml(p.id)}" ${isSelected ? 'selected' : ''}>${escapeHtml(p.name)}</option>`;
+      }
+      options += '</optgroup>';
     }
-
+    // 自定义任务
+    const customDefinitions = definitions.filter(d => !d.builtin);
+    if (customDefinitions.length > 0) {
+      options += '<optgroup label="自定义">';
+      for (const d of customDefinitions) {
+        const isSelected = state.currentTaskKey === d.key;
+        options += `<option value="${escapeHtml(d.key)}" ${isSelected ? 'selected' : ''}>${escapeHtml(d.label)}</option>`;
+      }
+      options += '</optgroup>';
+    }
+    // 内置任务
+    const builtinDefinitions = definitions.filter(d => d.builtin);
+    if (builtinDefinitions.length > 0) {
+      options += '<optgroup label="内置">';
+      for (const d of builtinDefinitions) {
+        const isSelected = state.currentTaskKey === d.key;
+        options += `<option value="${escapeHtml(d.key)}" ${isSelected ? 'selected' : ''}>${escapeHtml(d.label)}</option>`;
+      }
+      options += '</optgroup>';
+    }
     els.taskPresetSelect.innerHTML = options;
   }
-  if (els.taskPresetList) {
-    els.taskPresetList.innerHTML = definitions.map((item) => `
-      <button
-        class="bt-chip bt-chip-sm task-preset-btn${item.key === state.currentTaskKey ? " active" : ""}"
-        onclick="setTaskByKey('${item.key}')"
-      >${escapeHtml(item.label)}</button>
-    `).join("");
-  }
 }
 
-function setTask(key, button) {
-  setTaskByKey(key);
-}
-
-async function setTaskByKey(key) {
-  // 处理预设提示词选择
+function setTaskByKey(key) {
+  // 处理预设提示词选择（md文件）
   if (key.startsWith('preset:')) {
     const presetId = key.replace('preset:', '');
     state.currentTaskKey = key;
     state.currentPromptPresetId = presetId;
 
     // 加载预设提示词内容
-    try {
-      const response = await apiFetch(`/api/prompts/${presetId}`);
-      const data = await response.json();
-      if (data.ok) {
-        const prompt = data.prompt;
-        // 填充系统提示词和任务提示词（预设的content同时填充到两个位置）
-        if (prompt.content) {
-          if (els.systemPrompt) {
-            els.systemPrompt.value = prompt.content;
-          }
-          if (els.liveSystemPromptMirror) {
-            els.liveSystemPromptMirror.value = prompt.content;
-          }
-          // 预设没有单独的taskPrompt，用content作为任务提示词
-          if (els.taskPrompt) {
-            els.taskPrompt.value = prompt.taskPrompt || prompt.content;
-          }
-        }
-        // 显示预设名称
-        const presetNameEl = document.getElementById('promptPresetName');
-        if (presetNameEl) {
-          presetNameEl.textContent = prompt.name;
-          presetNameEl.style.display = 'inline-flex';
-        }
-        showToast(`已加载预设：${prompt.name}`);
-      }
-    } catch (e) {
-      showToast("加载预设失败: " + e.message);
-    }
-
-    renderTaskPresetButtons();
+    loadPresetContent(presetId);
+    updatePromptEditingStatus();
     return;
   }
 
@@ -5004,23 +5320,31 @@ async function setTaskByKey(key) {
   state.currentTaskKey = key;
   state.currentPromptPresetId = "";
   const taskDefinition = getTaskDefinition(key);
-  els.taskPrompt.value = taskDefinition.prompt || TASK_SOURCE_DOCS.evaluation;
-
-  // 清除预设名称显示
-  const presetNameEl = document.getElementById('promptPresetName');
-  if (presetNameEl) presetNameEl.style.display = 'none';
+  if (els.taskPrompt) {
+    els.taskPrompt.value = taskDefinition?.prompt || TASK_SOURCE_DOCS.evaluation;
+  }
 
   refreshPromptSourcePanels();
   renderTaskPresetButtons();
-  if (key === "evaluation") {
-    const mode = document.querySelector('input[name="liveReportType"][value="anchorEvaluation"]');
-    if (mode) mode.checked = true;
-    syncLiveInputCopy();
-  }
-  if (key === "newbie") {
-    const mode = document.querySelector('input[name="liveReportType"][value="newbieInterview"]');
-    if (mode) mode.checked = true;
-    syncLiveInputCopy();
+  updatePromptEditingStatus();
+}
+
+async function loadPresetContent(presetId) {
+  try {
+    const response = await apiFetch(`/api/prompts/${presetId}`);
+    const data = await response.json();
+    if (data.ok) {
+      const prompt = data.prompt;
+      if (prompt.content && els.taskPrompt) {
+        els.taskPrompt.value = prompt.taskPrompt || prompt.content;
+      }
+      showToast(`已加载预设：${prompt.name}`);
+      refreshPromptSourcePanels();
+      renderTaskPresetButtons();
+      updatePromptEditingStatus();
+    }
+  } catch (e) {
+    showToast("加载预设失败: " + e.message);
   }
 }
 
@@ -5034,6 +5358,7 @@ function selectRolePresetByKey(key) {
   if (els.rolePrompt) els.rolePrompt.value = roleDefinition.prompt || ROLE_PRESETS.expert;
   refreshPromptSourcePanels();
   renderRolePresetButtons();
+  updatePromptEditingStatus();
 }
 
 function getSelectedReportType() {
@@ -5237,30 +5562,52 @@ async function handlePromptFileUpload(input, target = "task") {
   try {
     const item = await readTextUpload(input.files?.[0]);
     const text = item.text.trim();
-    if (target === "role" && els.rolePrompt) {
-      els.rolePrompt.value = text;
-      const detail = els.rolePrompt.closest("details");
-      if (detail) detail.open = true;
-      refreshPromptSourcePanels();
-      updateAdminDashboardSummary();
-      showToast(`已从 ${item.name} 读取角色提示词`);
-    } else if (target === "system" && els.systemPrompt && els.liveSystemPromptMirror) {
-      els.systemPrompt.value = text;
-      els.liveSystemPromptMirror.value = text;
-      const detail = els.liveSystemPromptMirror.closest("details");
-      if (detail) detail.open = true;
-      refreshPromptSourcePanels();
-      updateAdminDashboardSummary();
-      showToast(`已从 ${item.name} 读取系统提示词`);
-    } else if (target === "task" && els.taskPrompt) {
+    
+    if (target === "task" && els.taskPrompt) {
+      // 填充内容
       els.taskPrompt.value = text;
-      const detail = els.taskPrompt.closest("details");
-      if (detail) detail.open = true;
-      updateAdminDashboardSummary();
-      showToast(`已从 ${item.name} 读取任务提示词`);
+      
+      // 弹窗让用户输入名称保存
+      const defaultName = item.name.replace(/\.(md|txt|markdown)$/i, "");
+      const saveName = window.prompt(`保存到预设提示词？输入名称：`, defaultName);
+      
+      if (saveName && saveName.trim()) {
+        const key = `custom_${Date.now()}`;
+        const trimmedName = saveName.trim();
+        
+        state.globalSettings.customTaskDefinitions = {
+          ...(state.globalSettings.customTaskDefinitions || {}),
+          [key]: {
+            key,
+            label: trimmedName,
+            prompt: text,
+            builtin: false
+          }
+        };
+        
+        state.currentTaskKey = key;
+        state.currentPromptPresetId = "";
+        
+        await persistPromptSettings({
+          ...state.globalSettings,
+          customTaskDefinitions: state.globalSettings.customTaskDefinitions
+        });
+        
+        renderTaskPresetButtons();
+        if (els.taskPresetSelect) {
+          els.taskPresetSelect.value = key;
+        }
+        
+        showToast(`已保存为「${trimmedName}」`);
+      } else {
+        // 用户不保存，只填充内容
+        const detail = els.taskPrompt.closest("details");
+        if (detail) detail.open = true;
+        showToast(`已从 ${item.name} 读取内容，未保存到预设`);
+      }
     }
   } catch (error) {
-    showToast(error.message || "提示词文件读取失败");
+    showToast(error.message || "文件读取失败");
   } finally {
     if (input) input.value = "";
   }
@@ -5522,6 +5869,12 @@ function collectAiProvidersFromUi() {
 }
 
 function addAiProviderDraft() {
+  // 确保 state.globalSettings 已初始化
+  if (!state.globalSettings) {
+    state.globalSettings = {};
+  }
+  // 先收集当前 UI 中的修改，避免丢失用户编辑的内容
+  state.globalSettings.aiProviders = collectAiProvidersFromUi();
   const next = getAiProviders().map(normalizeAiProviderDraft);
   next.push(normalizeAiProviderDraft({}, next.length));
   state.globalSettings.aiProviders = next;
@@ -5530,6 +5883,8 @@ function addAiProviderDraft() {
 }
 
 function removeAiProviderDraft(providerId) {
+  // 先收集当前 UI 中的修改，避免丢失用户编辑的内容
+  state.globalSettings.aiProviders = collectAiProvidersFromUi();
   state.globalSettings.aiProviders = getAiProviders()
     .map(normalizeAiProviderDraft)
     .filter((item) => item.id !== providerId);
@@ -5607,24 +5962,51 @@ async function createRolePreset() {
 }
 
 async function createTaskPreset() {
-  const label = window.prompt("输入新任务名称");
-  if (!label || !label.trim()) return;
-  const key = normalizePromptKey("task", label);
+  const name = window.prompt("输入新预设名称");
+  if (!name || !name.trim()) return;
+  
+  const key = `custom_${Date.now()}`;
+  const trimmedName = name.trim();
+  
+  // 清空提示词内容，让用户填写
+  if (els.taskPrompt) {
+    els.taskPrompt.value = "";
+  }
+  
+  // 展开编辑框
+  const detail = els.taskPrompt?.closest("details");
+  if (detail) detail.open = true;
+  
+  // 创建空的预设，用户编辑后保存
   state.globalSettings.customTaskDefinitions = {
     ...(state.globalSettings.customTaskDefinitions || {}),
     [key]: {
-      label: label.trim(),
-      prompt: els.taskPrompt.value.trim() || `请完成${label.trim()}。`
+      key,
+      label: trimmedName,
+      prompt: "",
+      builtin: false
     }
   };
+  
+  state.currentTaskKey = key;
+  state.currentPromptPresetId = "";
+  
+  // 立即保存到服务器
   await persistPromptSettings({
     ...state.globalSettings,
     customTaskDefinitions: state.globalSettings.customTaskDefinitions
   });
-  state.currentTaskKey = key;
+  
+  // 更新下拉框显示新建的名字
   renderTaskPresetButtons();
-  setTaskByKey(key);
-  showToast("已创建新任务");
+  
+  // 设置下拉框选中新建项
+  if (els.taskPresetSelect) {
+    els.taskPresetSelect.value = key;
+  }
+  
+  updatePromptEditingStatus();
+  showToast(`已创建「${trimmedName}」，请编辑提示词后点击保存`);
 }
 
 async function deleteCurrentRolePreset() {
@@ -5992,9 +6374,54 @@ function formatMarkdownInline(text) {
     .replace(/`([^`]+)`/g, "<code>$1</code>");
 }
 
+// 将 CSS 样式限定在 .report-shell-body 范围内，防止影响全局页面
+// 已废弃：现在直接忽略 AI 输出的样式，使用系统深色主题
+
 function markdownToReportHtml(markdown) {
   if (!markdown) return "<p>未获得分析结果</p>";
-  let html = String(markdown).replace(
+  const rawText = String(markdown);
+
+  // 检测是否是完整的 HTML 文档（AI 输出 ```html 代码块）
+  const htmlCodeBlockMatch = rawText.match(/```html\s*\n([\s\S]*?)```/i);
+  if (htmlCodeBlockMatch) {
+    const htmlContent = htmlCodeBlockMatch[1].trim();
+    // 提取 <body> 内容
+    const bodyMatch = htmlContent.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    if (bodyMatch) {
+      return bodyMatch[1];
+    }
+    // 如果没有 body 标签，尝试提取 .container 内容
+    if (htmlContent.includes("<!DOCTYPE") || htmlContent.includes("<html")) {
+      const containerMatch = htmlContent.match(/<div[^>]*class=["']container["'][^>]*>([\s\S]*?)<\/div>/i);
+      if (containerMatch) {
+        return containerMatch[1];
+      }
+      // 去掉外层 html/head/style 结构
+      const headRemoved = htmlContent.replace(/<!DOCTYPE[^>]*>[\s\S]*?<\/head>/i, "").replace(/<html[^>]*>|<\/html>/gi, "").replace(/<body[^>]*>|<\/body>/gi, "").replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
+      return headRemoved.trim();
+    }
+    return htmlContent;
+  }
+
+  // 检测是否直接是 HTML 内容（没有代码块标记）
+  if (rawText.trim().startsWith("<!DOCTYPE") || rawText.trim().startsWith("<html")) {
+    const bodyMatch = rawText.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    if (bodyMatch) {
+      return bodyMatch[1];
+    }
+  }
+
+  // 检测是否是大量 HTML 内容（包含多个 HTML 标签，如表格、卡片等）
+  // 如果内容中 HTML 标签密度较高，直接返回 HTML 内容
+  const htmlTagCount = (rawText.match(/<(div|table|thead|tbody|tr|td|th|h1|h2|h3|h4|p|ul|ol|li|blockquote|span|strong|em|br|hr)[^>]*>/gi) || []).length;
+  const totalLength = rawText.length;
+  // 如果 HTML 标签占比超过 5%（每 20 个字符就有 1 个 HTML 标签），认为是 HTML 内容
+  if (htmlTagCount > 5 && htmlTagCount > totalLength / 20) {
+    // 去掉可能的 <style> 标签，保留其他 HTML 内容
+    return rawText.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
+  }
+
+  let html = rawText.replace(
     /(^\|.+\|$\n?(?:\s*\n)?)+/gm,
     (tableBlock) => {
       const lines = tableBlock.split("\n").filter((line) => line.trim().startsWith("|"));
@@ -6319,39 +6746,13 @@ function handleReportStyleChange() {
   const styleKey = els.reportStyleSelect?.value || "evaluation";
   state.currentReportStyle = styleKey;
   const preset = REPORT_STYLE_PRESETS[styleKey] || REPORT_STYLE_PRESETS.evaluation;
+
   // 更新风格描述
   if (els.reportStyleDesc) {
-    els.reportStyleDesc.textContent = preset.description;
+    els.reportStyleDesc.textContent = preset.description || "";
   }
-  // 同步更新任务类型
-  if (preset.taskKey && preset.taskKey !== state.currentTaskKey) {
-    state.currentTaskKey = preset.taskKey;
-    // 更新任务提示词预设选择
-    const taskSelect = document.getElementById("taskPresetSelect");
-    if (taskSelect) {
-      const matchingOption = taskSelect.querySelector(`option[value="${preset.taskKey}"]`);
-      if (matchingOption) {
-        taskSelect.value = preset.taskKey;
-      }
-    }
-  }
-  // 如果有额外提示词，更新任务提示词内容
-  if (preset.extraPrompt && els.taskPrompt) {
-    const basePrompt = TASK_SOURCE_DOCS[preset.taskKey] || TASK_SOURCE_DOCS.evaluation;
-    els.taskPrompt.value = `${basePrompt}\n\n${preset.extraPrompt}`;
-  }
-  // 更新分析模式（如果风格切换影响分析模式）
-  const reportTypeRadio = document.querySelector(`input[name="liveReportType"][value="${preset.taskKey === "newbie" ? "newbieInterview" : "anchorEvaluation"}"]`);
-  if (reportTypeRadio) {
-    reportTypeRadio.checked = true;
-    // 触发UI更新
-    const options = document.querySelectorAll(".report-mode-option");
-    options.forEach((opt) => {
-      const radio = opt.querySelector("input[type='radio']");
-      opt.classList.toggle("active", radio && radio.checked);
-    });
-  }
-  showToast(`已切换为「${preset.icon} ${preset.label}」风格`);
+
+  showToast(`已切换风格：${preset.label}`);
 }
 
 function sanitizeProgressInsightMarkdown(markdown) {
@@ -7064,22 +7465,24 @@ async function savePromptPresetSelection(presetId) {
 async function saveSettings() {
   try {
     if (!isAdmin() && !hasDashboardPermission("admin-api")) throw new Error("需要 API 管理权限");
-    els.saveSettingsBtn.disabled = true;
+    if (els.saveSettingsBtn) els.saveSettingsBtn.disabled = true;
     if (els.adminStatus) els.adminStatus.textContent = "正在保存设置…";
-    const adminRolePrompt = els.anchorRolePrompt?.value?.trim() || els.rolePrompt.value.trim();
-    const adminTaskPrompt = els.userPrompt?.value?.trim() || els.taskPrompt.value.trim();
-    if (isAdmin()) {
+    const adminRolePrompt = els.anchorRolePrompt?.value?.trim() || els.rolePrompt?.value?.trim() || "";
+    const adminTaskPrompt = els.userPrompt?.value?.trim() || els.taskPrompt?.value?.trim() || "";
+    if (isAdmin() && els.rolePrompt) {
       els.rolePrompt.value = adminRolePrompt;
+    }
+    if (isAdmin() && els.taskPrompt) {
       els.taskPrompt.value = adminTaskPrompt;
     }
     const settingsPayload = isAdmin()
       ? {
           aiProviders: collectAiProvidersFromUi(),
           anchorRolePrompt: adminRolePrompt,
-          systemPrompt: els.systemPrompt.value,
+          systemPrompt: els.systemPrompt?.value || "",
           userPrompt: adminTaskPrompt,
-          externalHotTopics: els.externalHotTopics.value,
-          reportFormat: els.reportFormat.value
+          externalHotTopics: els.externalHotTopics?.value || "",
+          reportFormat: els.reportFormat?.value || ""
         }
       : {
           aiProviders: collectAiProvidersFromUi()
@@ -7102,7 +7505,7 @@ async function saveSettings() {
     if (els.adminStatus) els.adminStatus.textContent = error.message;
     showToast(error.message);
   } finally {
-    els.saveSettingsBtn.disabled = false;
+    if (els.saveSettingsBtn) els.saveSettingsBtn.disabled = false;
   }
 }
 
@@ -7355,60 +7758,36 @@ async function handleFile(key, inp) {
 }
 
 function buildLivePrompt() {
-  const rolePrompt = els.rolePrompt.value.trim();
-  const systemPrompt = els.systemPrompt.value.trim();
-  const taskPrompt = els.taskPrompt.value.trim() || getTaskDefinition(state.currentTaskKey).prompt || "";
-  const roleTaskGuidance = ROLE_TASK_GUIDANCE[state.currentRoleKey] || "";
+  // 单一提示词模式：用户在 taskPrompt 中编辑完整提示词
+  const mainPrompt = els.taskPrompt.value.trim();
   const transcript = mergeTextInputs(state.fileData.ts, els.tsText.value);
   const hotTopics = state.hotArr.length ? state.hotArr.join("、") : "";
-  const reportFormat = els.reportFormat.value.trim();
   const reportType = getSelectedReportType();
   const resume = reportType === "newbieInterview" ? (els.rsText.value.trim() || state.fileData.rs || "") : "";
   const reportMeta = REPORT_TYPE_META[reportType] || REPORT_TYPE_META.anchorEvaluation;
-  const taskModeHint = PROMPT_PRESETS[state.currentTaskKey] || "";
   const transcriptLabel = reportType === "newbieInterview" ? "【面试逐字稿】" : "【逐字稿】";
   const resumeLabel = reportType === "newbieInterview" ? "【候选人简历】" : "【主播简历】";
   const transcriptNotes = els.transcriptNotes?.value.trim() || "";
   const evaluationNotes = els.evaluationNotes?.value.trim() || "";
   const metricsRawText = els.metricsRawText.value.trim();
-  const evaluationDimensionText = ANCHOR_EVALUATION_DIMENSIONS
-    .map((item, index) => `${index + 1}. ${item.label}：${item.focus}`)
-    .join("\n");
-  const anchorEvaluationInstructions = reportType === "anchorEvaluation"
-    ? [
-        "你现在要输出的是主播评价体系报告，不是普通直播分析报告。",
-        `请先把主播主流派标签钉死为四选一：${ANCHOR_PRIMARY_SCHOOL_OPTIONS}。后续所有诊断和建议都要跟这个流派的人设、内容逻辑和变现路径对齐。`,
-        `六维评分定义：\n${evaluationDimensionText}`,
-        `画像与标签输出要求：${ANCHOR_TAG_OUTPUT_GUIDE}`,
-        "输出结构固定为：1. 主播画像归类；2. 六维评分总表；3. 关键证据摘录；4. 合规风险清单；5. 结构与节奏分析；6. 互动与转化归因；7. 优先优化建议；8. 下次直播训练动作。",
-        "六维评分总表表头固定为「维度｜分数（满分10）｜评分依据｜关键问题｜优化建议」。",
-        "必须引用逐字稿原话作为证据；如果给了直播数据，必须结合数据解释互动和转化表现；不要空泛夸奖。"
-      ].join("\n\n")
-    : "";
-  // 获取当前报告风格的额外提示词
-  const stylePreset = REPORT_STYLE_PRESETS[state.currentReportStyle] || REPORT_STYLE_PRESETS.evaluation;
-  const styleExtraPrompt = stylePreset.extraPrompt || "";
+
+  // 检测提示词是否有明确的输出格式要求
+  // 如果有格式要求（如 HTML、表格样式、卡片样式等），注入系统 UI 样式参考
+  // 如果没有格式要求，让 AI 输出 Markdown，系统按照报告风格渲染
+  const hasFormatRequirement = /输出格式|HTML|html|输出样式|卡片样式|表格样式|评分卡片|stat-card|quote|timeline|insight-box/i.test(mainPrompt);
+  const styleReference = hasFormatRequirement ? SYSTEM_UI_STYLE_REFERENCE : "";
 
   return [
-    "请严格根据以下唯一提示生成结果，只输出一份最终完整报告，不要重复输出，不要生成第二版，不要在正文后再次重写整份报告。",
-    `【报告模式】\n${reportMeta.title}\n${reportMeta.description}`,
-    rolePrompt ? `【角色设定】\n${rolePrompt}` : "",
-    systemPrompt ? `【系统要求】\n${systemPrompt}` : "",
-    taskPrompt ? `【核心任务】\n${taskPrompt}` : "",
-    roleTaskGuidance ? `【角色专项要求】\n${roleTaskGuidance}` : "",
-    // 直播拆解分析只需要自己的提示词，不叠加其他预设
-    taskModeHint && state.currentReportStyle !== "liveAnalysis" ? `【任务模式补充】\n${taskModeHint}` : "",
-    styleExtraPrompt ? `【报告风格要求】\n${styleExtraPrompt}` : "",
-    // 只有非直播拆解风格才添加主播评价体系要求
-    anchorEvaluationInstructions && state.currentReportStyle !== "liveAnalysis" ? `【主播评价体系要求】\n${anchorEvaluationInstructions}` : "",
-    reportFormat ? `【输出说明】\n${reportFormat}` : "",
+    "请严格根据以下唯一提示生成结果，只输出一份最终完整报告，不要重复输出。",
+    styleReference,
+    mainPrompt ? `【分析提示词】\n${mainPrompt}` : "",
     hotTopics ? `【外部热点】\n${hotTopics}` : "",
     reportType === "anchorEvaluation" && evaluationNotes ? `【补充背景说明】\n${evaluationNotes}` : "",
     reportType === "anchorEvaluation" && metricsRawText ? `【直播数据原始摘要】\n${metricsRawText}` : "",
     resume ? `${resumeLabel}\n${resume}` : "",
     `${transcriptLabel}\n${transcript}`,
     transcriptNotes ? `【补充备注】\n${transcriptNotes}` : "",
-    "再次强调：最终只允许输出一份完整报告；如果已经开始进入报告正文，不要重新输出标题、元信息或第二份相同结构的报告。"
+    "再次强调：最终只允许输出一份完整报告。"
   ].filter(Boolean).join("\n\n");
 }
 
@@ -9915,7 +10294,10 @@ function renderAnchorLibraryDetail(profile) {
             <div style="font-size:18px;font-weight:600;margin-bottom:6px;">${escapeHtml(profile.anchorName)}</div>
             <div class="muted" style="font-size:12px;">${escapeHtml(effectiveProfile.coreSummary || "暂无一句话画像")} · ${escapeHtml(effectiveProfile.contentSchool || "未识别流派")} · ${escapeHtml(normalizeComplianceLevelLabel(effectiveProfile.complianceLevel) || "未识别合规评级")}</div>
           </div>
-          <button class="btn btn-outline" style="font-size:12px;padding:8px 12px;" onclick="toggleAnchorCompare('${encodeURIComponent(profile.id || "")}')">${isCompared ? "移出对比" : "加入对比"}</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline" style="font-size:12px;padding:8px 12px;" onclick="toggleAnchorCompare('${encodeURIComponent(profile.id || "")}')">${isCompared ? "移出对比" : "加入对比"}</button>
+            <button class="btn btn-danger-sm" style="font-size:12px;padding:8px 12px;" onclick="deleteAnchorProfile('${encodeURIComponent(profile.id || "")}', '${encodeURIComponent(profile.anchorName || "")}')">删除主播</button>
+          </div>
         </div>
       </div>
       <div class="panel" style="margin:0;">
@@ -10902,6 +11284,38 @@ function openAnchorProfile(profileId) {
   const profile = state.anchorProfiles.find((item) => item.id === safeId) || null;
   renderAnchorLibraryList();
   renderAnchorLibraryDetail(profile);
+}
+
+async function deleteAnchorProfile(anchorId, anchorName) {
+  const id = decodeURIComponent(anchorId || "");
+  const name = decodeURIComponent(anchorName || "");
+  if (!id && !name) {
+    showToast("缺少主播信息");
+    return;
+  }
+  if (!confirm(`确定删除主播「${name}」及其所有关联数据？\n\n将同时删除：\n- 主播资料库记录\n- 该主播的所有逐字稿\n- 该主播的所有分析报告（蒸馏库）\n- 该主播来源的合规库条目\n- 该主播来源的案例库条目\n\n此操作不可恢复！`)) {
+    return;
+  }
+  try {
+    const response = await apiFetch("/api/anchor-profiles", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, anchorName: name })
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "删除失败");
+    // 从本地状态移除
+    state.anchorProfiles = state.anchorProfiles.filter(p => p.id !== id && p.anchorName !== name);
+    // 清空当前选中
+    state.currentAnchorProfileId = "";
+    state.currentAnchorSnapshotKey = "";
+    renderAnchorLibraryList();
+    renderAnchorLibraryDetail(null);
+    refreshDerivedViews();
+    showToast(`已删除主播「${name}」及其所有关联数据`);
+  } catch (error) {
+    showToast("删除失败: " + error.message);
+  }
 }
 
 async function loadAnchorProfiles() {
@@ -12075,13 +12489,22 @@ function addAiChatButton() {
 }
 
 window.addEventListener("load", async () => {
-  initTheme(); // 初始化主题
-  addAiChatButton(); // 添加AI助手按钮
+  initTheme();
+  addAiChatButton();
   document.querySelectorAll(".toggle").forEach((t) => t.addEventListener("click", () => {
     t.classList.toggle("on");
     showToast(t.classList.contains("on") ? "已开启" : "已关闭");
   }));
   await bootstrap();
+  // 备用：确保下拉框和按钮被填充
+  setTimeout(() => {
+    renderRolePresetButtons();
+    if (state.promptPresets.length === 0) {
+      fetchPromptPresets();
+    } else {
+      renderTaskPresetButtons();
+    }
+  }, 500);
 });
 
 window.addEventListener("resize", () => {

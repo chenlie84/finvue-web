@@ -26,6 +26,17 @@ async def post_anchor_profiles(request: Request, _: dict = Depends(security.requ
     return store.save_anchor_profiles(await request.json())
 
 
+@router.delete("/api/anchor-profiles")
+async def delete_anchor_profile(request: Request, _: dict = Depends(security.require_permission("anchor-library"))) -> dict:
+    """删除主播及其所有关联数据：逐字稿、分析报告、合规库、案例库."""
+    body = await request.json()
+    anchor_id = store.text(body.get("id") or body.get("anchorId"))
+    anchor_name = store.text(body.get("anchorName") or body.get("name"))
+    if not anchor_id and not anchor_name:
+        raise HTTPException(status_code=400, detail="缺少主播 ID 或名称")
+    return store.delete_anchor_profile(anchor_id or "", anchor_name or "")
+
+
 @router.get("/api/anchor-roi-settings")
 def get_anchor_roi(_: dict = Depends(security.require_permission("portrait"))) -> dict:
     return store.get_anchor_roi_settings()

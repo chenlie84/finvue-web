@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>报告风格演示 · FinVue</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* 深色主题 */
+  :root {
+    --bg0:#0A0B0E; --bg1:#11131A; --bg2:#181B24; --bg3:#1E2230;
+    --border:#252836; --border2:#2E3347;
+    --gold:#C8922A; --gold2:#E5B84A; --gold-dim:rgba(200,146,42,0.12);
+    --text0:#EAE6DD; --text1:#9B97A0; --text2:#5A566A;
+    --green:#2DBD85; --red:#E05252; --blue:#4A90D9; --purple:#9B7FE8;
+    --r:8px; --r2:12px;
+    --font-display:'Playfair Display',Georgia,serif;
+    --font-body:'Outfit',sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+  }
+
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;background:var(--bg0);color:var(--text0);font-family:var(--font-body);font-size:14px;line-height:1.6;}
+  
+  .container{max-width:1000px;margin:0 auto;padding:40px 20px;}
+  .title{font-family:var(--font-display);font-size:32px;text-align:center;margin-bottom:40px;color:var(--gold);}
+  .subtitle{text-align:center;color:var(--text1);margin-bottom:60px;font-size:15px;}
+  
+  .style-section{margin-bottom:60px;}
+  .style-label{font-size:18px;font-weight:600;margin-bottom:20px;display:flex;align-items:center;gap:10px;}
+  .style-desc{color:var(--text1);font-size:13px;margin-bottom:20px;}
+
+  /* 报告通用样式 */
+  .report-shell{max-width:920px;margin:0 auto;}
+  .report-shell-header{text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid rgba(200,146,42,.18);position:relative;}
+  .report-shell-header::after{content:"";position:absolute;left:50%;bottom:-1px;transform:translateX(-50%);width:96px;height:2px;background:linear-gradient(90deg, transparent, var(--gold), transparent);}
+  .report-shell-header h1{font-family:var(--font-display);font-size:26px;line-height:1.25;color:var(--text0);margin-bottom:12px;}
+  .report-shell-meta{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;color:var(--text1);font-size:12px;}
+  .report-shell-meta span{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid rgba(200,146,42,.12);background:rgba(200,146,42,.06);border-radius:999px;}
+  .report-shell-body{background:rgba(24,27,36,.92);border:1px solid var(--border);border-radius:14px;padding:26px 24px;color:var(--text0);}
+  .report-shell-body h2{font-size:20px;font-weight:600;margin:28px 0 12px;padding-left:12px;border-left:3px solid var(--gold);padding-bottom:6px;}
+  .report-shell-body h3{font-size:17px;font-weight:600;margin:22px 0 10px;}
+  .report-shell-body p{margin:10px 0;font-size:14px;line-height:1.8;}
+  .report-shell-body ul{padding-left:24px;margin:12px 0;}
+  .report-shell-body li{margin:6px 0;font-size:14px;}
+  .report-shell-body table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px;overflow:hidden;border-radius:10px;border:1px solid rgba(200,146,42,.12);}
+  .report-shell-body thead th{background:linear-gradient(135deg, rgba(200,146,42,.96), rgba(164,111,16,.96));color:#11131A;font-weight:700;padding:11px 14px;text-align:left;font-size:12px;}
+  .report-shell-body tbody td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:top;}
+  .report-shell-body tbody tr:nth-child(even){background:rgba(255,255,255,.02);}
+  .report-shell-body tbody tr:hover{background:rgba(200,146,42,.05);}
+  .report-shell-footer{text-align:center;margin-top:22px;padding-top:16px;border-top:1px solid rgba(200,146,42,.1);font-size:12px;color:var(--text2);}
+
+  /* ══════════════ 青蓝色风格 - 综合分析报告 ══════════════ */
+  .report-shell.style-teal .report-shell-header{border-bottom-color:#14b8a6;}
+  .report-shell.style-teal .report-shell-header::after{background:linear-gradient(90deg, transparent, #14b8a6, transparent);}
+  .report-shell.style-teal .report-shell-header h1{border-left:5px solid #14b8a6;padding-left:20px;text-align:left;}
+  .report-shell.style-teal .report-shell-body{border:1px solid rgba(20,184,166,.15);}
+  .report-shell.style-teal .report-shell-body h2{color:#5eead4;border-left-color:#14b8a6;}
+  .report-shell.style-teal .report-shell-body h3{color:#99f6e4;}
+  .report-shell.style-teal .report-shell-body p{color:#e2e8f0;}
+  .report-shell.style-teal .report-shell-body li::marker{color:#14b8a6;}
+  .report-shell.style-teal .report-shell-body strong{color:#5eead4;}
+  .report-shell.style-teal .report-shell-body table{border-color:rgba(20,184,166,.15);}
+  .report-shell.style-teal .report-shell-body thead th{background:linear-gradient(135deg, rgba(20,184,166,.9), rgba(13,148,136,.9));color:#fff;}
+  .report-shell.style-teal .report-shell-body tbody tr:nth-child(even){background:rgba(20,184,166,.04);}
+  .report-shell.style-teal .report-shell-body tbody tr:hover{background:rgba(20,184,166,.08);}
+  .report-shell.style-teal .insight-box{background:rgba(20,184,166,.08);border-radius:16px;padding:20px 24px;margin:24px 0;border-left:4px solid #14b8a6;}
+  .report-shell.style-teal .insight-box strong{color:#99f6e4;}
+  .report-shell.style-teal .data-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0;}
+  .report-shell.style-teal .data-card{background:rgba(20,184,166,.06);border-radius:12px;padding:16px;border:1px solid rgba(20,184,166,.15);text-align:center;}
+  .report-shell.style-teal .data-card .num{font-size:24px;font-weight:700;color:#5eead4;margin-top:4px;}
+  .report-shell.style-teal .data-card .label{color:#94a3b8;font-size:13px;}
+
+  /* ══════════════ 暖橙色风格 - 新人面试分析 ══════════════ */
+  .report-shell.style-orange .report-shell-header{border-bottom-color:#f97316;}
+  .report-shell.style-orange .report-shell-header::after{background:linear-gradient(90deg, transparent, #f97316, transparent);}
+  .report-shell.style-orange .report-shell-header h1{border-left:5px solid #f97316;padding-left:20px;text-align:left;}
+  .report-shell.style-orange .report-shell-body{border:1px solid rgba(249,115,22,.15);}
+  .report-shell.style-orange .report-shell-body h2{color:#fdba74;border-left-color:#f97316;}
+  .report-shell.style-orange .report-shell-body h3{color:#fed7aa;}
+  .report-shell.style-orange .report-shell-body p{color:#e2e8f0;}
+  .report-shell.style-orange .report-shell-body li::marker{color:#f97316;}
+  .report-shell.style-orange .report-shell-body strong{color:#fdba74;}
+  .report-shell.style-orange .report-shell-body table{border-color:rgba(249,115,22,.15);}
+  .report-shell.style-orange .report-shell-body thead th{background:linear-gradient(135deg, rgba(249,115,22,.9), rgba(234,88,12,.9));color:#fff;}
+  .report-shell.style-orange .report-shell-body tbody tr:nth-child(even){background:rgba(249,115,22,.04);}
+  .report-shell.style-orange .report-shell-body tbody tr:hover{background:rgba(249,115,22,.08);}
+  .report-shell.style-orange .insight-box{background:rgba(249,115,22,.08);border-radius:16px;padding:20px 24px;margin:24px 0;border-left:4px solid #f97316;}
+  .report-shell.style-orange .insight-box.success{background:rgba(16,185,129,.08);border-left-color:#10b981;}
+  .report-shell.style-orange .skill-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0;}
+  .report-shell.style-orange .skill-card{background:rgba(249,115,22,.06);border-radius:12px;padding:16px;border:1px solid rgba(249,115,22,.15);text-align:center;}
+  .report-shell.style-orange .skill-card .score{font-size:28px;font-weight:700;margin-top:4px;}
+  .report-shell.style-orange .skill-card .score.high{color:#10b981;}
+  .report-shell.style-orange .skill-card .score.mid{color:#f97316;}
+  .report-shell.style-orange .skill-card .score.low{color:#dc2626;}
+  .report-shell.style-orange .skill-card .label{color:#94a3b8;font-size:13px;}
+  .report-shell.style-orange .assessment-box{background:rgba(249,115,22,.06);border-radius:12px;padding:16px;margin:16px 0;border:1px solid rgba(249,115,22,.15);text-align:center;}
+  .report-shell.style-orange .assessment-box.pass{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.2);}
+  .report-shell.style-orange .assessment-box .result{font-size:24px;font-weight:700;color:#10b981;}
+
+  /* ══════════════ 合规红色风格 - 合规专项检测 ══════════════ */
+  .report-shell.style-compliance .report-shell-header{border-bottom-color:#dc2626;}
+  .report-shell.style-compliance .report-shell-header::after{background:linear-gradient(90deg, transparent, #dc2626, transparent);}
+  .report-shell.style-compliance .report-shell-header h1{border-left:5px solid #dc2626;padding-left:20px;text-align:left;}
+  .report-shell.style-compliance .report-shell-body{border:1px solid rgba(220,38,38,.15);}
+  .report-shell.style-compliance .report-shell-body h2{color:#fca5a5;border-left-color:#dc2626;}
+  .report-shell.style-compliance .report-shell-body h3{color:#fecaca;}
+  .report-shell.style-compliance .report-shell-body p{color:#e2e8f0;}
+  .report-shell.style-compliance .report-shell-body li::marker{color:#dc2626;}
+  .report-shell.style-compliance .report-shell-body strong{color:#fca5a5;}
+  .report-shell.style-compliance .report-shell-body table{border-color:rgba(220,38,38,.15);}
+  .report-shell.style-compliance .report-shell-body thead th{background:linear-gradient(135deg, rgba(220,38,38,.9), rgba(185,28,28,.9));color:#fff;}
+  .report-shell.style-compliance .report-shell-body tbody tr:nth-child(even){background:rgba(220,38,38,.04);}
+  .report-shell.style-compliance .report-shell-body tbody tr:hover{background:rgba(220,38,38,.08);}
+  .report-shell.style-compliance .risk-summary{background:rgba(220,38,38,.06);border-radius:14px;padding:20px;border:1px solid rgba(220,38,38,.15);margin:20px 0;display:flex;justify-content:space-around;}
+  .report-shell.style-compliance .risk-summary .count{font-size:32px;font-weight:700;}
+  .report-shell.style-compliance .risk-summary .count.high{color:#dc2626;}
+  .report-shell.style-compliance .risk-summary .count.medium{color:#f97316;}
+  .report-shell.style-compliance .risk-summary .count.low{color:#10b981;}
+  .report-shell.style-compliance .risk-item{display:flex;align-items:flex-start;gap:12px;padding:14px;background:rgba(220,38,38,.04);border-radius:12px;margin:12px 0;border:1px solid rgba(220,38,38,.1);}
+  .report-shell.style-compliance .risk-item.high{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.2);}
+  .report-shell.style-compliance .risk-item.medium{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.2);}
+  .report-shell.style-compliance .risk-item.low{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.2);}
+  .report-shell.style-compliance .risk-level{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-weight:600;font-size:13px;}
+  .report-shell.style-compliance .risk-high{background:rgba(220,38,38,.15);color:#fca5a5;border:1px solid rgba(220,38,38,.3);}
+  .report-shell.style-compliance .risk-medium{background:rgba(245,158,11,.15);color:#fdba74;border:1px solid rgba(245,158,11,.3);}
+  .report-shell.style-compliance .risk-low{background:rgba(16,185,129,.15);color:#6ee7b7;border:1px solid rgba(16,185,129,.3);}
+  .report-shell.style-compliance .risk-content{flex:1;}
+  .report-shell.style-compliance .risk-original{font-size:14px;color:#e2e8f0;margin-bottom:8px;padding:8px 12px;background:rgba(0,0,0,.2);border-radius:8px;}
+  .report-shell.style-compliance .risk-analysis{font-size:13px;color:#94a3b8;line-height:1.6;}
+
+  /* 紫色风格 - 直播拆解（对比） */
+  .report-shell.style-liveAnalysis .report-shell-header{border-bottom-color:#8b5cf6;}
+  .report-shell.style-liveAnalysis .report-shell-header::after{background:linear-gradient(90deg, transparent, #8b5cf6, transparent);}
+  .report-shell.style-liveAnalysis .report-shell-header h1{border-left:5px solid #8b5cf6;padding-left:20px;text-align:left;}
+  .report-shell.style-liveAnalysis .report-shell-body{border:1px solid rgba(139,92,246,.15);}
+  .report-shell.style-liveAnalysis .report-shell-body h2{color:#a78bfa;border-left-color:#8b5cf6;}
+  .report-shell.style-liveAnalysis .report-shell-body h3{color:#c4b5fd;}
+  .report-shell.style-liveAnalysis .report-shell-body li::marker{color:#8b5cf6;}
+  .report-shell.style-liveAnalysis .report-shell-body strong{color:#a78bfa;}
+  .report-shell.style-liveAnalysis .report-shell-body table{border-color:rgba(139,92,246,.15);}
+  .report-shell.style-liveAnalysis .report-shell-body thead th{background:linear-gradient(135deg, rgba(139,92,246,.9), rgba(109,40,217,.9));color:#fff;}
+  .report-shell.style-liveAnalysis .report-shell-body tbody tr:nth-child(even){background:rgba(139,92,246,.04);}
+  .report-shell.style-liveAnalysis .report-shell-body tbody tr:hover{background:rgba(139,92,246,.08);}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1 class="title">直播分析报告风格演示</h1>
+  <p class="subtitle">以下展示直播分析模块的4种 UI 展示风格（已排除直播拆解紫色主题作为对照组）</p>
+
+  <!-- 风格1：青蓝色 - 综合拆解报告 -->
+  <section class="style-section">
+    <h2 class="style-label"><span style="width:24px;height:24px;background:#14b8a6;border-radius:6px;"></span> 青蓝色风格 · 综合拆解报告</h2>
+    <p class="style-desc">适用于六层递进拆解分析，清新专业、数据驱动感</p>
+    
+    <div class="report-shell style-teal">
+      <div class="report-shell-header">
+        <h1>主播深度分析报告</h1>
+        <div class="report-shell-meta">
+          <span>📊 综合拆解</span>
+          <span>主播：财经葛先生</span>
+          <span>2024-05-22</span>
+        </div>
+      </div>
+      <div class="report-shell-body">
+        <h2>一、骨架层 · 结构拆解</h2>
+        <p>本场直播采用<strong>树干式结构</strong>，以"券商板块机会"为核心锚点，通过三个分支话题展开：</p>
+        
+        <div class="data-grid">
+          <div class="data-card"><div class="label">开场阶段</div><div class="num">12%</div></div>
+          <div class="data-card"><div class="label">干货输出</div><div class="num">58%</div></div>
+          <div class="data-card"><div class="label">互动承接</div><div class="num">20%</div></div>
+          <div class="data-card"><div class="label">结尾转化</div><div class="num">10%</div></div>
+        </div>
+        
+        <h2>二、血肉层 · 内容拆解</h2>
+        <table>
+          <thead><tr><th>时间段</th><th>内容标签</th><th>核心内容</th><th>效果判断</th></tr></thead>
+          <tbody>
+            <tr><td>00:00-02:30</td><td>互动</td><td>开场调查：持仓仓位调查</td><td>有效激活用户参与</td></tr>
+            <tr><td>02:30-15:00</td><td>干货</td><td>券商板块逻辑分析</td><td>输出密度高，节奏稳健</td></tr>
+          </tbody>
+        </table>
+        
+        <div class="insight-box">
+          <strong>结构亮点：</strong> 本场直播的信息流向呈现"发散-收束"节奏，开场调查后直接进入干货输出，避免了常见的信息发散问题。
+        </div>
+        
+        <h2>三、价值层 · 策略拆解</h2>
+        <p>通过板块扫描模板发现，主播对券商板块使用了<strong>定性→定因→定策</strong>三段式分析模板：</p>
+        <ul>
+          <li>定性：券商板块当前处于"底部区域"</li>
+          <li>定因：政策催化 + 业绩拐点双重驱动</li>
+          <li>定策：建议关注龙头券商 + ETF配置</li>
+        </ul>
+      </div>
+      <div class="report-shell-footer">FinVue 直播分析平台 · 青蓝色风格</div>
+    </div>
+  </section>
+
+  <!-- 风格2：暖橙色 - 新人面试分析 -->
+  <section class="style-section">
+    <h2 class="style-label"><span style="width:24px;height:24px;background:#f97316;border-radius:6px;"></span> 暖橙色风格 · 新人面试分析</h2>
+    <p class="style-desc">适用于新人面试评估，温暖活力、培训导向</p>
+    
+    <div class="report-shell style-orange">
+      <div class="report-shell-header">
+        <h1>新人面试分析报告</h1>
+        <div class="report-shell-meta">
+          <span>🧑‍💼 面试分析</span>
+          <span>候选人：张明</span>
+          <span>岗位：投顾助理</span>
+        </div>
+      </div>
+      <div class="report-shell-body">
+        <h2>一、候选人基本信息</h2>
+        <p><strong>张明</strong>，2年券商客服经验，持有基金从业资格证，应聘投顾助理岗位。</p>
+        
+        <h2>二、核心能力评估</h2>
+        <div class="skill-grid">
+          <div class="skill-card">
+            <div class="label">专业知识储备</div>
+            <div class="score mid">72</div>
+          </div>
+          <div class="skill-card">
+            <div class="label">直播表达能力</div>
+            <div class="score low">58</div>
+          </div>
+          <div class="skill-card">
+            <div class="label">互动承接能力</div>
+            <div class="score high">85</div>
+          </div>
+        </div>
+        
+        <h2>三、胜任力综合判断</h2>
+        <div class="assessment-box pass">
+          <div class="result">通过</div>
+          <p style="margin-top:10px;">建议录用，需重点培训直播表达能力</p>
+        </div>
+        
+        <div class="insight-box success">
+          <strong>核心优势：</strong><br>
+          1. 客服经验丰富，用户理解能力强<br>
+          2. 互动承接能力突出，能有效处理用户问题<br>
+          3. 学习态度积极，愿意接受新挑战
+        </div>
+        
+        <h2>四、7天入职训练计划</h2>
+        <table>
+          <thead><tr><th>天数</th><th>训练主题</th><th>训练任务</th><th>验收标准</th></tr></thead>
+          <tbody>
+            <tr><td>Day 1-2</td><td>平台熟悉</td><td>学习直播间操作、话术模板</td><td>能独立开播30分钟</td></tr>
+            <tr><td>Day 3-4</td><td>内容模仿</td><td>模仿导师直播片段3段</td><td>达到导师风格相似度70%</td></tr>
+            <tr><td>Day 5-7</td><td>实战演练</td><td>独立开播2场（每场30分钟）</td><td>互动次数≥10，无违规</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="report-shell-footer">FinVue 直播分析平台 · 暖橙色风格</div>
+    </div>
+  </section>
+
+  <!-- 风格3：合规红色 -->
+  <section class="style-section">
+    <h2 class="style-label"><span style="width:24px;height:24px;background:#dc2626;border-radius:6px;"></span> 合规红色风格 · 合规专项检测</h2>
+    <p class="style-desc">适用于合规审查，警示感、合规严肃</p>
+    
+    <div class="report-shell style-compliance">
+      <div class="report-shell-header">
+        <h1>合规专项检测报告</h1>
+        <div class="report-shell-meta">
+          <span>⚠️ 合规审查</span>
+          <span>主播：财经葛先生</span>
+          <span>2024-05-22</span>
+        </div>
+      </div>
+      <div class="report-shell-body">
+        <h2>风险汇总</h2>
+        <div class="risk-summary">
+          <div style="text-align:center;">
+            <div style="color:#64748b;font-size:13px;margin-bottom:6px;">高风险</div>
+            <div class="count high">2</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="color:#64748b;font-size:13px;margin-bottom:6px;">中风险</div>
+            <div class="count medium">5</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="color:#64748b;font-size:13px;margin-bottom:6px;">低风险</div>
+            <div class="count low">12</div>
+          </div>
+        </div>
+        
+        <h2>风险详情</h2>
+        
+        <div class="risk-item high">
+          <div class="risk-level risk-high">高风险</div>
+          <div class="risk-content">
+            <div class="risk-original">"XX券商明天会涨，现在赶紧买入"</div>
+            <div class="risk-analysis">
+              <strong>个股推荐风险：</strong> 明确点名个股并给出买入时机建议，属于严重违规。建议改为板块分析，不点名具体个股。
+            </div>
+          </div>
+        </div>
+        
+        <div class="risk-item medium">
+          <div class="risk-level risk-medium">中风险</div>
+          <div class="risk-content">
+            <div class="risk-original">"这个位置大概率是底部，不会跌太多"</div>
+            <div class="risk-analysis">
+              <strong>方向推荐风险：</strong> 对市场方向做出判断，属于灰色地带。建议加限定语："从历史数据看，这个区域接近底部区间"。
+            </div>
+          </div>
+        </div>
+        
+        <div class="risk-item low">
+          <div class="risk-level risk-low">低风险</div>
+          <div class="risk-content">
+            <div class="risk-original">"我们团队的投顾服务可以帮助您"</div>
+            <div class="risk-analysis">
+              <strong>服务推广风险：</strong> 未明确承诺收益，属于低风险。建议增加风险提示："投资有风险，服务仅供参考"。
+            </div>
+          </div>
+        </div>
+        
+        <h2>合规改进建议</h2>
+        <table>
+          <thead><tr><th>风险类型</th><th>出现频次</th><th>改进优先级</th></tr></thead>
+          <tbody>
+            <tr><td>个股推荐</td><td>2次</td><td style="color:#dc2626;">立即整改</td></tr>
+            <tr><td>方向推荐</td><td>5次</td><td style="color:#f97316;">本周整改</td></tr>
+            <tr><td>收益暗示</td><td>3次</td><td style="color:#10b981;">持续优化</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="report-shell-footer">FinVue 直播分析平台 · 合规红色风格</div>
+    </div>
+  </section>
+
+  <!-- 风格4：紫色 - 直播拆解（对照组） -->
+  <section class="style-section">
+    <h2 class="style-label"><span style="width:24px;height:24px;background:#8b5cf6;border-radius:6px;"></span> 紫色风格 · 直播拆解分析（对照组）</h2>
+    <p class="style-desc">⚠️ 这是用户要求排除的风格，仅作为对照组展示</p>
+    
+    <div class="report-shell style-liveAnalysis">
+      <div class="report-shell-header">
+        <h1>直播拆解分析报告</h1>
+        <div class="report-shell-meta">
+          <span>🔍 直播拆解</span>
+          <span>主播：财经葛先生</span>
+          <span>2024-05-22</span>
+        </div>
+      </div>
+      <div class="report-shell-body">
+        <h2>一、全景鸟瞰：核心指标快速诊断</h2>
+        <table>
+          <thead><tr><th>维度</th><th>本场数据</th><th>行业标准</th><th>判断</th></tr></thead>
+          <tbody>
+            <tr><td>首次互动时间</td><td>02:30</td><td>05:00</td><td>优于标准</td></tr>
+            <tr><td>首次干货时间</td><td>03:00</td><td>10:00</td><td>优于标准</td></tr>
+            <tr><td>互动次数</td><td>15次</td><td>10次</td><td>优于标准</td></tr>
+          </tbody>
+        </table>
+        
+        <h2>二、骨架层：结构拆解</h2>
+        <p>本场直播采用<strong>树干式结构</strong>，以"券商板块机会"为核心锚点...</p>
+      </div>
+      <div class="report-shell-footer">FinVue 直播分析平台 · 紫色风格（对照组，已排除）</div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

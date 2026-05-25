@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from typing import Any, Optional
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile, Depends
+from fastapi.responses import StreamingResponse
 
 import db
 import security
@@ -1205,3 +1206,929 @@ def get_home_overview(_: dict = Depends(security.require_permission("home"))) ->
         print(f"[home-overview] Error: {e}")
         traceback.print_exc()
         return {"ok": False, "error": str(e), "anchors": [], "month_summary": {}, "week_summary": {}, "total_info": {}, "daily_trend": [], "active_anchors": []}
+
+# ═══════════════════════════════════════════════════════════════
+# 在线导入接口：从远程数据库直接拉取数据导入到本地数据库
+# ═══════════════════════════════════════════════════════════════
+
+import config
+
+def _get_remote_db_connection():
+    """获取远程数据库连接."""
+    import pymysql
+    return pymysql.connect(
+        host=config.REMOTE_DB_HOST,
+        port=config.REMOTE_DB_PORT,
+        user=config.REMOTE_DB_USER,
+        password=config.REMOTE_DB_PASSWORD,
+        database=config.REMOTE_DB_DATABASE,
+        connect_timeout=30,
+        charset='utf8mb4'
+    )
+
+
+@router.post("/api/operation/online-import-live")
+async def online_import_live_data(
+    request: Request,
+    _: dict = Depends(security.require_permission("admin-api"))
+) -> dict:
+    """从远程数据库在线导入直播数据."""
+    if not config.has_remote_db_config():
+        return {"ok": False, "error": "远程数据库未配置"}
+
+    session = security.require_auth(request)
+    username = session.get("username")
+    ip = get_client_ip(request)
+
+    try:
+        # 判断本地表状态：是否为空、最新数据时间
+        local_count = db.fetch_one("SELECT COUNT(*) AS count FROM finvue_operation_live_stats")["count"]
+        local_max_time = None
+        if local_count > 0:
+            result = db.fetch_one("SELECT MAX(start_time) AS max_time FROM finvue_operation_live_stats")
+            local_max_time = result.get("max_time")
+        
+        is_full_import = local_count == 0
+        import_mode = "全量导入" if is_full_import else "增量导入"
+        
+        # 连接远程数据库
+        remote_conn = _get_remote_db_connection()
+        remote_cursor = remote_conn.cursor()
+
+        # 构建查询：全量导入不加时间条件，增量导入只查比本地最新时间更新的数据
+        if is_full_import:
+            remote_cursor.execute("""
+                SELECT account, room_id, title, startTime, endTime, duration,
+                       pcu, acu, earnScore, fansEarnScore, nonFansEarnScore, firstEarnScore,
+                       consumeUcnt, fansConsumeUcnt, nonFansConsumeUcnt, firstConsumeUcnt,
+                       expectedTotalIncome, showUcnt, watchUcnt, fansWatchUcnt, nonFansWatchUcnt,
+                       followUcnt, unfollowUcnt, joinFansClubUcnt,
+                       avgWatchDuration, fansAvgWatchDuration, nonFansAvgWatchDuration,
+                       commentUcnt, fansCommentUcnt, nonFansCommentUcnt,
+                       likeCnt, fansLikeCnt, nonFansLikeCnt,
+                       shareCnt, fansShareCnt, nonFansShareCnt,
+                       fansInGroup, fansOutGroup,
+                       watchURate, followURate, commentURate, consumeURate,
+                       fansWatchURate, fansCommentURate, fansLikeRate, fansShareRate, fansConsumeURate, fansInGroupRate,
+                       created_at
+                FROM douyin_creator_live_overview
+                ORDER BY startTime DESC
+            """)
+        else:
+            remote_cursor.execute("""
+                SELECT account, room_id, title, startTime, endTime, duration,
+                       pcu, acu, earnScore, fansEarnScore, nonFansEarnScore, firstEarnScore,
+                       consumeUcnt, fansConsumeUcnt, nonFansConsumeUcnt, firstConsumeUcnt,
+                       expectedTotalIncome, showUcnt, watchUcnt, fansWatchUcnt, nonFansWatchUcnt,
+                       followUcnt, unfollowUcnt, joinFansClubUcnt,
+                       avgWatchDuration, fansAvgWatchDuration, nonFansAvgWatchDuration,
+                       commentUcnt, fansCommentUcnt, nonFansCommentUcnt,
+                       likeCnt, fansLikeCnt, nonFansLikeCnt,
+                       shareCnt, fansShareCnt, nonFansShareCnt,
+                       fansInGroup, fansOutGroup,
+                       watchURate, followURate, commentURate, consumeURate,
+                       fansWatchURate, fansCommentURate, fansLikeRate, fansShareRate, fansConsumeURate, fansInGroupRate,
+                       created_at
+                FROM douyin_creator_live_overview
+                WHERE startTime > %s
+                ORDER BY startTime DESC
+            """, (local_max_time,))
+        rows = remote_cursor.fetchall()
+        remote_cursor.close()
+        remote_conn.close()
+
+        # 批量插入本地数据库
+        count = 0
+        batch = []
+        for row in rows:
+            batch.append((
+                row[0] or '',  # account
+                str(row[1]) if row[1] else '',  # room_id
+                row[2] or '',  # title
+                row[3],  # start_time
+                row[4],  # end_time
+                row[5] or 0,  # duration
+                row[6] or 0,  # pcu
+                row[7] or 0,  # acu
+                row[8] or 0,  # earn_score
+                row[9] or 0,  # fans_earn_score
+                row[10] or 0,  # non_fans_earn_score
+                row[11] or 0,  # first_earn_score
+                row[12] or 0,  # consume_ucnt
+                row[13] or 0,  # fans_consume_ucnt
+                row[14] or 0,  # non_fans_consume_ucnt
+                row[15] or 0,  # first_consume_ucnt
+                row[16] or 0,  # expected_total_income
+                row[17] or 0,  # show_ucnt
+                row[18] or 0,  # watch_ucnt
+                row[19] or 0,  # fans_watch_ucnt
+                row[20] or 0,  # non_fans_watch_ucnt
+                row[21] or 0,  # follow_ucnt
+                row[22] or 0,  # unfollow_ucnt
+                row[23] or 0,  # join_fansclub_ucnt
+                row[24] or 0,  # avg_watch_duration
+                row[25] or 0,  # fans_avg_watch_duration
+                row[26] or 0,  # non_fans_avg_watch_duration
+                row[27] or 0,  # comment_ucnt
+                row[28] or 0,  # fans_comment_ucnt
+                row[29] or 0,  # non_fans_comment_ucnt
+                row[30] or 0,  # like_cnt
+                row[31] or 0,  # fans_like_cnt
+                row[32] or 0,  # non_fans_like_cnt
+                row[33] or 0,  # share_cnt
+                row[34] or 0,  # fans_share_cnt
+                row[35] or 0,  # non_fans_share_cnt
+                row[36] or 0,  # fans_in_group
+                row[37] or 0,  # fans_out_group
+                float(row[38] or 0),  # watch_u_rate
+                float(row[39] or 0),  # follow_u_rate
+                float(row[40] or 0),  # comment_u_rate
+                float(row[41] or 0),  # consume_u_rate
+                float(row[42] or 0),  # fans_watch_u_rate
+                float(row[43] or 0),  # fans_comment_rate
+                float(row[44] or 0),  # fans_like_rate
+                float(row[45] or 0),  # fans_share_rate
+                float(row[46] or 0),  # fans_consume_u_rate
+                float(row[47] or 0),  # fans_in_group_rate
+                row[48]  # created_at
+            ))
+            count += 1
+
+            if len(batch) >= 500:
+                _insert_live_batch(batch)
+                batch = []
+
+        if batch:
+            _insert_live_batch(batch)
+
+        # 记录导入日志
+        db.execute(
+            """
+            INSERT INTO finvue_operation_import_logs
+            (import_type, file_name, record_count, status, imported_by, mode)
+            VALUES ('live', '在线导入', %s, 'success', %s, 'online')
+            """,
+            (count, username)
+        )
+
+        logger.log_import(
+            module="operation",
+            title=f"在线导入直播数据（{import_mode})",
+            description=f"从远程数据库{import_mode} {count} 条直播记录" + (f"，截止时间 {local_max_time}" if local_max_time else ""),
+            username=username,
+            record_count=count,
+            status="success",
+            request_ip=ip,
+        )
+
+        return {"ok": True, "message": f"成功{import_mode} {count} 条直播数据", "count": count, "mode": import_mode}
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"ok": False, "error": str(e)}
+
+
+def _insert_live_batch(batch: list) -> None:
+    """批量插入直播数据."""
+    db.executemany(
+        """
+        INSERT INTO finvue_operation_live_stats
+        (account, room_id, title, start_time, end_time, duration,
+         pcu, acu, earn_score, fans_earn_score, non_fans_earn_score, first_earn_score,
+         consume_ucnt, fans_consume_ucnt, non_fans_consume_ucnt, first_consume_ucnt,
+         expected_total_income, show_ucnt, watch_ucnt, fans_watch_ucnt, non_fans_watch_ucnt,
+         follow_ucnt, unfollow_ucnt, join_fansclub_ucnt,
+         avg_watch_duration, fans_avg_watch_duration, non_fans_avg_watch_duration,
+         comment_ucnt, fans_comment_ucnt, non_fans_comment_ucnt,
+         like_cnt, fans_like_cnt, non_fans_like_cnt,
+         share_cnt, fans_share_cnt, non_fans_share_cnt,
+         fans_in_group, fans_out_group,
+         watch_u_rate, follow_u_rate, comment_u_rate, consume_u_rate,
+         fans_watch_u_rate, fans_comment_u_rate, fans_like_rate, fans_share_rate, fans_consume_u_rate, fans_in_group_rate,
+         created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+        title = VALUES(title),
+        duration = VALUES(duration),
+        pcu = VALUES(pcu),
+        acu = VALUES(acu),
+        earn_score = VALUES(earn_score),
+        watch_ucnt = VALUES(watch_ucnt),
+        follow_ucnt = VALUES(follow_ucnt)
+        """,
+        batch
+    )
+
+
+@router.post("/api/operation/online-import-video")
+async def online_import_video_data(
+    request: Request,
+    _: dict = Depends(security.require_permission("admin-api"))
+) -> dict:
+    """从远程数据库在线导入短视频数据."""
+    if not config.has_remote_db_config():
+        return {"ok": False, "error": "远程数据库未配置"}
+
+    session = security.require_auth(request)
+    username = session.get("username")
+    ip = get_client_ip(request)
+
+    try:
+        # 判断本地表状态：是否为空、最新数据时间
+        local_count = db.fetch_one("SELECT COUNT(*) AS count FROM finvue_operation_video_stats")["count"]
+        local_max_time = None
+        if local_count > 0:
+            result = db.fetch_one("SELECT MAX(publish_time) AS max_time FROM finvue_operation_video_stats")
+            local_max_time = result.get("max_time")
+        
+        is_full_import = local_count == 0
+        import_mode = "全量导入" if is_full_import else "增量导入"
+        
+        # 连接远程数据库
+        remote_conn = _get_remote_db_connection()
+        remote_cursor = remote_conn.cursor()
+
+        # 查询远程短视频数据（匹配远程表实际字段）
+        if is_full_import:
+            remote_cursor.execute("""
+                SELECT account, id, video_title, publish_time, genre,
+                       play_count, like_count, comment_count, share_count,
+                       completion_rate, five_second_completion_rate, two_second_bounce_rate,
+                       fan_increment, created_at
+                FROM douyin_video_list
+                ORDER BY publish_time DESC
+            """)
+        else:
+            remote_cursor.execute("""
+                SELECT account, id, video_title, publish_time, genre,
+                       play_count, like_count, comment_count, share_count,
+                       completion_rate, five_second_completion_rate, two_second_bounce_rate,
+                       fan_increment, created_at
+                FROM douyin_video_list
+                WHERE publish_time > %s
+                ORDER BY publish_time DESC
+            """, (local_max_time,))
+        rows = remote_cursor.fetchall()
+        remote_cursor.close()
+        remote_conn.close()
+
+        # 批量插入本地数据库（远程字段映射到本地表）
+        count = 0
+        batch = []
+        for row in rows:
+            batch.append((
+                row[0] or '',  # account
+                str(row[1]) if row[1] else '',  # video_id (来自远程 id)
+                row[2] or '',  # title (来自远程 video_title)
+                row[3],  # publish_time
+                row[4] or '',  # duration_type (来自远程 genre)
+                row[5] or 0,  # play_count
+                row[6] or 0,  # like_count
+                row[7] or 0,  # comment_count
+                row[8] or 0,  # share_count
+                float(row[9] or 0),  # completion_rate
+                float(row[10] or 0),  # 5s_completion_rate (来自远程 five_second_completion_rate)
+                float(row[11] or 0),  # 2s_exit_rate (来自远程 two_second_bounce_rate)
+                0.0,  # interaction_rate (远程无此字段，默认0)
+                row[12] or 0,  # follow_count (来自远程 fan_increment)
+                row[13]  # created_at
+            ))
+            count += 1
+
+            if len(batch) >= 500:
+                _insert_video_batch(batch)
+                batch = []
+
+        if batch:
+            _insert_video_batch(batch)
+
+        # 记录导入日志
+        db.execute(
+            """
+            INSERT INTO finvue_operation_import_logs
+            (import_type, file_name, record_count, status, imported_by, mode)
+            VALUES ('video', '在线导入', %s, 'success', %s, 'online')
+            """,
+            (count, username)
+        )
+
+        logger.log_import(
+            module="operation",
+            title=f"在线导入短视频数据（{import_mode})",
+            description=f"从远程数据库{import_mode} {count} 条短视频记录" + (f"，截止时间 {local_max_time}" if local_max_time else ""),
+            username=username,
+            record_count=count,
+            status="success",
+            request_ip=ip,
+        )
+
+        return {"ok": True, "message": f"成功{import_mode} {count} 条短视频数据", "count": count, "mode": import_mode}
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"ok": False, "error": str(e)}
+
+
+def _insert_video_batch(batch: list) -> None:
+    """批量插入短视频数据."""
+    db.executemany(
+        """
+        INSERT INTO finvue_operation_video_stats
+        (account, video_id, title, publish_time, duration_type,
+         play_count, like_count, comment_count, share_count,
+         completion_rate, 5s_completion_rate, 2s_exit_rate,
+         interaction_rate, follow_count, created_at)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+        title = VALUES(title),
+        play_count = VALUES(play_count),
+        like_count = VALUES(like_count),
+        comment_count = VALUES(comment_count),
+        share_count = VALUES(share_count),
+        completion_rate = VALUES(completion_rate),
+        follow_count = VALUES(follow_count)
+        """,
+        batch
+    )
+
+
+@router.post("/api/operation/online-import-all")
+async def online_import_all_data(
+    request: Request,
+    _: dict = Depends(security.require_permission("admin-api"))
+) -> dict:
+    """一键在线导入所有数据（直播+短视频）."""
+    if not config.has_remote_db_config():
+        return {"ok": False, "error": "远程数据库未配置"}
+
+    # 调用两个导入接口
+    live_result = await online_import_live_data(request, _)
+    video_result = await online_import_video_data(request, _)
+
+    live_count = live_result.get("count", 0) if live_result.get("ok") else 0
+    video_count = video_result.get("count", 0) if video_result.get("ok") else 0
+
+    errors = []
+    if not live_result.get("ok"):
+        errors.append(f"直播数据导入失败: {live_result.get('error')}")
+    if not video_result.get("ok"):
+        errors.append(f"短视频数据导入失败: {video_result.get('error')}")
+
+    if errors:
+        return {
+            "ok": False,
+            "error": "; ".join(errors),
+            "live_count": live_count,
+            "video_count": video_count
+        }
+
+    return {
+        "ok": True,
+        "message": f"成功导入直播 {live_count} 条，短视频 {video_count} 条",
+        "live_count": live_count,
+        "video_count": video_count
+    }
+
+
+@router.post("/api/operation/online-import-customer-profiles")
+async def online_import_customer_profiles(
+    request: Request,
+    _: dict = Depends(security.require_permission("admin-api"))
+) -> dict:
+    """从远程数据库在线导入客户档案数据（从 rank_watch 字段解析）."""
+    if not config.has_remote_db_config():
+        return {"ok": False, "error": "远程数据库未配置"}
+
+    session = security.require_auth(request)
+    username = session.get("username")
+    ip = get_client_ip(request)
+
+    try:
+        import_mode = "在线导入"  # 客户档案直接导入
+        
+        # 连接远程数据库
+        remote_conn = _get_remote_db_connection()
+        remote_cursor = remote_conn.cursor()
+
+        # 直接查询数据（不排序，避免缓冲区溢出）
+        remote_cursor.execute("""
+            SELECT account, room_id, rank_watch, rank_like, rank_first, created_at
+            FROM douyin_creator_live_room_analytics_data
+            WHERE (rank_watch IS NOT NULL AND rank_watch != '')
+               OR (rank_like IS NOT NULL AND rank_like != '')
+               OR (rank_first IS NOT NULL AND rank_first != '')
+        """)
+        rows = remote_cursor.fetchall()
+        remote_cursor.close()
+        remote_conn.close()
+
+        # 解析 rank_watch 数据并聚合客户档案
+        import json
+        customer_profiles = {}  # customer_id -> profile data
+        
+        # 解析三个榜单数据并聚合客户档案
+        rank_fields = [
+            ('rank_watch', '观看榜', 2),
+            ('rank_like', '点赞榜', 3),
+            ('rank_first', '首关榜', 4),
+        ]
+
+        for row in rows:
+            anchor_name = row[0] or ''  # account 就是主播名称
+            room_id = str(row[1]) if row[1] else ''
+            created_at = row[5]
+
+            # 解析三个榜单
+            for field_name, metric_type, field_idx in rank_fields:
+                rank_raw = row[field_idx] or ''
+                if not rank_raw:
+                    continue
+
+                # 解析榜单 JSON
+                try:
+                    rank_data = json.loads(rank_raw) if isinstance(rank_raw, str) else rank_raw
+                    if not isinstance(rank_data, list):
+                        continue
+                except:
+                    continue
+
+                for rank_item in rank_data:
+                    # 用户信息在 rank_item.user 中
+                    user = rank_item.get('user') or {}
+                    customer_id = str(user.get('id_str') or user.get('id') or '').strip()
+                    if not customer_id:
+                        continue
+
+                    customer_name = str(user.get('nickname') or '').strip()
+                    watch_rank = int(rank_item.get('rank') or 0)
+                    watch_duration = int(rank_item.get('watch_time') or 0)
+
+                # 获取或创建客户档案
+                if customer_id not in customer_profiles:
+                    customer_profiles[customer_id] = {
+                        'customer_id': customer_id,
+                        'customer_name': customer_name,
+                        'latest_anchor_name': anchor_name,
+                        'latest_analyzed_at': created_at,
+                        'latest_live_theme': '',
+                        'latest_rank': watch_rank,
+                        'best_rank': watch_rank,
+                        'avg_watch_seconds': watch_duration,
+                        'labels': [],
+                        'tags': [],
+                    }
+                else:
+                    # 更新档案（保留最新数据）
+                    profile = customer_profiles[customer_id]
+                    if created_at and (not profile['latest_analyzed_at'] or created_at > profile['latest_analyzed_at']):
+                        profile['latest_analyzed_at'] = created_at
+                        profile['latest_anchor_name'] = anchor_name
+                        profile['latest_rank'] = watch_rank
+                        profile['customer_name'] = customer_name or profile['customer_name']
+                    # 更新最佳排名
+                    if watch_rank > 0 and (profile['best_rank'] == 0 or watch_rank < profile['best_rank']):
+                        profile['best_rank'] = watch_rank
+                    # 累计观看时长（用于计算平均）
+                    profile['avg_watch_seconds'] = (profile['avg_watch_seconds'] + watch_duration) // 2
+
+        # 批量插入客户档案
+        count = 0
+        batch = []
+        for customer_id, profile in customer_profiles.items():
+            batch.append((
+                profile['customer_id'],
+                profile['customer_name'],
+                profile['latest_anchor_name'],
+                profile['latest_analyzed_at'],
+                profile['latest_live_theme'],
+                profile['latest_rank'],
+                profile['best_rank'],
+                profile['avg_watch_seconds'],
+                json.dumps(profile['labels']),
+                json.dumps(profile['tags']),
+                '{}',
+            ))
+            count += 1
+
+            if len(batch) >= 500:
+                _insert_customer_profiles_batch(batch)
+                batch = []
+
+        if batch:
+            _insert_customer_profiles_batch(batch)
+
+        # 记录导入日志
+        db.execute(
+            """
+            INSERT INTO finvue_operation_import_logs
+            (import_type, file_name, record_count, status, imported_by, mode)
+            VALUES ('customer_profiles', '在线导入', %s, 'success', %s, 'online')
+            """,
+            (count, username)
+        )
+
+        logger.log_import(
+            module="operation",
+            title="在线导入客户档案",
+            description=f"从远程数据库导入 {count} 条客户档案",
+            username=username,
+            record_count=count,
+            status="success",
+            request_ip=ip,
+        )
+
+        return {"ok": True, "message": f"成功{import_mode} {count} 条客户档案", "count": count, "mode": import_mode}
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"ok": False, "error": str(e)}
+
+
+def _insert_customer_profiles_batch(batch: list) -> None:
+    """批量插入客户档案."""
+    db.executemany(
+        """
+        INSERT INTO finvue_customer_profiles
+        (customer_id, customer_name, latest_anchor_name, latest_analyzed_at,
+         latest_live_theme, latest_rank, best_rank, avg_watch_seconds, labels, tags, raw)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+        customer_name = VALUES(customer_name),
+        latest_anchor_name = VALUES(latest_anchor_name),
+        latest_analyzed_at = VALUES(latest_analyzed_at),
+        latest_live_theme = VALUES(latest_live_theme),
+        latest_rank = VALUES(latest_rank),
+        best_rank = IF(VALUES(best_rank) > 0 AND (best_rank = 0 OR VALUES(best_rank) < best_rank), VALUES(best_rank), best_rank),
+        avg_watch_seconds = VALUES(avg_watch_seconds)
+        """,
+        batch
+    )
+
+
+@router.post("/api/operation/online-import-customer-sessions")
+async def online_import_customer_sessions(
+    request: Request,
+    _: dict = Depends(security.require_permission("admin-api"))
+) -> dict:
+    """从远程数据库在线导入客户会话数据（从 rank_watch 字段解析）."""
+    if not config.has_remote_db_config():
+        return {"ok": False, "error": "远程数据库未配置"}
+
+    session = security.require_auth(request)
+    username = session.get("username")
+    ip = get_client_ip(request)
+
+    try:
+        # 判断本地表状态：是否为空、最新数据时间
+        local_count = db.fetch_one("SELECT COUNT(*) AS count FROM finvue_customer_sessions")["count"]
+        local_max_time = None
+        if local_count > 0:
+            result = db.fetch_one("SELECT MAX(analyzed_at) AS max_time FROM finvue_customer_sessions")
+            local_max_time = result.get("max_time")
+        
+        is_full_import = local_count == 0
+        import_mode = "全量导入" if is_full_import else "增量导入"
+        
+        # 连接远程数据库
+        remote_conn = _get_remote_db_connection()
+        remote_cursor = remote_conn.cursor()
+
+        # 构建查询：全量导入不加时间条件，增量导入只查比本地最新时间更新的数据
+        # 直接查询数据（不排序，避免缓冲区溢出）
+        if is_full_import:
+            remote_cursor.execute("""
+                SELECT account, room_id, rank_watch, rank_like, rank_first, created_at
+                FROM douyin_creator_live_room_analytics_data
+                WHERE (rank_watch IS NOT NULL AND rank_watch != '')
+                   OR (rank_like IS NOT NULL AND rank_like != '')
+                   OR (rank_first IS NOT NULL AND rank_first != '')
+            """)
+        else:
+            remote_cursor.execute("""
+                SELECT account, room_id, rank_watch, rank_like, rank_first, created_at
+                FROM douyin_creator_live_room_analytics_data
+                WHERE created_at > %s
+                  AND ((rank_watch IS NOT NULL AND rank_watch != '')
+                   OR (rank_like IS NOT NULL AND rank_like != '')
+                   OR (rank_first IS NOT NULL AND rank_first != ''))
+            """, (local_max_time,))
+        rows = remote_cursor.fetchall()
+        remote_cursor.close()
+        remote_conn.close()
+
+        # 解析三个榜单数据生成客户会话记录
+        import json
+        count = 0
+        batch = []
+        rank_fields = [
+            ('rank_watch', '观看榜', 2),
+            ('rank_like', '点赞榜', 3),
+            ('rank_first', '首关榜', 4),
+        ]
+
+        for row in rows:
+            anchor_name = row[0] or ''  # account 就是主播名称
+            room_id = str(row[1]) if row[1] else ''
+            created_at = row[5]
+
+            # 解析三个榜单
+            for field_name, metric_type, field_idx in rank_fields:
+                rank_raw = row[field_idx] or ''
+                if not rank_raw:
+                    continue
+
+                # 解析榜单 JSON（格式：[{user: {id, nickname, ...}, value, rank, watch_time, ...}]）
+                try:
+                    rank_data = json.loads(rank_raw) if isinstance(rank_raw, str) else rank_raw
+                    if not isinstance(rank_data, list):
+                        continue
+                except:
+                    continue
+
+                for rank_item in rank_data:
+                    # 用户信息在 rank_item.user 中
+                    user = rank_item.get('user') or {}
+                    customer_id = str(user.get('id_str') or user.get('id') or '').strip()
+                    if not customer_id:
+                        continue
+
+                    customer_name = str(user.get('nickname') or '').strip()
+                    watch_rank = int(rank_item.get('rank') or 0)
+                    watch_duration = int(rank_item.get('watch_time') or 0)
+
+                    # 生成 session_id
+                    session_id = f"db::{room_id}::{metric_type}::{customer_id}"
+
+                    batch.append((
+                        session_id,
+                        customer_id,
+                        anchor_name,
+                        room_id,
+                        '',  # live_theme（远程表无此字段）
+                        'dbLiveAnalytics',  # report_type
+                        metric_type,
+                        str(rank_item.get('value') or watch_rank),  # metric_value
+                        watch_rank,
+                        watch_duration,
+                        created_at,
+                        'douyin_creator_live_room_analytics_data',
+                        '{}',
+                    ))
+                    count += 1
+
+                    if len(batch) >= 500:
+                        _insert_customer_sessions_batch(batch)
+                        batch = []
+
+        if batch:
+            _insert_customer_sessions_batch(batch)
+
+        # 记录导入日志
+        db.execute(
+            """
+            INSERT INTO finvue_operation_import_logs
+            (import_type, file_name, record_count, status, imported_by, mode)
+            VALUES ('customer_sessions', '在线导入', %s, 'success', %s, 'online')
+            """,
+            (count, username)
+        )
+
+        logger.log_import(
+            module="operation",
+            title="在线导入客户会话",
+            description=f"从远程数据库导入 {count} 条客户会话",
+            username=username,
+            record_count=count,
+            status="success",
+            request_ip=ip,
+        )
+
+        return {"ok": True, "message": f"成功{import_mode} {count} 条客户会话", "count": count, "mode": import_mode}
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"ok": False, "error": str(e)}
+
+
+def _insert_customer_sessions_batch(batch: list) -> None:
+    """批量插入客户会话."""
+    db.executemany(
+        """
+        INSERT INTO finvue_customer_sessions
+        (session_id, customer_id, anchor_name, room_id, live_theme,
+         report_type, metric_type, metric_value, watch_rank, watch_duration_seconds,
+         analyzed_at, source_file, raw)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+        anchor_name = VALUES(anchor_name),
+        live_theme = VALUES(live_theme),
+        watch_rank = VALUES(watch_rank),
+        watch_duration_seconds = VALUES(watch_duration_seconds),
+        analyzed_at = VALUES(analyzed_at)
+        """,
+        batch
+    )
+
+
+@router.post("/api/operation/online-import-all")
+async def online_import_all_data(
+    request: Request,
+    _: dict = Depends(security.require_permission("admin-api"))
+) -> dict:
+    """一键在线导入所有数据（直播+短视频+客户档案+客户会话）."""
+    if not config.has_remote_db_config():
+        return {"ok": False, "error": "远程数据库未配置"}
+
+    # 调用四个导入接口
+    live_result = await online_import_live_data(request, _)
+    video_result = await online_import_video_data(request, _)
+    profile_result = await online_import_customer_profiles(request, _)
+    session_result = await online_import_customer_sessions(request, _)
+
+    live_count = live_result.get("count", 0) if live_result.get("ok") else 0
+    video_count = video_result.get("count", 0) if video_result.get("ok") else 0
+    profile_count = profile_result.get("count", 0) if profile_result.get("ok") else 0
+    session_count = session_result.get("count", 0) if session_result.get("ok") else 0
+
+    errors = []
+    if not live_result.get("ok"):
+        errors.append(f"直播数据导入失败: {live_result.get('error')}")
+    if not video_result.get("ok"):
+        errors.append(f"短视频数据导入失败: {video_result.get('error')}")
+    if not profile_result.get("ok"):
+        errors.append(f"客户档案导入失败: {profile_result.get('error')}")
+    if not session_result.get("ok"):
+        errors.append(f"客户会话导入失败: {session_result.get('error')}")
+
+    if errors:
+        return {
+            "ok": False,
+            "error": "; ".join(errors),
+            "live_count": live_count,
+            "video_count": video_count,
+            "profile_count": profile_count,
+            "session_count": session_count
+        }
+
+    return {
+        "ok": True,
+        "message": f"成功导入直播 {live_count} 条，短视频 {video_count} 条，客户档案 {profile_count} 条，客户会话 {session_count} 条",
+        "live_count": live_count,
+        "video_count": video_count,
+        "profile_count": profile_count,
+        "session_count": session_count
+    }
+
+
+
+
+# ============= 直播明细 API =============
+
+@router.get("/api/operation/live-details")
+async def get_live_details(
+    request: Request,
+    account: str = "",
+    start_date: str = "",
+    end_date: str = "",
+    page: int = 1,
+    limit: int = 50,
+    _: dict = Depends(security.require_permission("admin-api"))
+) -> dict:
+    """获取直播明细列表（分页）."""
+    try:
+        # 构建查询条件
+        where_clauses = []
+        params = []
+        
+        if account:
+            where_clauses.append("account = %s")
+            params.append(account)
+        
+        if start_date:
+            where_clauses.append("start_time >= %s")
+            params.append(start_date)
+        
+        if end_date:
+            where_clauses.append("start_time <= %s")
+            params.append(end_date + " 23:59:59")
+        
+        where_sql = " WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+        
+        # 查询总数
+        count_sql = f"SELECT COUNT(*) AS total FROM finvue_operation_live_stats{where_sql}"
+        total = db.fetch_one(count_sql, params)["total"]
+        
+        # 分页查询
+        offset = (page - 1) * limit
+        detail_sql = f"""
+            SELECT 
+                account, room_id, title, start_time, end_time, duration,
+                pcu, acu, show_ucnt, watch_ucnt, fans_watch_ucnt, non_fans_watch_ucnt,
+                follow_ucnt, join_fansclub_ucnt,
+                avg_watch_duration, fans_avg_watch_duration, non_fans_avg_watch_duration,
+                like_cnt, comment_ucnt, fans_comment_ucnt, fans_like_cnt,
+                watch_u_rate, follow_u_rate, comment_u_rate,
+                fans_watch_u_rate, fans_comment_u_rate, fans_like_rate,
+                fans_in_group, fans_out_group, fans_in_group_rate,
+                earn_score, consume_ucnt
+            FROM finvue_operation_live_stats
+            {where_sql}
+            ORDER BY start_time DESC
+            LIMIT %s OFFSET %s
+        """
+        params.extend([limit, offset])
+        rows = db.fetch_all(detail_sql, params)
+        
+        # 格式化数据
+        details = []
+        for row in rows:
+            details.append({
+                "account": row.get("account") or "",
+                "room_id": row.get("room_id") or "",
+                "title": row.get("title") or "",
+                "start_time": str(row.get("start_time") or ""),
+                "end_time": str(row.get("end_time") or ""),
+                "duration": row.get("duration") or 0,
+                "pcu": row.get("pcu") or 0,
+                "acu": row.get("acu") or 0,
+                "show_ucnt": row.get("show_ucnt") or 0,
+                "watch_ucnt": row.get("watch_ucnt") or 0,
+                "fans_watch_ucnt": row.get("fans_watch_ucnt") or 0,
+                "non_fans_watch_ucnt": row.get("non_fans_watch_ucnt") or 0,
+                "follow_ucnt": row.get("follow_ucnt") or 0,
+                "join_fansclub_ucnt": row.get("join_fansclub_ucnt") or 0,
+                "avg_watch_duration": round(float(row.get("avg_watch_duration") or 0), 1),
+                "fans_avg_watch_duration": round(float(row.get("fans_avg_watch_duration") or 0), 1),
+                "non_fans_avg_watch_duration": round(float(row.get("non_fans_avg_watch_duration") or 0), 1),
+                "like_cnt": row.get("like_cnt") or 0,
+                "comment_ucnt": row.get("comment_ucnt") or 0,
+                "fans_comment_ucnt": row.get("fans_comment_ucnt") or 0,
+                "fans_like_cnt": row.get("fans_like_cnt") or 0,
+                "watch_u_rate": round(float(row.get("watch_u_rate") or 0), 2),
+                "follow_u_rate": round(float(row.get("follow_u_rate") or 0), 2),
+                "comment_u_rate": round(float(row.get("comment_u_rate") or 0), 2),
+                "fans_watch_u_rate": round(float(row.get("fans_watch_u_rate") or 0), 2),
+                "fans_comment_u_rate": round(float(row.get("fans_comment_u_rate") or 0), 2),
+                "fans_like_rate": round(float(row.get("fans_like_rate") or 0), 2),
+                "fans_in_group": round(float(row.get("fans_in_group") or 0), 1),
+                "fans_out_group": round(float(row.get("fans_out_group") or 0), 1),
+                "fans_in_group_rate": round(float(row.get("fans_in_group_rate") or 0), 2),
+                "earn_score": row.get("earn_score") or 0,
+                "consume_ucnt": row.get("consume_ucnt") or 0,
+            })
+        
+        return {
+            "ok": True,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "pages": (total + limit - 1) // limit,
+            "details": details
+        }
+        
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+
+@router.get("/api/operation/live-detail-stats")
+async def get_live_detail_stats(
+    request: Request,
+    account: str = "",
+    _: dict = Depends(security.require_permission("admin-api"))
+) -> dict:
+    """获取直播明细统计汇总."""
+    try:
+        # 构建查询条件
+        where_sql = " WHERE account = %s" if account else ""
+        params = [account] if account else []
+        
+        # 统计汇总
+        stats_sql = f"""
+            SELECT 
+                COUNT(*) AS total_sessions,
+                SUM(follow_ucnt) AS total_follow,
+                AVG(duration) AS avg_duration,
+                AVG(pcu) AS avg_pcu,
+                AVG(watch_ucnt) AS avg_watch,
+                AVG(follow_u_rate) AS avg_follow_rate
+            FROM finvue_operation_live_stats
+            {where_sql}
+        """
+        stats = db.fetch_one(stats_sql, params)
+        
+        return {
+            "ok": True,
+            "total_sessions": stats.get("total_sessions", 0),
+            "total_follow": stats.get("total_follow", 0) or 0,
+            "avg_duration": round(float(stats.get("avg_duration", 0) or 0), 1),
+            "avg_pcu": round(float(stats.get("avg_pcu", 0) or 0), 1),
+            "avg_watch": round(float(stats.get("avg_watch", 0) or 0), 1),
+            "avg_follow_rate": round(float(stats.get("avg_follow_rate", 0) or 0), 2)
+        }
+        
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
