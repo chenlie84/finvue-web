@@ -1775,10 +1775,16 @@
       .hotspot-item-main:hover{background:var(--bg3);}
       .hotspot-item-main:last-child{margin-bottom:0;}
       .hotspot-item-row{display:flex;align-items:flex-start;gap:8px;}
+      .hotspot-actions{display:flex;gap:4px;margin-top:4px;}
+      .hotspot-action-btn{font-size:10px;padding:2px 6px;border-radius:4px;border:none;background:var(--gold-dim);color:var(--gold);cursor:pointer;}
+      .hotspot-action-btn:hover{background:var(--gold);color:#0A0B0E;}
       .hotspot-item-rank{font-family:var(--font-mono);font-size:12px;font-weight:600;min-width:20px;}
       .hotspot-item-rank.r1{color:var(--red);}
       .hotspot-item-rank.r2{color:#F59E0B;}
       .hotspot-item-rank.r3{color:var(--gold);}
+      .hotspot-actions{display:flex;gap:4px;margin-top:4px;}
+      .hotspot-action-btn{font-size:10px;padding:2px 6px;border-radius:4px;border:none;background:var(--gold-dim);color:var(--gold);cursor:pointer;}
+      .hotspot-action-btn:hover{background:var(--gold);color:#0A0B0E;}
       .hotspot-item-content{flex:1;}
       .hotspot-item-title{font-size:12px;color:var(--text0);line-height:1.4;text-decoration:none;}
       .hotspot-item-title:hover{color:var(--gold);}
@@ -12457,11 +12463,41 @@ function renderHotspotGridMain(byPlatform) {
           <div class="hotspot-item-content">
             ${i.url ? `<a class="hotspot-item-title" href="${i.url}" target="_blank">${i.title}<span class="arrow">↗</span></a>` : `<span class="hotspot-item-title">${i.title}</span>`}
             <div class="hotspot-item-meta">${i.hotValue ? `<span class="hotspot-item-hot">${i.hotValue}</span> · ` : ''}${formatTimeShort(new Date(i.lastSeenAt))}</div>
+            <div class="hotspot-actions">
+              <button class="hotspot-action-btn" onclick="analyzeHotspotMain('${i.id}', '${i.title.replace(/'/g, "\\'")}')">🤖 分析</button>
+            </div>
           </div>
         </div></div>`;
       }).join('')}</div></div>`;
   }
   document.getElementById('hotspotGridMain').innerHTML = html;
+}
+
+// AI分析热搜
+async function analyzeHotspotMain(itemId, title) {
+  if (!itemId) {
+    showToast('缺少热搜ID');
+    return;
+  }
+  showToast('正在分析...');
+  try {
+    const res = await fetch('/api/hotspot/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ itemId: itemId, title: title })
+    });
+    if (!res.ok) throw new Error('分析失败');
+    const data = await res.json();
+    if (data.ok && data.analysis) {
+      // 跳转到热点详情页查看完整分析
+      location.href = `/hotspot.html?id=${itemId}`;
+    } else {
+      showToast(data.error || '分析失败');
+    }
+  } catch(e) {
+    showToast('分析失败: '+e.message);
+  }
 }
 
 function formatTimeShort(d) {
