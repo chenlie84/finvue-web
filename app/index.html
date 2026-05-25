@@ -1735,95 +1735,62 @@
         </div>
       </div>
       
-      <!-- ══ 热点追踪（入口页面） ══ -->
+      <!-- ══ 热点追踪（直接展示热搜） ══ -->
       <div class="sec" id="sec-hotspot">
-        <div class="page-title">热点追踪</div>
-        <div class="page-sub">多平台热搜聚合 · 实时监控 · AI 解读 · 话术建议</div>
-
-        <!-- 快捷入口卡片 -->
-        <div class="g3 mb" style="margin-bottom:20px;">
-          <div class="panel" style="cursor:pointer;transition:border-color .2s;" onclick="location.href='/hotspot.html'">
-            <div style="display:flex;align-items:center;gap:12px;">
-              <div style="width:48px;height:48px;border-radius:var(--r);background:var(--gold-dim);display:flex;align-items:center;justify-content:center;font-size:24px;">🔥</div>
-              <div style="flex:1;">
-                <div style="font-size:16px;font-weight:600;color:var(--text0);">实时热搜榜</div>
-                <div style="font-size:13px;color:var(--text1);margin-top:4px;">微博、知乎、抖音、B站等 11+ 平台热搜实时聚合</div>
-              </div>
-              <div style="color:var(--gold);font-size:14px;">进入 →</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <div>
+            <div class="page-title" style="margin-bottom:4px;">热搜追踪</div>
+            <div style="font-size:12px;color:var(--text2);">
+              更新于 <span id="hotspotUpdateTime" style="color:var(--green);">--</span> · 共 <span id="hotspotTotalCount" style="color:var(--gold);font-family:var(--font-mono);">--</span> 条
             </div>
           </div>
-          <div class="panel" style="cursor:pointer;transition:border-color .2s;" onclick="location.href='/hotspot.html?tab=history'">
-            <div style="display:flex;align-items:center;gap:12px;">
-              <div style="width:48px;height:48px;border-radius:var(--r);background:rgba(74,144,217,.12);display:flex;align-items:center;justify-content:center;font-size:24px;">📊</div>
-              <div style="flex:1;">
-                <div style="font-size:16px;font-weight:600;color:var(--text0);">历史趋势对比</div>
-                <div style="font-size:13px;color:var(--text1);margin-top:4px;">查看热搜排名变化曲线，分析热点生命周期</div>
-              </div>
-              <div style="color:var(--blue);font-size:14px;">进入 →</div>
-            </div>
-          </div>
-          <div class="panel" style="cursor:pointer;transition:border-color .2s;" onclick="location.href='/hotspot.html?tab=keywords'">
-            <div style="display:flex;align-items:center;gap:12px;">
-              <div style="width:48px;height:48px;border-radius:var(--r);background:rgba(155,127,232,.12);display:flex;align-items:center;justify-content:center;font-size:24px;">🔍</div>
-              <div style="flex:1;">
-                <div style="font-size:16px;font-weight:600;color:var(--text0);">关键词追踪</div>
-                <div style="font-size:13px;color:var(--text1);margin-top:4px;">设置关键词，自动监控相关热点命中情况</div>
-              </div>
-              <div style="color:var(--purple);font-size:14px;">进入 →</div>
-            </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input class="inp" id="hotspotSearchInput" placeholder="搜索关键词..." style="width:180px;" onkeydown="if(event.key==='Enter')hotspotSearch()">
+            <button class="btn btn-outline" onclick="hotspotSearch()">🔍</button>
+            <button class="btn btn-gold" id="hotspotFetchBtn" onclick="fetchHotspotsMain()">📥 刷新</button>
           </div>
         </div>
 
-        <!-- 快速统计 -->
-        <div class="panel mb">
-          <div class="panel-hd">
-            <div class="panel-title">热搜统计概览</div>
-            <span class="panel-act" onclick="location.href='/hotspot.html'" style="cursor:pointer;color:var(--gold)">查看完整看板</span>
-          </div>
-          <div class="g4" style="margin:0;">
-            <div class="kpi" style="--accent:var(--gold);margin:0;">
-              <div class="kpi-lbl">今日收录</div>
-              <div class="kpi-val gold" id="hotspotStatToday">--</div>
-              <div class="kpi-delta muted">热搜条目</div>
-            </div>
-            <div class="kpi" style="--accent:var(--green);margin:0;">
-              <div class="kpi-lbl">当前活跃</div>
-              <div class="kpi-val" id="hotspotStatActive">--</div>
-              <div class="kpi-delta green">2小时内</div>
-            </div>
-            <div class="kpi" style="--accent:var(--blue);margin:0;">
-              <div class="kpi-lbl">AI 已分析</div>
-              <div class="kpi-val" id="hotspotStatAnalyzed">--</div>
-              <div class="kpi-delta muted">解读完成</div>
-            </div>
-            <div class="kpi" style="--accent:var(--purple);margin:0;">
-              <div class="kpi-lbl">监控平台</div>
-              <div class="kpi-val" id="hotspotStatPlatforms">11</div>
-              <div class="kpi-delta muted">数据源</div>
-            </div>
-          </div>
+        <!-- 平台筛选 -->
+        <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;" id="hotspotPlatformBtns">
+          <button class="tag active" data-platform="" onclick="filterHotspotPlatform('')">全部</button>
         </div>
 
-        <!-- 快速搜索 -->
-        <div class="panel mb">
-          <div class="panel-hd"><div class="panel-title">快速搜索热搜</div></div>
-          <div style="display:flex;gap:10px;">
-            <input class="inp" id="hotspotQuickSearch" placeholder="输入关键词搜索热搜..." style="flex:1;" onkeydown="if(event.key==='Enter')hotspotQuickSearch()">
-            <button class="btn btn-gold" onclick="hotspotQuickSearch()">🔍 搜索</button>
-          </div>
-        </div>
-
-        <!-- 使用说明 -->
-        <div class="panel">
-          <div class="panel-hd"><div class="panel-title">功能说明</div></div>
-          <div style="font-size:13px;color:var(--text1);line-height:1.8;">
-            <p><strong style="color:var(--gold)">实时热搜</strong>：自动抓取微博、知乎、抖音、B站、百度、今日头条、财联社、华尔街见闻等 11+ 平台的热搜榜，实时更新。</p>
-            <p><strong style="color:var(--blue)">历史趋势</strong>：保存最近 30 天的热搜数据，可查看排名变化曲线，分析热点事件的生命周期和热度变化趋势。</p>
-            <p><strong style="color:var(--purple)">关键词追踪</strong>：设置关注的股票、板块、事件关键词，系统自动监控相关热搜的命中情况并提醒。</p>
-            <p><strong style="color:var(--green)">AI 分析</strong>：点击任意热搜，AI 自动生成热点解读、投资关联分析、直播话术建议、合规提醒和互动建议。</p>
+        <!-- 热搜列表（按平台分组） -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;" id="hotspotGridMain">
+          <div style="grid-column:span 3;text-align:center;padding:30px;color:var(--text1);">
+            正在加载热搜数据...
           </div>
         </div>
       </div>
+
+      <!-- 热搜列表样式 -->
+      <style>
+      .hotspot-platform-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;}
+      .hotspot-card-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--border);}
+      .hotspot-card-title{font-size:13px;font-weight:600;color:var(--text0);display:flex;align-items:center;gap:6px;}
+      .hotspot-card-count{font-size:11px;color:var(--text2);font-family:var(--font-mono);}
+      .hotspot-card-body{padding:10px;max-height:320px;overflow-y:auto;}
+      .hotspot-item-main{padding:8px 10px;border-radius:var(--r);background:var(--bg2);margin-bottom:6px;}
+      .hotspot-item-main:hover{background:var(--bg3);}
+      .hotspot-item-main:last-child{margin-bottom:0;}
+      .hotspot-item-row{display:flex;align-items:flex-start;gap:8px;}
+      .hotspot-item-rank{font-family:var(--font-mono);font-size:12px;font-weight:600;min-width:20px;}
+      .hotspot-item-rank.r1{color:var(--red);}
+      .hotspot-item-rank.r2{color:#F59E0B;}
+      .hotspot-item-rank.r3{color:var(--gold);}
+      .hotspot-item-content{flex:1;}
+      .hotspot-item-title{font-size:12px;color:var(--text0);line-height:1.4;text-decoration:none;}
+      .hotspot-item-title:hover{color:var(--gold);}
+      .hotspot-item-title .arrow{color:var(--text2);margin-left:2px;font-size:10px;}
+      .hotspot-item-meta{font-size:10px;color:var(--text2);margin-top:2px;}
+      .hotspot-item-hot{color:var(--red);font-family:var(--font-mono);}
+      .tag{padding:4px 10px;border-radius:14px;font-size:11px;border:1px solid var(--border);color:var(--text1);cursor:pointer;background:var(--bg1);transition:all .15s;}
+      .tag:hover{border-color:var(--gold);color:var(--gold);}
+      .tag.active{background:var(--gold-dim);border-color:var(--gold);color:var(--gold);}
+      @media(max-width:1000px){#hotspotGridMain{grid-template-columns:repeat(2,1fr);}}
+      @media(max-width:600px){#hotspotGridMain{grid-template-columns:1fr;}}
+      </style>
 
       <!-- ══ SOP ══ -->
       <div class="sec" id="sec-market">
@@ -7185,8 +7152,8 @@ async function afterAuth() {
   await loadSettings();
   // 加载工作台概览数据
   loadHomeOverview();
-  // 加载热搜统计
-  loadHotspotStats();
+  // 加载热搜
+  loadHotspotMain();
   if (hasDashboardPermission("anchor-library")) await loadAnchorProfiles();
   if (hasDashboardPermission("customer-library")) await loadCustomerLibrary();
   if (hasDashboardPermission("transcript-library")) await loadTranscriptLibrary();
@@ -12447,30 +12414,86 @@ function openFullAiChat() {
 
 // ══ 热点追踪相关函数 ══
 
-// 加载热搜统计数据
-async function loadHotspotStats() {
+const PLATFORM_META = { zhihu: { name: '知乎', icon: '📘' }, bilibili: { name: 'B站', icon: '📺' }, toutiao: { name: '头条', icon: '📰' }, weibo: { name: '微博', icon: '🔥' } };
+let hotspotState = { platforms: [], filter: '', keyword: '' };
+
+async function loadHotspotMain() {
   try {
-    const res = await fetch('/api/hotspot/stats', { credentials: 'include' });
-    if (!res.ok) return;
-    const data = await res.json();
-    const stats = data.stats || {};
-    document.getElementById('hotspotStatToday').textContent = fmt(stats.todayNew || 0);
-    document.getElementById('hotspotStatActive').textContent = fmt(stats.active || 0);
-    document.getElementById('hotspotStatAnalyzed').textContent = fmt(stats.analyzed || 0);
-    document.getElementById('hotspotStatPlatforms').textContent = Object.keys(stats.platformStats || {}).length || 11;
-  } catch (e) {
-    console.log('热搜统计加载失败:', e);
-  }
+    const [statsRes, platformsRes, hotspotsRes] = await Promise.all([
+      fetch('/api/hotspot/stats', { credentials: 'include' }),
+      fetch('/api/hotspot/platforms', { credentials: 'include' }),
+      fetch(`/api/hotspot/current${hotspotState.filter ? '?platform='+encodeURIComponent(hotspotState.filter) : ''}`, { credentials: 'include' })
+    ]);
+    
+    const stats = statsRes.ok ? (await statsRes.json()).stats || {} : {};
+    document.getElementById('hotspotTotalCount').textContent = fmt(stats.active || 0);
+    
+    const platforms = platformsRes.ok ? (await platformsRes.json()).platforms || [] : [];
+    hotspotState.platforms = platforms;
+    document.getElementById('hotspotPlatformBtns').innerHTML = 
+      '<button class="tag active" data-platform="" onclick="filterHotspotPlatform(\'\')">全部</button>' +
+      platforms.map(p => `<button class="tag" data-platform="${p.id}" onclick="filterHotspotPlatform('${p.id}')">${(PLATFORM_META[p.id]||{}).icon||'🔥'} ${(PLATFORM_META[p.id]||{}).name||p.name}</button>`).join('');
+    
+    const hotspots = hotspotsRes.ok ? await hotspotsRes.json() : { byPlatform: {}, items: [] };
+    renderHotspotGridMain(hotspots.byPlatform || {});
+    
+    const latest = (hotspots.items||[]).reduce((m,i) => Math.max(m, new Date(i.lastSeenAt||0).getTime()), 0) || Date.now();
+    document.getElementById('hotspotUpdateTime').textContent = formatTimeShort(new Date(latest));
+  } catch(e) { console.log('热搜加载失败', e); }
 }
 
-// 快速搜索热搜
-function hotspotQuickSearch() {
-  const keyword = document.getElementById('hotspotQuickSearch').value.trim();
-  if (!keyword) {
-    showToast('请输入搜索关键词');
+function renderHotspotGridMain(byPlatform) {
+  if (!Object.keys(byPlatform).length) {
+    document.getElementById('hotspotGridMain').innerHTML = '<div style="grid-column:span 3;text-align:center;padding:30px;color:var(--text1);">暂无数据，点击刷新获取</div>';
     return;
   }
-  location.href = `/hotspot.html?keyword=${encodeURIComponent(keyword)}`;
+  let html = '';
+  for (const [pid, items] of Object.entries(byPlatform)) {
+    const meta = PLATFORM_META[pid] || hotspotState.platforms.find(p=>p.id===pid) || { name: pid, icon: '🔥' };
+    html += `<div class="hotspot-platform-card">
+      <div class="hotspot-card-header"><div class="hotspot-card-title">${meta.icon} ${meta.name}</div><div class="hotspot-card-count">${items.length}条</div></div>
+      <div class="hotspot-card-body">${items.slice(0,15).map(i => {
+        const r = i.rank||0, rc = r===1?'r1':r===2?'r2':r===3?'r3':'';
+        return `<div class="hotspot-item-main"><div class="hotspot-item-row">
+          <div class="hotspot-item-rank ${rc}">#${r||'--'}</div>
+          <div class="hotspot-item-content">
+            ${i.url ? `<a class="hotspot-item-title" href="${i.url}" target="_blank">${i.title}<span class="arrow">↗</span></a>` : `<span class="hotspot-item-title">${i.title}</span>`}
+            <div class="hotspot-item-meta">${i.hotValue ? `<span class="hotspot-item-hot">${i.hotValue}</span> · ` : ''}${formatTimeShort(new Date(i.lastSeenAt))}</div>
+          </div>
+        </div></div>`;
+      }).join('')}</div></div>`;
+  }
+  document.getElementById('hotspotGridMain').innerHTML = html;
+}
+
+function formatTimeShort(d) {
+  const diff = Date.now() - d.getTime();
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return Math.floor(diff/60000)+'分钟前';
+  if (diff < 86400000) return Math.floor(diff/3600000)+'小时前';
+  return d.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+}
+
+function filterHotspotPlatform(p) {
+  hotspotState.filter = p;
+  document.querySelectorAll('#hotspotPlatformBtns .tag').forEach(b => b.classList.toggle('active', b.dataset.platform === p));
+  loadHotspotMain();
+}
+
+function hotspotSearch() {
+  const kw = document.getElementById('hotspotSearchInput').value.trim();
+  if (kw) location.href = `/hotspot.html?keyword=${encodeURIComponent(kw)}`;
+}
+
+async function fetchHotspotsMain() {
+  const btn = document.getElementById('hotspotFetchBtn');
+  btn.disabled = true; btn.textContent = '⏳ 抓取中...';
+  try {
+    const res = await fetch('/api/hotspot/fetch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ platforms: ['zhihu','bilibili','toutiao'] }) });
+    if (res.ok) { showToast('热搜已更新'); loadHotspotMain(); }
+    else showToast('抓取失败');
+  } catch(e) { showToast('抓取失败: '+e.message); }
+  btn.disabled = false; btn.textContent = '📥 刷新';
 }
 
 // 添加AI助手按钮到顶部导航
