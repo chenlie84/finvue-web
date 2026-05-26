@@ -109,7 +109,7 @@ def _build_request(provider: dict[str, Any], system_prompt: str, user_prompt: st
 def _should_use_proxy(provider: dict[str, Any], url: str) -> bool:
     if "useProxy" in provider:
         return bool(provider.get("useProxy"))
-    return url.startswith("https://") or "paas.corp" not in url
+    return url.startswith("https://")
 
 
 def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: str) -> str:

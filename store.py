@@ -135,39 +135,6 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "liveType": "advisory",
     "aiProviders": [
         {
-            "id": "internal-qwen",
-            "label": "公司内网 AIGC",
-            "baseUrl": "http://aigc-api.aigc.paas.corp/v1/chat/completions",
-            "apiKey": "sk-proj-4a110b5455131937bb39feabfc91a74b4809a6868663a54baf2f056cde5a54fb",
-            "model": "gemini-3.1-flash-image-preview",
-            "enabled": True,
-            "priority": 1,
-            "apiKeyPlacement": "header",
-            "useProxy": False,
-        },
-        {
-            "id": "claude-opus-4-7",
-            "label": "Claude Opus 4-7 (内网)",
-            "baseUrl": "http://aigc-api.aigc.paas.corp/v1/messages",
-            "apiKey": "sk-proj-4a110b5455131937bb39feabfc91a74b4809a6868663a54baf2f056cde5a54fb",
-            "model": "aigc/claude-opus-4-7",
-            "enabled": False,
-            "priority": 2,
-            "apiKeyPlacement": "header",
-            "useProxy": False,
-        },
-        {
-            "id": "claude-opus-4-7-prod",
-            "label": "Claude Opus 4-7 (线上)",
-            "baseUrl": "http://aigc-api.aigc.paas.idc/v1/messages",
-            "apiKey": "sk-proj-4a110b5455131937bb39feabfc91a74b4809a6868663a54baf2f056cde5a54fb",
-            "model": "aigc/claude-opus-4-7",
-            "enabled": False,
-            "priority": 3,
-            "apiKeyPlacement": "header",
-            "useProxy": False,
-        },
-        {
             "id": "primary-volcengine",
             "label": "火山主路由",
             "baseUrl": "https://ark.cn-beijing.volces.com/api/v3/responses",
@@ -185,6 +152,19 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "reportFormat": "输出 Markdown，标题清晰，表格优先，层级分明，短句为主。",
     "externalHotTopics": "",
 }
+
+LEGACY_INTERNAL_AI_PROVIDER_IDS = {
+    "internal-qwen",
+    "claude-opus-4-7",
+    "claude-opus-4-7-prod",
+}
+
+LEGACY_INTERNAL_AI_PROVIDER_HOST_MARKERS = (
+    ".corp",
+    ".idc",
+    ".internal",
+    ".local",
+)
 
 PERMISSION_KEYS = [
     "home",
@@ -258,28 +238,20 @@ def safe_object(value: Any) -> dict[str, Any]:
 
 
 def merge_ai_providers(providers: Any) -> list[dict[str, Any]]:
-    defaults = [item for item in safe_array(DEFAULT_SETTINGS.get("aiProviders")) if isinstance(item, dict)]
-    merged: dict[str, dict[str, Any]] = {str(item.get("id") or ""): dict(item) for item in defaults if item.get("id")}
-    ordered_ids = [str(item.get("id")) for item in defaults if item.get("id")]
+    merged: dict[str, dict[str, Any]] = {}
+    ordered_ids: list[str] = []
     for provider in safe_array(providers):
         if not isinstance(provider, dict):
             continue
         provider_id = str(provider.get("id") or "").strip()
         if not provider_id:
             continue
-        if provider_id == "internal-qwen" and "data-viz.yxd-risk.paas.corp" in text(provider.get("baseUrl")):
-            provider = {
-                **provider,
-                "baseUrl": DEFAULT_SETTINGS["aiProviders"][0]["baseUrl"],
-                "apiKey": DEFAULT_SETTINGS["aiProviders"][0]["apiKey"],
-                "model": DEFAULT_SETTINGS["aiProviders"][0]["model"],
-                "label": DEFAULT_SETTINGS["aiProviders"][0]["label"],
-                "apiKeyPlacement": DEFAULT_SETTINGS["aiProviders"][0]["apiKeyPlacement"],
-                "useProxy": DEFAULT_SETTINGS["aiProviders"][0]["useProxy"],
-            }
+        base_url = text(provider.get("baseUrl") or provider.get("url")).lower()
+        if provider_id in LEGACY_INTERNAL_AI_PROVIDER_IDS or any(marker in base_url for marker in LEGACY_INTERNAL_AI_PROVIDER_HOST_MARKERS):
+            continue
         if provider_id not in merged:
             ordered_ids.append(provider_id)
-        merged[provider_id] = {**merged.get(provider_id, {}), **provider}
+        merged[provider_id] = {**provider}
     return sorted([merged[item_id] for item_id in ordered_ids if item_id in merged], key=lambda item: int(item.get("priority") or 999))
 
 
@@ -346,7 +318,8 @@ def get_settings() -> dict[str, Any]:
 
 
 def save_settings(payload: dict[str, Any]) -> dict[str, Any]:
-    value = {**DEFAULT_SETTINGS, **safe_object(payload), "updatedAt": datetime.now(timezone.utc).isoformat()}
+    current = safe_object(get_kv("settings", {}))
+    value = {**DEFAULT_SETTINGS, **current, **safe_object(payload), "updatedAt": datetime.now(timezone.utc).isoformat()}
     value["aiProviders"] = merge_ai_providers(value.get("aiProviders"))
     return set_kv("settings", value)
 

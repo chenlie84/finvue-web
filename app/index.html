@@ -88,6 +88,7 @@
   .nav-badge{margin-left:auto;font-size:10px;background:var(--gold-dim);color:var(--gold);padding:1px 6px;border-radius:10px;}
   .nav-badge.red-b{background:rgba(224,82,82,0.12);color:var(--red);}
   .main-content{flex:1;height:calc(100vh - 54px);min-height:0;overflow-y:auto;padding:28px 30px;}
+  .ai-html-report-frame{width:100%;min-height:82vh;border:none;border-radius:0;background:transparent;display:block;}
 
   /* ── SECTION PAGES ── */
   .sec{display:none;}
@@ -5755,6 +5756,20 @@ async function handlePromptFileUpload(input, target = "task") {
   }
 }
 
+function normalizeLiveAnalysisPrompt(prompt) {
+  const text = String(prompt || "").trim();
+  if (!text) return "";
+  const templateMatch = text.match(/##\s*提示词模板[\s\S]*?```(?:markdown|md|text|txt)?\s*\n([\s\S]*?)```/i);
+  if (templateMatch?.[1]?.trim()) {
+    return templateMatch[1].trim();
+  }
+  const singleBlockMatch = text.match(/^```(?:markdown|md|text|txt)?\s*\n([\s\S]*?)```\s*$/i);
+  if (singleBlockMatch?.[1]?.trim()) {
+    return singleBlockMatch[1].trim();
+  }
+  return text;
+}
+
 async function handleLibraryExtractFile(input, kind) {
   const status = kind === "compliance" ? els.complianceExtractStatus : els.caseExtractStatus;
   try {
@@ -6501,11 +6516,21 @@ function escapeHtml(text) {
   return String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function escapeHtmlAttr(text) {
+  return escapeHtml(text).replace(/"/g, "&quot;");
+}
+
 function escapeInlineHtml(text) {
   return String(text || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+function decodeHtmlEntities(text) {
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = String(text || "");
+  return textarea.value;
 }
 
 function formatMarkdownInline(text) {
@@ -6516,12 +6541,63 @@ function formatMarkdownInline(text) {
     .replace(/`([^`]+)`/g, "<code>$1</code>");
 }
 
-// 将 CSS 样式限定在 .report-shell-body 范围内，防止影响全局页面
-// 已废弃：现在直接忽略 AI 输出的样式，使用系统深色主题
+function unwrapHtmlReportContent(content) {
+  let text = String(content || "").trim();
+  const htmlCodeBlockMatch = text.match(/^```html\s*\n([\s\S]*?)```\s*$/i) || text.match(/```html\s*\n([\s\S]*?)```/i);
+  if (htmlCodeBlockMatch?.[1]) {
+    text = htmlCodeBlockMatch[1].trim();
+  }
+  if (/&lt;(!doctype|html|head|body|div|section|table|style)\b/i.test(text)) {
+    text = decodeHtmlEntities(text).trim();
+  }
+  return text;
+}
+
+function isHtmlReportContent(content) {
+  const text = unwrapHtmlReportContent(content);
+  if (/^<!doctype\b/i.test(text) || /^<html\b/i.test(text)) return true;
+  if (/^<(section|article|main|div|table|h1|h2|style)\b/i.test(text)) return true;
+  const htmlTagCount = (text.match(/<(div|section|article|main|table|thead|tbody|tr|td|th|h1|h2|h3|p|ul|ol|li|blockquote|span|style)\b[^>]*>/gi) || []).length;
+  return htmlTagCount >= 6;
+}
+
+function sanitizeHtmlDocumentForIframe(content) {
+  const text = unwrapHtmlReportContent(content)
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, "")
+    .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, "")
+    .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, "")
+    .replace(/javascript:/gi, "");
+  if (/^<!doctype\b/i.test(text) || /^<html\b/i.test(text)) {
+    return text;
+  }
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html,body{margin:0;background:#0A0B0E;color:#EAE6DD;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.65;}
+    body{padding:0;}
+    table{border-collapse:collapse;width:100%;}
+    img,svg,canvas,video{max-width:100%;}
+  </style>
+</head>
+<body>${text}</body>
+</html>`;
+}
+
+function buildHtmlReportEmbed(content) {
+  const srcdoc = sanitizeHtmlDocumentForIframe(content);
+  return `<iframe class="ai-html-report-frame" sandbox="" srcdoc="${escapeHtmlAttr(srcdoc)}"></iframe>`;
+}
 
 function markdownToReportHtml(markdown) {
   if (!markdown) return "<p>未获得分析结果</p>";
   const rawText = String(markdown);
+  if (isHtmlReportContent(rawText)) {
+    return buildHtmlReportEmbed(rawText);
+  }
 
   // 检测是否是完整的 HTML 文档（AI 输出 ```html 代码块）
   const htmlCodeBlockMatch = rawText.match(/```html\s*\n([\s\S]*?)```/i);
@@ -6860,6 +6936,9 @@ function stripLeadingDuplicateReportTitle(markdown) {
 }
 
 function buildReportShellHtml(markdown, options = {}) {
+  if (isHtmlReportContent(markdown)) {
+    return buildHtmlReportEmbed(markdown);
+  }
   const title = options.title || getCurrentReportTitle();
   const stamp = options.timestamp || new Date().toLocaleString("zh-CN");
   const model = options.model || state.lastAiMeta?.model || "后台路由";
@@ -7902,7 +7981,7 @@ async function handleFile(key, inp) {
 
 function buildLivePrompt() {
   // 单一提示词模式：用户在 taskPrompt 中编辑完整提示词
-  const mainPrompt = els.taskPrompt.value.trim();
+  const mainPrompt = normalizeLiveAnalysisPrompt(els.taskPrompt.value.trim());
   const transcript = mergeTextInputs(state.fileData.ts, els.tsText.value);
   const hotTopics = state.hotArr.length ? state.hotArr.join("、") : "";
   const reportType = getSelectedReportType();
@@ -7914,16 +7993,18 @@ function buildLivePrompt() {
   const evaluationNotes = els.evaluationNotes?.value.trim() || "";
   const metricsRawText = els.metricsRawText.value.trim();
 
-  // 检测提示词是否有明确的输出格式要求
-  // 如果有格式要求（如 HTML、表格样式、卡片样式等），注入系统 UI 样式参考
-  // 如果没有格式要求，让 AI 输出 Markdown，系统按照报告风格渲染
-  const hasFormatRequirement = /输出格式|HTML|html|输出样式|卡片样式|表格样式|评分卡片|stat-card|quote|timeline|insight-box/i.test(mainPrompt);
-  const styleReference = hasFormatRequirement ? SYSTEM_UI_STYLE_REFERENCE : "";
+  const htmlFormatGuard = [
+    "【输出格式约束】",
+    "如果上面的提示词要求输出 HTML，请输出可直接渲染的 HTML 报告；可以包含 <style>，但不要包含 <script>。",
+    "HTML 报告要使用深色主题或自带完整配色，不能只输出解释文字。",
+    "不要把 HTML 放进 ```html 代码块里；直接输出 HTML 内容即可。",
+    "如果上面的提示词没有要求 HTML，则输出 Markdown。"
+  ].join("\n");
 
   return [
     "请严格根据以下唯一提示生成结果，只输出一份最终完整报告，不要重复输出。",
-    styleReference,
     mainPrompt ? `【分析提示词】\n${mainPrompt}` : "",
+    htmlFormatGuard,
     hotTopics ? `【外部热点】\n${hotTopics}` : "",
     reportType === "anchorEvaluation" && evaluationNotes ? `【补充背景说明】\n${evaluationNotes}` : "",
     reportType === "anchorEvaluation" && metricsRawText ? `【直播数据原始摘要】\n${metricsRawText}` : "",
@@ -7935,7 +8016,7 @@ function buildLivePrompt() {
 }
 
 function buildLiveSystemPrompt() {
-  return "你是一个严格执行单一提示词的报告生成助手。不要拆成多版输出，不要重复报告，不要补写第二份结果。";
+  return "你是一个严格执行单一提示词的报告生成助手。提示词要求 HTML 时直接输出可渲染的 HTML 报告；不要拆成多版输出，不要重复报告，不要补写第二份结果。";
 }
 
 function updateScoreCards(markdown) {
