@@ -30,18 +30,15 @@ RUN mkdir -p /var/log/supervisor
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 # 设置环境变量
-ENV MYSQL_HOST=localhost
-ENV MYSQL_PORT=3306
-ENV MYSQL_DATABASE=finvue
-ENV MYSQL_USER=finvue
-ENV MYSQL_PASSWORD=finvue_password
-ENV AUTH_SECRET=change-this-to-a-long-random-secret-key
-ENV ADMIN_USERNAME=admin
-ENV ADMIN_PASSWORD=admin123
-ENV ENV=production
-ENV HOST=0.0.0.0
-ENV PORT=8080
-ENV OBJECT_STORAGE_DIR=/srv/finvue/objects
+ENV MYSQL_HOST=localhost \
+    MYSQL_PORT=3306 \
+    MYSQL_DATABASE=finvue \
+    MYSQL_USER=finvue \
+    ENV=production \
+    HOST=0.0.0.0 \
+    PORT=8080 \
+    OBJECT_STORAGE_DIR=/srv/finvue/objects \
+    USE_CEPH_S3=false
 
 # 暴露端口
 EXPOSE 8080

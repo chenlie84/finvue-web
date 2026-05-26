@@ -19,9 +19,38 @@ done
 
 # 创建数据库和用户
 echo "[entrypoint] 初始化数据库..."
-mariadb -u root -e "CREATE DATABASE IF NOT EXISTS finvue CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" || true
-mariadb -u root -e "CREATE USER IF NOT EXISTS 'finvue'@'localhost' IDENTIFIED BY 'finvue_password';" || true
-mariadb -u root -e "GRANT ALL PRIVILEGES ON finvue.* TO 'finvue'@'localhost';" || true
+export MYSQL_DATABASE=${MYSQL_DATABASE:-finvue}
+export MYSQL_USER=${MYSQL_USER:-finvue}
+export MYSQL_PASSWORD=${MYSQL_PASSWORD:-finvue_password}
+export ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+export ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+export AUTH_SECRET=${AUTH_SECRET:-dev-only-allinone-auth-secret}
+
+case "$MYSQL_DATABASE" in
+    *[!A-Za-z0-9_]*|"")
+        echo "[entrypoint] MYSQL_DATABASE 只能包含字母、数字和下划线"
+        exit 1
+        ;;
+esac
+
+case "$MYSQL_USER" in
+    *[!A-Za-z0-9_]*|"")
+        echo "[entrypoint] MYSQL_USER 只能包含字母、数字和下划线"
+        exit 1
+        ;;
+esac
+
+sql_escape() {
+    printf "%s" "$1" | sed "s/'/''/g"
+}
+
+MYSQL_DATABASE_SQL=$(sql_escape "$MYSQL_DATABASE")
+MYSQL_USER_SQL=$(sql_escape "$MYSQL_USER")
+MYSQL_PASSWORD_SQL=$(sql_escape "$MYSQL_PASSWORD")
+
+mariadb -u root -e "CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE_SQL}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" || true
+mariadb -u root -e "CREATE USER IF NOT EXISTS '${MYSQL_USER_SQL}'@'localhost' IDENTIFIED BY '${MYSQL_PASSWORD_SQL}';" || true
+mariadb -u root -e "GRANT ALL PRIVILEGES ON \`${MYSQL_DATABASE_SQL}\`.* TO '${MYSQL_USER_SQL}'@'localhost';" || true
 mariadb -u root -e "FLUSH PRIVILEGES;" || true
 echo "[entrypoint] 数据库初始化完成"
 
@@ -31,15 +60,10 @@ cd /app
 export AUTO_MIGRATE=true
 export MYSQL_HOST=localhost
 export MYSQL_PORT=3306
-export MYSQL_DATABASE=finvue
-export MYSQL_USER=finvue
-export MYSQL_PASSWORD=finvue_password
 python3 migrate.py || echo "[entrypoint] 迁移完成或已存在"
 
 # 创建管理员账号
 echo "[entrypoint] 创建管理员账号..."
-export ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
-export ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
 python3 scripts/seed_admin.py || echo "[entrypoint] 管理员账号已存在"
 
 # 启动应用

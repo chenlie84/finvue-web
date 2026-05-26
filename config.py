@@ -40,11 +40,11 @@ SESSION_TTL_SECONDS = 7 * 24 * 60 * 60
 AUTO_MIGRATE = os.environ.get("AUTO_MIGRATE", "true").lower() != "false"
 
 MYSQL_URL = os.environ.get("MYSQL_URL", "")
-MYSQL_HOST = os.environ.get("MYSQL_HOST", "mysql0200.3337-wm.db.idc")
-MYSQL_PORT = int(os.environ.get("MYSQL_PORT", "3337"))
-MYSQL_DATABASE = os.environ.get("MYSQL_DATABASE", "process_analysis")
-MYSQL_USER = os.environ.get("MYSQL_USER", "process_analysis")
-MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "ns7ubvy96ncHncOTOeHS")
+MYSQL_HOST = os.environ.get("MYSQL_HOST", "")
+MYSQL_PORT = int(os.environ.get("MYSQL_PORT", "3306"))
+MYSQL_DATABASE = os.environ.get("MYSQL_DATABASE", "")
+MYSQL_USER = os.environ.get("MYSQL_USER", "")
+MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "")
 
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", str(50 * 1024 * 1024)))
 OBJECT_STORAGE_DIR = Path(os.environ.get("OBJECT_STORAGE_DIR", str(BASE_DIR / ".objects")))
@@ -58,16 +58,16 @@ def _proxy_url(value: str) -> str:
     return raw
 
 
-HTTP_PROXY = _proxy_url(os.environ.get("http_proxy") or os.environ.get("HTTP_PROXY") or "nginx-proxy.jishu.idc:80")
-HTTPS_PROXY = _proxy_url(os.environ.get("https_proxy") or os.environ.get("HTTPS_PROXY") or "nginx-proxy.jishu.idc:80")
+HTTP_PROXY = _proxy_url(os.environ.get("http_proxy") or os.environ.get("HTTP_PROXY") or "")
+HTTPS_PROXY = _proxy_url(os.environ.get("https_proxy") or os.environ.get("HTTPS_PROXY") or "")
 
 # CEPH S3 object storage. Generated reports and uploaded source files should not
 # depend on local disk when deployed across multiple machines.
-CEPH_ACCESS_KEY = os.environ.get("CEPH_ACCESS_KEY", "A9GB4FCO9BJZOWY60OOV")
-CEPH_SECRET_KEY = os.environ.get("CEPH_SECRET_KEY", "x3ecBEjD7ZABGf5yW51CegFh442f865LqLVFxeAZ")
-CEPH_URL = os.environ.get("CEPH_URL", "http://s3.creditease.corp")
+CEPH_ACCESS_KEY = os.environ.get("CEPH_ACCESS_KEY", "")
+CEPH_SECRET_KEY = os.environ.get("CEPH_SECRET_KEY", "")
+CEPH_URL = os.environ.get("CEPH_URL", "")
 CEPH_REGION = os.environ.get("CEPH_REGION", "default")
-CEPH_BUCKET = os.environ.get("CEPH_BUCKET", "yxd-risk-public-read")
+CEPH_BUCKET = os.environ.get("CEPH_BUCKET", "")
 CEPH_KEY_PREFIX = os.environ.get("CEPH_KEY_PREFIX", "finvue/")
 SOURCE_CEPH_KEY_PREFIX = os.environ.get("SOURCE_CEPH_KEY_PREFIX", "finvue_source/")
 IMAGE_CEPH_KEY_PREFIX = os.environ.get("IMAGE_CEPH_KEY_PREFIX", "finvue_images/")
@@ -75,11 +75,11 @@ IMAGE_CEPH_KEY_PREFIX = os.environ.get("IMAGE_CEPH_KEY_PREFIX", "finvue_images/"
 PAN_ACCESS_KEY = os.environ.get("PAN_ACCESS_KEY", CEPH_ACCESS_KEY)
 PAN_SECRET_KEY = os.environ.get("PAN_SECRET_KEY", CEPH_SECRET_KEY)
 PAN_BUCKET = os.environ.get("PAN_BUCKET", CEPH_BUCKET)
-PAN_NAME = os.environ.get("PAN_NAME", "yxd-risk")
-PAN_SHARER = os.environ.get("PAN_SHARER", "xuzhao29")
+PAN_NAME = os.environ.get("PAN_NAME", "")
+PAN_SHARER = os.environ.get("PAN_SHARER", "")
 PAN_VALID_MINUTES = int(os.environ.get("PAN_VALID_MINUTES", str(60 * 24 * 365)))
-PAN_URL_BASE = os.environ.get("PAN_URL_BASE", "http://pan.paas.paas.idc/share/gen")
-USE_CEPH_S3 = os.environ.get("USE_CEPH_S3", "true").lower() == "true"
+PAN_URL_BASE = os.environ.get("PAN_URL_BASE", "")
+USE_CEPH_S3 = os.environ.get("USE_CEPH_S3", "false").lower() == "true"
 
 
 def has_mysql_config() -> bool:
@@ -90,11 +90,11 @@ def has_ceph_config() -> bool:
     return bool(USE_CEPH_S3 and CEPH_ACCESS_KEY and CEPH_SECRET_KEY and CEPH_URL and CEPH_BUCKET)
 
 # 远程数据源数据库配置（用于在线导入直播和短视频数据）
-REMOTE_DB_HOST = os.environ.get("REMOTE_DB_HOST", "10.170.32.218")
+REMOTE_DB_HOST = os.environ.get("REMOTE_DB_HOST", "")
 REMOTE_DB_PORT = int(os.environ.get("REMOTE_DB_PORT", "3306"))
-REMOTE_DB_DATABASE = os.environ.get("REMOTE_DB_DATABASE", "demo")
-REMOTE_DB_USER = os.environ.get("REMOTE_DB_USER", "root")
-REMOTE_DB_PASSWORD = os.environ.get("REMOTE_DB_PASSWORD", "Python3.8")
+REMOTE_DB_DATABASE = os.environ.get("REMOTE_DB_DATABASE", "")
+REMOTE_DB_USER = os.environ.get("REMOTE_DB_USER", "")
+REMOTE_DB_PASSWORD = os.environ.get("REMOTE_DB_PASSWORD", "")
 
 def has_remote_db_config() -> bool:
     return bool(REMOTE_DB_HOST and REMOTE_DB_DATABASE and REMOTE_DB_USER)

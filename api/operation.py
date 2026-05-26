@@ -25,6 +25,21 @@ def get_client_ip(request: Request) -> str:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else ""
 
+
+def _to_int(value: Any, default: int = 0) -> int:
+    raw = str(value or "").replace(",", "").strip()
+    if not raw:
+        return default
+    import re
+
+    match = re.search(r"-?\d+(\.\d+)?", raw)
+    if not match:
+        return default
+    try:
+        return int(float(match.group(0)))
+    except (TypeError, ValueError):
+        return default
+
 # 字段映射：CSV 字段名 -> 数据库字段名
 LIVE_FIELD_MAP = {
     "账号名称": "account",
@@ -1554,44 +1569,6 @@ def _insert_video_batch(batch: list) -> None:
     )
 
 
-@router.post("/api/operation/online-import-all")
-async def online_import_all_data(
-    request: Request,
-    _: dict = Depends(security.require_permission("admin-api"))
-) -> dict:
-    """一键在线导入所有数据（直播+短视频）."""
-    if not config.has_remote_db_config():
-        return {"ok": False, "error": "远程数据库未配置"}
-
-    # 调用两个导入接口
-    live_result = await online_import_live_data(request, _)
-    video_result = await online_import_video_data(request, _)
-
-    live_count = live_result.get("count", 0) if live_result.get("ok") else 0
-    video_count = video_result.get("count", 0) if video_result.get("ok") else 0
-
-    errors = []
-    if not live_result.get("ok"):
-        errors.append(f"直播数据导入失败: {live_result.get('error')}")
-    if not video_result.get("ok"):
-        errors.append(f"短视频数据导入失败: {video_result.get('error')}")
-
-    if errors:
-        return {
-            "ok": False,
-            "error": "; ".join(errors),
-            "live_count": live_count,
-            "video_count": video_count
-        }
-
-    return {
-        "ok": True,
-        "message": f"成功导入直播 {live_count} 条，短视频 {video_count} 条",
-        "live_count": live_count,
-        "video_count": video_count
-    }
-
-
 @router.post("/api/operation/online-import-customer-profiles")
 async def online_import_customer_profiles(
     request: Request,
@@ -1662,36 +1639,37 @@ async def online_import_customer_profiles(
                         continue
 
                     customer_name = str(user.get('nickname') or '').strip()
-                    watch_rank = int(rank_item.get('rank') or 0)
-                    watch_duration = int(rank_item.get('watch_time') or 0)
+                    watch_rank = _to_int(rank_item.get('rank'))
+                    watch_duration = _to_int(rank_item.get('watch_time'))
 
-                # 获取或创建客户档案
-                if customer_id not in customer_profiles:
-                    customer_profiles[customer_id] = {
-                        'customer_id': customer_id,
-                        'customer_name': customer_name,
-                        'latest_anchor_name': anchor_name,
-                        'latest_analyzed_at': created_at,
-                        'latest_live_theme': '',
-                        'latest_rank': watch_rank,
-                        'best_rank': watch_rank,
-                        'avg_watch_seconds': watch_duration,
-                        'labels': [],
-                        'tags': [],
-                    }
-                else:
-                    # 更新档案（保留最新数据）
-                    profile = customer_profiles[customer_id]
-                    if created_at and (not profile['latest_analyzed_at'] or created_at > profile['latest_analyzed_at']):
-                        profile['latest_analyzed_at'] = created_at
-                        profile['latest_anchor_name'] = anchor_name
-                        profile['latest_rank'] = watch_rank
-                        profile['customer_name'] = customer_name or profile['customer_name']
-                    # 更新最佳排名
-                    if watch_rank > 0 and (profile['best_rank'] == 0 or watch_rank < profile['best_rank']):
-                        profile['best_rank'] = watch_rank
-                    # 累计观看时长（用于计算平均）
-                    profile['avg_watch_seconds'] = (profile['avg_watch_seconds'] + watch_duration) // 2
+                    # 获取或创建客户档案
+                    if customer_id not in customer_profiles:
+                        customer_profiles[customer_id] = {
+                            'customer_id': customer_id,
+                            'customer_name': customer_name,
+                            'latest_anchor_name': anchor_name,
+                            'latest_analyzed_at': created_at,
+                            'latest_live_theme': '',
+                            'latest_rank': watch_rank,
+                            'best_rank': watch_rank,
+                            'total_watch_seconds': watch_duration,
+                            'session_count': 1,
+                            'labels': [],
+                            'tags': [],
+                        }
+                    else:
+                        # 更新档案（保留最新数据）
+                        profile = customer_profiles[customer_id]
+                        if created_at and (not profile['latest_analyzed_at'] or created_at > profile['latest_analyzed_at']):
+                            profile['latest_analyzed_at'] = created_at
+                            profile['latest_anchor_name'] = anchor_name
+                            profile['latest_rank'] = watch_rank
+                            profile['customer_name'] = customer_name or profile['customer_name']
+                        # 更新最佳排名
+                        if watch_rank > 0 and (profile['best_rank'] == 0 or watch_rank < profile['best_rank']):
+                            profile['best_rank'] = watch_rank
+                        profile['total_watch_seconds'] += watch_duration
+                        profile['session_count'] += 1
 
         # 批量插入客户档案
         count = 0
@@ -1705,7 +1683,7 @@ async def online_import_customer_profiles(
                 profile['latest_live_theme'],
                 profile['latest_rank'],
                 profile['best_rank'],
-                profile['avg_watch_seconds'],
+                profile['total_watch_seconds'] // max(1, profile['session_count']),
                 json.dumps(profile['labels']),
                 json.dumps(profile['tags']),
                 '{}',
@@ -1856,8 +1834,8 @@ async def online_import_customer_sessions(
                         continue
 
                     customer_name = str(user.get('nickname') or '').strip()
-                    watch_rank = int(rank_item.get('rank') or 0)
-                    watch_duration = int(rank_item.get('watch_time') or 0)
+                    watch_rank = _to_int(rank_item.get('rank'))
+                    watch_duration = _to_int(rank_item.get('watch_time'))
 
                     # 生成 session_id
                     session_id = f"db::{room_id}::{metric_type}::{customer_id}"
