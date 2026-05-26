@@ -501,7 +501,7 @@ async def import_video_data(
 def delete_live_record(
     room_id: str,
     request: Request,
-    _: dict = Depends(security.require_permission("home"))
+    _: dict = Depends(security.require_any_permission("home", "operation"))
 ) -> dict:
     """删除直播记录（仅限手工录入的记录）."""
     session = security.require_auth(request)
@@ -571,7 +571,7 @@ def delete_live_record(
 # === 报表查询接口 ===
 
 @router.get("/api/operation/accounts")
-def get_accounts(_: dict = Depends(security.require_permission("home"))) -> dict:
+def get_accounts(_: dict = Depends(security.require_any_permission("home", "operation"))) -> dict:
     """获取所有主播账号列表."""
     try:
         rows = db.fetch_all(
@@ -623,7 +623,7 @@ def get_accounts(_: dict = Depends(security.require_permission("home"))) -> dict
 def get_weekly_report(
     account: Optional[str] = None,
     weekStart: Optional[str] = None,
-    _: dict = Depends(security.require_permission("home"))
+    _: dict = Depends(security.require_any_permission("home", "operation"))
 ) -> dict:
     """获取周报数据."""
     try:
@@ -715,7 +715,7 @@ def get_weekly_report(
 def get_monthly_report(
     account: Optional[str] = None,
     month: Optional[str] = None,
-    _: dict = Depends(security.require_permission("home"))
+    _: dict = Depends(security.require_any_permission("home", "operation"))
 ) -> dict:
     """获取月报数据."""
     try:
@@ -868,7 +868,7 @@ def get_calendar(
     year: int,
     month: int,
     account: Optional[str] = None,
-    _: dict = Depends(security.require_permission("home"))
+    _: dict = Depends(security.require_any_permission("home", "operation"))
 ) -> dict:
     """获取直播日历数据."""
     try:
@@ -1039,7 +1039,7 @@ def get_import_logs(
 @router.get("/api/operation/anchor-summary")
 def get_anchor_summary(
     account: str,
-    _: dict = Depends(security.require_permission("home"))
+    _: dict = Depends(security.require_any_permission("home", "operation"))
 ) -> dict:
     """获取单个主播的直播数据汇总（用于主播资料库、主播画像等页面）."""
     if not account:
@@ -1103,7 +1103,7 @@ def get_anchor_summary(
 
 
 @router.get("/api/operation/home-overview")
-def get_home_overview(_: dict = Depends(security.require_permission("home"))) -> dict:
+def get_home_overview(_: dict = Depends(security.require_any_permission("home", "operation"))) -> dict:
     """获取工作台概览数据（一次性获取所有数据，减少前端请求次数）."""
     try:
         now = datetime.now()

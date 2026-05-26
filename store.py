@@ -168,9 +168,11 @@ LEGACY_INTERNAL_AI_PROVIDER_HOST_MARKERS = (
 
 PERMISSION_KEYS = [
     "home",
+    "ai-chat",
     "live",
     "anchor-library",
     "customer-library",
+    "operation",
     "transcript-library",
     "distill-library",
     "sop",
@@ -357,6 +359,26 @@ def save_remote_db_settings(payload: dict[str, Any], username: str = "") -> dict
     return set_kv("remote-db-settings", value)
 
 
+def get_access_settings(default_open_registration: bool = True) -> dict[str, Any]:
+    saved = safe_object(get_kv("access-settings", {}))
+    return {
+        "openRegistration": bool(saved.get("openRegistration", default_open_registration)),
+        "updatedAt": text(saved.get("updatedAt")),
+        "updatedBy": text(saved.get("updatedBy")),
+    }
+
+
+def save_access_settings(payload: dict[str, Any], username: str = "", default_open_registration: bool = True) -> dict[str, Any]:
+    current = get_access_settings(default_open_registration)
+    incoming = safe_object(payload)
+    value = {
+        "openRegistration": bool(incoming.get("openRegistration", current.get("openRegistration"))),
+        "updatedAt": datetime.now(timezone.utc).isoformat(),
+        "updatedBy": text(username),
+    }
+    return set_kv("access-settings", value)
+
+
 def get_user_ai_settings(username: str) -> dict[str, Any]:
     key = f"user-ai-settings:{text(username).lower()}"
     saved = get_kv(key, {})
@@ -470,6 +492,11 @@ def update_user_permissions(username: str, permissions: Any) -> dict[str, Any] |
     next_permissions = normalize_user_permissions(user.get("role", "user"), permissions)
     db.execute("UPDATE finvue_users SET permissions = %s, updated_at = CURRENT_TIMESTAMP WHERE username = %s", (_json(next_permissions), username))
     return get_user_by_username(username)
+
+
+def delete_user(username: str) -> bool:
+    result = db.execute("DELETE FROM finvue_users WHERE username = %s", (str(username or "").strip().lower(),))
+    return bool(result)
 
 
 def _report_snapshot_from_raw(raw: dict[str, Any]) -> dict[str, Any]:

@@ -58,16 +58,82 @@ def _remote_db_connection(settings: dict):
 
 @router.get("/api/admin/users")
 def users(_: dict = Depends(security.require_admin)) -> dict:
-    return {"users": [security.sanitize_user(user) for user in store.list_users()]}
+    return {
+        "users": [security.sanitize_user(user) for user in store.list_users()],
+        "permissionKeys": store.PERMISSION_KEYS,
+        "access": store.get_access_settings(config.ALLOW_OPEN_REGISTRATION),
+    }
+
+
+@router.get("/api/admin/access")
+def get_access_settings(_: dict = Depends(security.require_admin)) -> dict:
+    return {"ok": True, "access": store.get_access_settings(config.ALLOW_OPEN_REGISTRATION)}
+
+
+@router.put("/api/admin/access")
+async def put_access_settings(request: Request, session: dict = Depends(security.require_admin)) -> dict:
+    body = await request.json()
+    incoming = body.get("access") if isinstance(body.get("access"), dict) else body
+    saved = store.save_access_settings(incoming, session.get("username", ""), config.ALLOW_OPEN_REGISTRATION)
+    return {"ok": True, "access": saved}
+
+
+@router.post("/api/admin/users")
+async def create_user(request: Request, _: dict = Depends(security.require_admin)) -> dict:
+    body = await request.json()
+    username = security.normalize_username(body.get("username"))
+    password = str(body.get("password") or "")
+    role = store.text(body.get("role") or "user")
+    if role not in {"admin", "user"}:
+        raise HTTPException(status_code=400, detail="角色只能是 admin 或 user")
+    if not username or len(password) < 6:
+        raise HTTPException(status_code=400, detail="账号或密码不符合要求")
+    if store.get_user_by_username(username):
+        raise HTTPException(status_code=409, detail="账号已存在")
+    salt, password_hash = security.hash_password(password)
+    user = store.save_user({
+        "username": username,
+        "role": role,
+        "permissions": body.get("permissions"),
+        "passwordSalt": salt,
+        "passwordHash": password_hash,
+    })
+    return {"ok": True, "user": security.sanitize_user(user)}
+
+
+@router.delete("/api/admin/users/{username}")
+def delete_user(username: str, session: dict = Depends(security.require_admin)) -> dict:
+    target = security.normalize_username(username)
+    if target == security.normalize_username(session.get("username")):
+        raise HTTPException(status_code=400, detail="不能删除当前登录账号")
+    user = store.get_user_by_username(target)
+    if not user:
+        raise HTTPException(status_code=404, detail="未找到用户")
+    if user.get("role") == "admin":
+        admin_count = sum(1 for item in store.list_users() if item.get("role") == "admin")
+        if admin_count <= 1:
+            raise HTTPException(status_code=400, detail="至少保留一个超级管理员")
+    if not store.delete_user(target):
+        raise HTTPException(status_code=500, detail="删除失败")
+    return {"ok": True, "deleted": target}
 
 
 @router.patch("/api/admin/users/role")
-async def update_role(request: Request, _: dict = Depends(security.require_admin)) -> dict:
+async def update_role(request: Request, session: dict = Depends(security.require_admin)) -> dict:
     body = await request.json()
     username = security.normalize_username(body.get("username"))
     role = store.text(body.get("role"))
     if role not in {"admin", "user"}:
         raise HTTPException(status_code=400, detail="角色只能是 admin 或 user")
+    current = store.get_user_by_username(username)
+    if not current:
+        raise HTTPException(status_code=404, detail="未找到用户")
+    if current.get("role") == "admin" and role != "admin":
+        if username == security.normalize_username(session.get("username")):
+            raise HTTPException(status_code=400, detail="不能降级当前登录的超级管理员")
+        admin_count = sum(1 for item in store.list_users() if item.get("role") == "admin")
+        if admin_count <= 1:
+            raise HTTPException(status_code=400, detail="至少保留一个超级管理员")
     user = store.update_user_role(username, role)
     if not user:
         raise HTTPException(status_code=404, detail="未找到用户")

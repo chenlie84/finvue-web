@@ -21,6 +21,7 @@ def get_client_ip(request: Request) -> str:
 
 DEFAULT_REGISTER_PERMISSIONS = {
     "home": True,
+    "ai-chat": True,
     "live": True,
 }
 
@@ -28,7 +29,8 @@ DEFAULT_REGISTER_PERMISSIONS = {
 @router.get("/api/session")
 def session(request: Request) -> dict:
     current = security.get_session(request)
-    return {"authenticated": bool(current), "user": current, "registrationEnabled": bool(config.ALLOW_OPEN_REGISTRATION)}
+    access = store.get_access_settings(config.ALLOW_OPEN_REGISTRATION)
+    return {"authenticated": bool(current), "user": current, "registrationEnabled": bool(access.get("openRegistration"))}
 
 
 @router.post("/api/login")
@@ -57,7 +59,8 @@ async def login(request: Request, response: Response) -> dict:
 async def register(request: Request, response: Response) -> dict:
     body = await request.json()
     users = store.list_users()
-    if users and not config.ALLOW_OPEN_REGISTRATION:
+    access = store.get_access_settings(config.ALLOW_OPEN_REGISTRATION)
+    if users and not access.get("openRegistration"):
         raise HTTPException(status_code=403, detail="当前系统未开放注册")
     username = security.normalize_username(body.get("username"))
     password = str(body.get("password") or "")

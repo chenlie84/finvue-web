@@ -898,7 +898,7 @@
       <button class="nav-item" data-sec="live" data-permission="live" onclick="showSec('live',this)"><span class="ni">▶</span> 直播分析 <span class="nav-badge">3</span></button>
       <button class="nav-item" data-sec="anchor-library" data-permission="anchor-library" onclick="showSec('anchor-library',this)"><span class="ni">▣</span> 主播资料库</button>
       <button class="nav-item" data-sec="customer-library" data-permission="customer-library" onclick="showSec('customer-library',this)"><span class="ni">◉</span> 客户库</button>
-      <button class="nav-item" onclick="window.location.href='/operation-dashboard.html'"><span class="ni">📊</span> 运营数据中心</button>
+      <button class="nav-item" data-permission="operation" onclick="goOperationDashboard()"><span class="ni">📊</span> 运营数据中心</button>
       <button class="nav-item" data-sec="transcript-library" data-permission="transcript-library" onclick="showSec('transcript-library',this)"><span class="ni">☰</span> 逐字稿库</button>
       <button class="nav-item" data-sec="distill-library" data-permission="distill-library" onclick="showSec('distill-library',this)"><span class="ni">⌘</span> 主播蒸馏库</button>
       <button class="nav-item" data-sec="sop" data-permission="sop" onclick="showSec('sop',this)"><span class="ni">▤</span> 带新SOP</button>
@@ -2159,7 +2159,31 @@
 
       <div class="asec" id="asec-users">
         <div class="page-title">用户管理</div>
-        <div class="page-sub">管理本地账号、角色分配与管理员权限</div>
+        <div class="page-sub">超级管理员可控制开放注册、创建/删除账号，并为普通用户授权模块</div>
+        <div class="g2 mb">
+          <div class="panel">
+            <div class="panel-hd">
+              <div><div class="panel-title">注册入口</div><div class="muted" style="font-size:12px;margin-top:4px;">关闭后，登录页不再允许新用户自行注册。</div></div>
+              <label class="muted" style="font-size:13px;display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="openRegistrationToggle" style="accent-color:var(--gold);">
+                开放注册
+              </label>
+            </div>
+            <div class="muted" id="accessSettingsMeta" style="font-size:12px;">正在读取注册设置...</div>
+          </div>
+          <div class="panel">
+            <div class="panel-hd"><div><div class="panel-title">创建用户</div><div class="muted" style="font-size:12px;margin-top:4px;">初始密码至少 6 位，创建后可立即授权模块。</div></div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 120px auto;gap:8px;align-items:center;">
+              <input class="inp" id="createUserName" placeholder="用户名" style="font-size:12px;padding:7px 10px;">
+              <input class="inp" id="createUserPassword" type="password" placeholder="初始密码" style="font-size:12px;padding:7px 10px;">
+              <select class="sel" id="createUserRole" style="font-size:12px;padding:7px 10px;">
+                <option value="user">普通用户</option>
+                <option value="admin">超级管理员</option>
+              </select>
+              <button class="btn btn-gold" id="createUserBtn" style="font-size:12px;padding:7px 14px;">创建</button>
+            </div>
+          </div>
+        </div>
         <div class="panel">
           <div class="panel-hd"><div class="panel-title">用户列表</div><div style="display:flex;gap:8px;"><input class="inp" id="adminUserSearch" placeholder="搜索用户…" style="font-size:12px;padding:5px 10px;"/><button class="btn btn-outline" id="refreshUsersBtn" style="font-size:12px;padding:5px 14px;">刷新用户</button></div></div>
           <table class="tbl">
@@ -3132,6 +3156,7 @@ const state = {
   lastMarkdown: "",
   lastAiMeta: null,
   registrationEnabled: false,
+  accessSettings: { openRegistration: false },
   currentRoleKey: "expert",
   currentTaskKey: "evaluation",
   currentReportStyle: "evaluation", // 当前报告风格
@@ -3163,9 +3188,11 @@ const state = {
 
 const DASHBOARD_PERMISSION_LABELS = {
   home: "工作台概览",
+  "ai-chat": "AI 对话",
   live: "直播分析",
   "anchor-library": "主播资料库",
   "customer-library": "客户库",
+  operation: "运营数据中心",
   "transcript-library": "逐字稿库",
   "distill-library": "主播蒸馏库",
   sop: "带新SOP",
@@ -3203,6 +3230,10 @@ function applyDashboardPermissions() {
     const allowed = hasDashboardPermission(item.dataset.permission || "");
     item.style.display = allowed ? "flex" : "none";
   });
+  document.querySelectorAll("#pg-dashboard .sidebar .nav-item[data-permission]:not([data-sec])").forEach((item) => {
+    const allowed = hasDashboardPermission(item.dataset.permission || "");
+    item.style.display = allowed ? "flex" : "none";
+  });
   const active = document.querySelector("#pg-dashboard .sidebar .nav-item.active[data-sec]");
   if (active && active.style.display === "none") {
     const firstSec = getFirstAllowedSection();
@@ -3212,6 +3243,14 @@ function applyDashboardPermissions() {
       showToast("当前账号尚未分配任何模块权限，请联系管理员授权");
     }
   }
+}
+
+function goOperationDashboard() {
+  if (!hasDashboardPermission("operation")) {
+    showToast("当前账号没有“运营数据中心”模块权限");
+    return;
+  }
+  window.location.href = "/operation-dashboard.html";
 }
 
 function getDefaultPromptLibraryForRole(roleKey, taskKey = state?.currentTaskKey || "evaluation") {
@@ -4086,6 +4125,12 @@ const els = {
   adminTranscriptActivity: document.getElementById("adminTranscriptActivity"),
   adminKnowledgeActivity: document.getElementById("adminKnowledgeActivity"),
   adminUsersTable: document.getElementById("adminUsersTable"),
+  openRegistrationToggle: document.getElementById("openRegistrationToggle"),
+  accessSettingsMeta: document.getElementById("accessSettingsMeta"),
+  createUserName: document.getElementById("createUserName"),
+  createUserPassword: document.getElementById("createUserPassword"),
+  createUserRole: document.getElementById("createUserRole"),
+  createUserBtn: document.getElementById("createUserBtn"),
   adminStatus: document.getElementById("adminStatus"),
   saveSettingsBtn: document.getElementById("saveSettingsBtn"),
   refreshUsersBtn: document.getElementById("refreshUsersBtn"),
@@ -7783,7 +7828,7 @@ function renderAdminUsers(users = state.adminUsers) {
       <td><span class="badge green">● 正常</span></td>
       <td class="mono muted">${escapeHtml(new Date(user.createdAt).toLocaleString("zh-CN"))}</td>
       <td class="mono muted">${escapeHtml(permissionSummary)}</td>
-      <td><div style="display:flex;gap:6px;"><button class="btn-sm btn-outline-sm" data-role-user="${escapeHtml(user.username)}" data-role-next="${nextRole}">设为${nextRole}</button><button class="btn-sm btn-outline-sm" data-perm-user="${escapeHtml(user.username)}">模块授权</button></div></td>
+      <td><div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="btn-sm btn-outline-sm" data-role-user="${escapeHtml(user.username)}" data-role-next="${nextRole}">设为${nextRole === "admin" ? "超级管理员" : "普通用户"}</button><button class="btn-sm btn-outline-sm" data-perm-user="${escapeHtml(user.username)}">模块授权</button><button class="btn-sm btn-outline-sm" data-delete-user="${escapeHtml(user.username)}" style="color:var(--red);border-color:rgba(224,82,82,.35);">删除</button></div></td>
     `;
     els.adminUsersTable.appendChild(tr);
   }
@@ -7799,16 +7844,95 @@ function summarizeUserPermissions(user) {
   return `${labels.join(" / ")}${suffix}`;
 }
 
+function renderAccessSettings(access = state.accessSettings) {
+  state.accessSettings = {
+    openRegistration: Boolean(access?.openRegistration),
+    updatedAt: access?.updatedAt || "",
+    updatedBy: access?.updatedBy || ""
+  };
+  if (els.openRegistrationToggle) els.openRegistrationToggle.checked = state.accessSettings.openRegistration;
+  if (els.accessSettingsMeta) {
+    const updated = state.accessSettings.updatedAt ? ` · ${formatDateTime(state.accessSettings.updatedAt)}` : "";
+    const by = state.accessSettings.updatedBy ? ` · 操作人 ${state.accessSettings.updatedBy}` : "";
+    els.accessSettingsMeta.textContent = `${state.accessSettings.openRegistration ? "当前允许用户自行注册" : "当前仅超级管理员可创建用户"}${updated}${by}`;
+  }
+  state.registrationEnabled = state.accessSettings.openRegistration;
+  syncRegistrationUi();
+}
+
 async function loadAdminUsers() {
   try {
     const response = await apiFetch("/api/admin/users");
     const payload = await response.json();
     state.adminUsers = Array.isArray(payload.users) ? payload.users : [];
+    if (payload.access) renderAccessSettings(payload.access);
     renderAdminUsers();
     updateAdminDashboardSummary();
     els.adminStatus.textContent = `已加载 ${state.adminUsers.length} 个用户`;
   } catch (error) {
     els.adminStatus.textContent = error.message;
+  }
+}
+
+async function updateAccessSettings(openRegistration) {
+  try {
+    const response = await apiFetch("/api/admin/access", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ access: { openRegistration } })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "保存失败");
+    renderAccessSettings(payload.access || { openRegistration });
+    showToast(openRegistration ? "已开放注册" : "已关闭开放注册");
+  } catch (error) {
+    renderAccessSettings(state.accessSettings);
+    els.adminStatus.textContent = error.message;
+    showToast(error.message);
+  }
+}
+
+async function createAdminUser() {
+  const username = String(els.createUserName?.value || "").trim();
+  const password = String(els.createUserPassword?.value || "");
+  const role = String(els.createUserRole?.value || "user");
+  if (!username || password.length < 6) {
+    showToast("请输入用户名和至少 6 位初始密码");
+    return;
+  }
+  try {
+    if (els.createUserBtn) els.createUserBtn.disabled = true;
+    const response = await apiFetch("/api/admin/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password, role })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "创建失败");
+    if (els.createUserName) els.createUserName.value = "";
+    if (els.createUserPassword) els.createUserPassword.value = "";
+    await loadAdminUsers();
+    showToast("用户已创建");
+  } catch (error) {
+    els.adminStatus.textContent = error.message;
+    showToast(error.message);
+  } finally {
+    if (els.createUserBtn) els.createUserBtn.disabled = false;
+  }
+}
+
+async function deleteAdminUser(username) {
+  if (!username) return;
+  if (!confirm(`确认删除用户「${username}」？`)) return;
+  try {
+    const response = await apiFetch(`/api/admin/users/${encodeURIComponent(username)}`, { method: "DELETE" });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "删除失败");
+    await loadAdminUsers();
+    showToast("用户已删除");
+  } catch (error) {
+    els.adminStatus.textContent = error.message;
+    showToast(error.message);
   }
 }
 
@@ -12228,6 +12352,8 @@ els.hotInp?.addEventListener("keydown", (event) => {
 
 els.saveSettingsBtn?.addEventListener("click", saveSettings);
 els.refreshUsersBtn?.addEventListener("click", loadAdminUsers);
+els.openRegistrationToggle?.addEventListener("change", (event) => updateAccessSettings(Boolean(event.target.checked)));
+els.createUserBtn?.addEventListener("click", createAdminUser);
 els.saveRemoteDbBtn?.addEventListener("click", saveRemoteDbSettings);
 els.testRemoteDbBtn?.addEventListener("click", testRemoteDbConnection);
 els.permissionModalClose?.addEventListener("click", closePermissionModal);
@@ -12313,6 +12439,11 @@ els.adminAiProviders?.addEventListener("change", () => {
 });
 els.aiRewriteComplianceBtn?.addEventListener("click", generateComplianceReplacementWithAi);
 els.adminUsersTable?.addEventListener("click", async (event) => {
+  const deleteButton = event.target.closest("[data-delete-user]");
+  if (deleteButton) {
+    await deleteAdminUser(deleteButton.dataset.deleteUser || "");
+    return;
+  }
   const permissionButton = event.target.closest("[data-perm-user]");
   if (permissionButton) {
     await editAdminUserPermissions(permissionButton.dataset.permUser);
