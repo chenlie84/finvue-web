@@ -351,6 +351,39 @@ def save_settings(payload: dict[str, Any]) -> dict[str, Any]:
     return set_kv("settings", value)
 
 
+def get_remote_db_settings() -> dict[str, Any]:
+    saved = safe_object(get_kv("remote-db-settings", {}))
+    return {
+        "enabled": bool(saved.get("enabled", True)),
+        "host": text(saved.get("host")),
+        "port": to_int(saved.get("port"), 3306) or 3306,
+        "database": text(saved.get("database")),
+        "user": text(saved.get("user")),
+        "password": str(saved.get("password") or ""),
+        "updatedAt": text(saved.get("updatedAt")),
+        "updatedBy": text(saved.get("updatedBy")),
+    }
+
+
+def save_remote_db_settings(payload: dict[str, Any], username: str = "") -> dict[str, Any]:
+    current = get_remote_db_settings()
+    incoming = safe_object(payload)
+    password = str(incoming.get("password") or "")
+    if password == "********":
+        password = current.get("password", "")
+    value = {
+        "enabled": bool(incoming.get("enabled", True)),
+        "host": text(incoming.get("host")),
+        "port": to_int(incoming.get("port"), 3306) or 3306,
+        "database": text(incoming.get("database")),
+        "user": text(incoming.get("user")),
+        "password": password,
+        "updatedAt": datetime.now(timezone.utc).isoformat(),
+        "updatedBy": text(username),
+    }
+    return set_kv("remote-db-settings", value)
+
+
 def get_user_ai_settings(username: str) -> dict[str, Any]:
     key = f"user-ai-settings:{text(username).lower()}"
     saved = get_kv(key, {})

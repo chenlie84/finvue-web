@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 import db
 import security
 import logger
+import store
 
 
 router = APIRouter()
@@ -1228,15 +1229,36 @@ def get_home_overview(_: dict = Depends(security.require_permission("home"))) ->
 
 import config
 
+def _get_remote_db_settings() -> dict[str, Any]:
+    saved = store.get_remote_db_settings()
+    has_saved = bool(saved.get("host") or saved.get("database") or saved.get("user"))
+    if has_saved:
+        return saved
+    return {
+        "enabled": True,
+        "host": config.REMOTE_DB_HOST,
+        "port": config.REMOTE_DB_PORT,
+        "database": config.REMOTE_DB_DATABASE,
+        "user": config.REMOTE_DB_USER,
+        "password": config.REMOTE_DB_PASSWORD,
+    }
+
+
+def _has_remote_db_config() -> bool:
+    settings = _get_remote_db_settings()
+    return bool(settings.get("enabled") and settings.get("host") and settings.get("database") and settings.get("user"))
+
+
 def _get_remote_db_connection():
     """获取远程数据库连接."""
     import pymysql
+    settings = _get_remote_db_settings()
     return pymysql.connect(
-        host=config.REMOTE_DB_HOST,
-        port=config.REMOTE_DB_PORT,
-        user=config.REMOTE_DB_USER,
-        password=config.REMOTE_DB_PASSWORD,
-        database=config.REMOTE_DB_DATABASE,
+        host=settings.get("host") or "",
+        port=int(settings.get("port") or 3306),
+        user=settings.get("user") or "",
+        password=settings.get("password") or "",
+        database=settings.get("database") or "",
         connect_timeout=30,
         charset='utf8mb4'
     )
@@ -1248,7 +1270,7 @@ async def online_import_live_data(
     _: dict = Depends(security.require_permission("admin-api"))
 ) -> dict:
     """从远程数据库在线导入直播数据."""
-    if not config.has_remote_db_config():
+    if not _has_remote_db_config():
         return {"ok": False, "error": "远程数据库未配置"}
 
     session = security.require_auth(request)
@@ -1442,7 +1464,7 @@ async def online_import_video_data(
     _: dict = Depends(security.require_permission("admin-api"))
 ) -> dict:
     """从远程数据库在线导入短视频数据."""
-    if not config.has_remote_db_config():
+    if not _has_remote_db_config():
         return {"ok": False, "error": "远程数据库未配置"}
 
     session = security.require_auth(request)
@@ -1575,7 +1597,7 @@ async def online_import_customer_profiles(
     _: dict = Depends(security.require_permission("admin-api"))
 ) -> dict:
     """从远程数据库在线导入客户档案数据（从 rank_watch 字段解析）."""
-    if not config.has_remote_db_config():
+    if not _has_remote_db_config():
         return {"ok": False, "error": "远程数据库未配置"}
 
     session = security.require_auth(request)
@@ -1752,7 +1774,7 @@ async def online_import_customer_sessions(
     _: dict = Depends(security.require_permission("admin-api"))
 ) -> dict:
     """从远程数据库在线导入客户会话数据（从 rank_watch 字段解析）."""
-    if not config.has_remote_db_config():
+    if not _has_remote_db_config():
         return {"ok": False, "error": "远程数据库未配置"}
 
     session = security.require_auth(request)
@@ -1918,7 +1940,7 @@ async def online_import_all_data(
     _: dict = Depends(security.require_permission("admin-api"))
 ) -> dict:
     """一键在线导入所有数据（直播+短视频+客户档案+客户会话）."""
-    if not config.has_remote_db_config():
+    if not _has_remote_db_config():
         return {"ok": False, "error": "远程数据库未配置"}
 
     # 调用四个导入接口

@@ -2104,6 +2104,7 @@
       <div class="s-section">数据与安全</div>
       <button class="nav-item" onclick="showAdminSec('logs',this)"><span class="ni">≡</span> 操作日志</button>
       <button class="nav-item" onclick="showAdminSec('operation-import',this)"><span class="ni">📊</span> 运营数据导入</button>
+      <button class="nav-item" onclick="showAdminSec('remote-db',this)"><span class="ni">▦</span> 远程数据库</button>
       <button class="nav-item" onclick="showAdminSec('api',this)"><span class="ni">↯</span> API管理 <span class="nav-badge red-b">!</span></button>
       <button class="nav-item" onclick="showAdminSec('backup',this)"><span class="ni">☁</span> 备份管理</button>
       <div class="s-section">监控</div>
@@ -2240,6 +2241,63 @@
         </div>
       </div>
 
+      <div class="asec" id="asec-remote-db">
+        <div class="page-title">远程数据库</div>
+        <div class="page-sub">配置在线导入使用的数据源，保存后直播、短视频和客户数据会从这里拉取。</div>
+        <div class="g3">
+          <div class="panel">
+            <div class="panel-hd">
+              <div class="panel-title">连接配置</div>
+              <span id="remoteDbStatusBadge" class="badge gray">未配置</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <label style="display:flex;align-items:center;gap:8px;color:var(--text1);font-size:13px;">
+                <input id="remoteDbEnabled" type="checkbox" checked style="accent-color:var(--gold);">
+                启用在线导入数据源
+              </label>
+              <div style="display:grid;grid-template-columns:2fr 120px;gap:10px;">
+                <div>
+                  <label class="lbl">数据库主机</label>
+                  <input class="inp" id="remoteDbHost" type="text" placeholder="例如 10.0.0.12 或 db.example.com" autocomplete="off">
+                </div>
+                <div>
+                  <label class="lbl">端口</label>
+                  <input class="inp" id="remoteDbPort" type="number" min="1" max="65535" placeholder="3306">
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                  <label class="lbl">数据库名</label>
+                  <input class="inp" id="remoteDbDatabase" type="text" placeholder="远程库 database" autocomplete="off">
+                </div>
+                <div>
+                  <label class="lbl">用户名</label>
+                  <input class="inp" id="remoteDbUser" type="text" placeholder="只读账号优先" autocomplete="off">
+                </div>
+              </div>
+              <div>
+                <label class="lbl">密码</label>
+                <input class="inp" id="remoteDbPassword" type="password" placeholder="保留 ******** 表示不修改已保存密码" autocomplete="new-password" style="width:100%;">
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <button class="btn btn-outline" id="testRemoteDbBtn" style="font-size:12px;padding:8px 14px;">测试连接</button>
+                <button class="btn btn-gold" id="saveRemoteDbBtn" style="font-size:12px;padding:8px 14px;">保存配置</button>
+              </div>
+              <div id="remoteDbStatus" class="result-box" style="min-height:auto;"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-hd"><div class="panel-title">导入说明</div></div>
+            <div class="admin-stack">
+              <div class="admin-note"><div class="muted" style="font-size:11px;">安全建议</div><div style="margin-top:6px;color:var(--text0);">建议使用只读账号，并只开放在线导入需要的远程表权限。</div></div>
+              <div class="admin-note"><div class="muted" style="font-size:11px;">当前来源</div><div id="remoteDbSource" style="margin-top:6px;color:var(--text0);">正在读取配置。</div></div>
+              <div class="admin-note"><div class="muted" style="font-size:11px;">生效范围</div><div style="margin-top:6px;color:var(--text0);">运营数据导入页的一键导入、直播导入、短视频导入、客户档案与客户会话导入。</div></div>
+              <button class="btn btn-outline" onclick="showAdminSec('operation-import',null)" style="justify-content:center;">去在线导入</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="asec" id="asec-logs">
         <div class="page-title">操作日志</div>
         <div class="page-sub">系统所有操作记录，包括登录、导入、删除、错误等</div>
@@ -2293,13 +2351,14 @@
         </div>
         <div class="panel mb" style="padding:16px;background:linear-gradient(135deg,#fef3c7,#fde68a);">
           <div class="panel-hd" style="margin-bottom:12px;"><div class="panel-title" style="color:#92400e;">⚡ 在线导入</div></div>
-          <div class="muted" style="font-size:12px;margin-bottom:12px;color:#a16207;">直接从远程数据库拉取直播、短视频和客户数据，无需上传 CSV 文件。数据会自动导入到本地数据库。</div>
+          <div class="muted" style="font-size:12px;margin-bottom:12px;color:#a16207;">直接从远程数据库拉取直播、短视频和客户数据，无需上传 CSV 文件。远程库连接可在后台“远程数据库”页面维护。</div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;">
             <button class="btn btn-outline" style="background:#fff;border-color:#d97706;color:#92400e;" onclick="onlineImportLiveData()">导入直播数据</button>
             <button class="btn btn-outline" style="background:#fff;border-color:#d97706;color:#92400e;" onclick="onlineImportVideoData()">导入短视频数据</button>
             <button class="btn btn-outline" style="background:#fff;border-color:#d97706;color:#92400e;" onclick="onlineImportCustomerProfiles()">导入客户档案</button>
             <button class="btn btn-outline" style="background:#fff;border-color:#d97706;color:#92400e;" onclick="onlineImportCustomerSessions()">导入客户会话</button>
             <button class="btn btn-gold" style="background:#d97706;color:#fff;" onclick="onlineImportAllData()">一键导入全部数据</button>
+            <button class="btn btn-outline" style="background:#fff;border-color:#d97706;color:#92400e;" onclick="showAdminSec('remote-db',null)">配置远程库</button>
           </div>
           <div id="online-import-result" style="margin-top:12px;font-size:13px;"></div>
         </div>
@@ -4036,6 +4095,17 @@ const els = {
   reportFormat: document.getElementById("reportFormat"),
   adminAiProviders: document.getElementById("adminAiProviders"),
   addAiProviderBtn: document.getElementById("addAiProviderBtn"),
+  remoteDbEnabled: document.getElementById("remoteDbEnabled"),
+  remoteDbHost: document.getElementById("remoteDbHost"),
+  remoteDbPort: document.getElementById("remoteDbPort"),
+  remoteDbDatabase: document.getElementById("remoteDbDatabase"),
+  remoteDbUser: document.getElementById("remoteDbUser"),
+  remoteDbPassword: document.getElementById("remoteDbPassword"),
+  remoteDbStatus: document.getElementById("remoteDbStatus"),
+  remoteDbStatusBadge: document.getElementById("remoteDbStatusBadge"),
+  remoteDbSource: document.getElementById("remoteDbSource"),
+  saveRemoteDbBtn: document.getElementById("saveRemoteDbBtn"),
+  testRemoteDbBtn: document.getElementById("testRemoteDbBtn"),
   evaluationDataBlock: document.getElementById("evaluationDataBlock"),
   evaluationNotes: document.getElementById("evaluationNotes"),
   metricsFileName: document.getElementById("metricsFileName"),
@@ -4161,6 +4231,96 @@ function showAdminSec(id, btn) {
   }
   if (id === "operation-import") loadOperationImportLogs();
   if (id === "logs") loadActionLogs();
+  if (id === "remote-db") loadRemoteDbSettings();
+}
+
+function renderRemoteDbSettings(settings = {}) {
+  if (els.remoteDbEnabled) els.remoteDbEnabled.checked = settings.enabled !== false;
+  if (els.remoteDbHost) els.remoteDbHost.value = settings.host || "";
+  if (els.remoteDbPort) els.remoteDbPort.value = settings.port || 3306;
+  if (els.remoteDbDatabase) els.remoteDbDatabase.value = settings.database || "";
+  if (els.remoteDbUser) els.remoteDbUser.value = settings.user || "";
+  if (els.remoteDbPassword) els.remoteDbPassword.value = settings.hasPassword ? "********" : "";
+  const configured = Boolean(settings.configured);
+  if (els.remoteDbStatusBadge) {
+    els.remoteDbStatusBadge.textContent = configured ? "已配置" : "未配置";
+    els.remoteDbStatusBadge.className = `badge ${configured ? "green" : "gray"}`;
+  }
+  if (els.remoteDbSource) {
+    const sourceText = settings.source === "admin" ? "后台配置" : settings.source === "env" ? "环境变量兼容配置" : "尚未配置";
+    const updated = settings.updatedAt ? ` · ${formatDateTime(settings.updatedAt)}` : "";
+    els.remoteDbSource.textContent = `${sourceText}${updated}`;
+  }
+}
+
+function collectRemoteDbSettings() {
+  return {
+    enabled: Boolean(els.remoteDbEnabled?.checked),
+    host: els.remoteDbHost?.value?.trim() || "",
+    port: Number(els.remoteDbPort?.value || 3306),
+    database: els.remoteDbDatabase?.value?.trim() || "",
+    user: els.remoteDbUser?.value?.trim() || "",
+    password: els.remoteDbPassword?.value || ""
+  };
+}
+
+async function loadRemoteDbSettings() {
+  if (!isAdmin() || !els.remoteDbHost) return;
+  try {
+    if (els.remoteDbStatus) els.remoteDbStatus.textContent = "正在读取远程库配置…";
+    const response = await apiFetch("/api/admin/remote-db");
+    const payload = await response.json();
+    if (!response.ok || !payload.ok) throw new Error(payload.error || "读取远程库配置失败");
+    renderRemoteDbSettings(payload.settings || {});
+    if (els.remoteDbStatus) els.remoteDbStatus.textContent = "配置已加载。";
+  } catch (error) {
+    if (els.remoteDbStatus) els.remoteDbStatus.textContent = error.message;
+  }
+}
+
+async function saveRemoteDbSettings() {
+  if (!isAdmin()) return showToast("需要管理员权限");
+  try {
+    if (els.saveRemoteDbBtn) els.saveRemoteDbBtn.disabled = true;
+    if (els.remoteDbStatus) els.remoteDbStatus.textContent = "正在保存远程库配置…";
+    const response = await apiFetch("/api/admin/remote-db", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ settings: collectRemoteDbSettings() })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.ok) throw new Error(payload.error || "保存远程库配置失败");
+    renderRemoteDbSettings(payload.settings || {});
+    if (els.remoteDbStatus) els.remoteDbStatus.textContent = "远程库配置已保存。";
+    showToast("远程库配置已保存");
+  } catch (error) {
+    if (els.remoteDbStatus) els.remoteDbStatus.textContent = error.message;
+    showToast(error.message);
+  } finally {
+    if (els.saveRemoteDbBtn) els.saveRemoteDbBtn.disabled = false;
+  }
+}
+
+async function testRemoteDbConnection() {
+  if (!isAdmin()) return showToast("需要管理员权限");
+  try {
+    if (els.testRemoteDbBtn) els.testRemoteDbBtn.disabled = true;
+    if (els.remoteDbStatus) els.remoteDbStatus.textContent = "正在测试连接…";
+    const response = await apiFetch("/api/admin/remote-db/test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ settings: collectRemoteDbSettings() })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.ok) throw new Error(payload.error || "连接测试失败");
+    if (els.remoteDbStatus) els.remoteDbStatus.textContent = payload.message || "连接成功。";
+    showToast("远程库连接成功");
+  } catch (error) {
+    if (els.remoteDbStatus) els.remoteDbStatus.textContent = error.message;
+    showToast(error.message);
+  } finally {
+    if (els.testRemoteDbBtn) els.testRemoteDbBtn.disabled = false;
+  }
 }
 
 // ══════════════ CSV模板下载函数 ══════════════
@@ -4628,7 +4788,7 @@ function canAccessAdmin() {
 }
 
 function applyAdminPermissions() {
-  const adminOnlySections = new Set(["console", "users", "roles", "settings", "logs", "backup", "monitor"]);
+  const adminOnlySections = new Set(["console", "users", "roles", "settings", "logs", "remote-db", "backup", "monitor"]);
   document.querySelectorAll("#pg-admin .sidebar .nav-item").forEach((item) => {
     const onclick = item.getAttribute("onclick") || "";
     const match = onclick.match(/showAdminSec\('([^']+)'/);
@@ -7176,6 +7336,7 @@ async function afterAuth() {
   if (hasDashboardPermission("case-library")) await loadCaseLibrary();
   if (isAdmin()) {
     await loadAdminUsers();
+    await loadRemoteDbSettings();
   } else {
     els.adminStatus.textContent = "当前账号不是管理员。";
   }
@@ -11938,6 +12099,8 @@ els.hotInp?.addEventListener("keydown", (event) => {
 
 els.saveSettingsBtn?.addEventListener("click", saveSettings);
 els.refreshUsersBtn?.addEventListener("click", loadAdminUsers);
+els.saveRemoteDbBtn?.addEventListener("click", saveRemoteDbSettings);
+els.testRemoteDbBtn?.addEventListener("click", testRemoteDbConnection);
 els.permissionModalClose?.addEventListener("click", closePermissionModal);
 els.permissionModal?.addEventListener("click", (event) => {
   if (event.target === els.permissionModal) closePermissionModal();
