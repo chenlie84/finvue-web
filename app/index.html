@@ -2132,7 +2132,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.8</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.9</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2268,7 +2268,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.8</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.9</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3319,8 +3319,23 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.8";
+const APP_VERSION = "0.1.9";
 const APP_RELEASES = [
+  {
+    version: "0.1.9",
+    date: "2026-05-27",
+    title: "高清 PDF 导出引擎",
+    permissions: ["export", "live", "anchor-library"],
+    summary: "PDF 导出从纯文本重排升级为 Playwright 页面渲染 + Pillow 整页截图写入 PDF，尽量保留 HTML 报告的视觉效果。",
+    items: [
+      "默认 PDF 引擎改为 Playwright + Pillow 高清整页截图 PDF，不再先把 HTML 抽成纯文本。",
+      "导出 PDF 会保留页面样式、表格、层级、色彩和报告视觉布局。",
+      "本地静态样式会在渲染前内联，file:// 渲染时也能保持报告形态。",
+      "保留 ReportLab 文本模式作为可选 fallback，可通过 engine=text 或 engine=reportlab 调用。",
+      "Docker 镜像构建时自动安装 Chromium 运行依赖，避免服务器缺少浏览器导致 PDF 渲染失败。",
+      "新增 playwright 和 Pillow 依赖，覆盖直播分析、报告导出等使用统一 PDF 服务的入口。"
+    ]
+  },
   {
     version: "0.1.8",
     date: "2026-05-27",

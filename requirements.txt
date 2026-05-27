@@ -8,5 +8,7 @@ itsdangerous==2.2.0
 httpx==0.28.1
 pydantic==2.11.7
 reportlab==4.2.5
+playwright==1.52.0
+Pillow==11.2.1
 boto3==1.35.99
 requests==2.32.5
