@@ -294,6 +294,9 @@
   .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.58);z-index:8000;display:none;align-items:center;justify-content:center;padding:24px;}
   .modal-backdrop.active{display:flex;}
   .modal-panel{width:min(760px,100%);max-height:min(760px,calc(100vh - 48px));overflow:auto;background:rgba(18,20,27,.98);border:1px solid var(--border2);box-shadow:0 24px 80px rgba(0,0,0,.45);border-radius:var(--r2);padding:22px;}
+  .password-form{display:grid;gap:14px;margin-top:18px;}
+  .password-hint{font-size:12px;color:var(--text1);line-height:1.7;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg1);}
+  .account-chip{display:flex;align-items:center;gap:8px;padding:4px 10px 4px 5px;border:1px solid var(--border2);border-radius:20px;}
   .perm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px;}
   .perm-item{display:flex;align-items:center;gap:9px;border:1px solid var(--border);background:var(--bg1);border-radius:var(--r);padding:10px 12px;color:var(--text1);font-size:13px;cursor:pointer;}
   .perm-item input{accent-color:var(--gold);}
@@ -895,10 +898,11 @@
     <span id="dashboardHealth" class="badge green">● 系统正常</span>
     <button class="theme-btn active" id="theme-dark" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
-    <div style="display:flex;align-items:center;gap:8px;padding:4px 10px 4px 5px;border:1px solid var(--border2);border-radius:20px;cursor:pointer;">
+    <div class="account-chip">
       <div id="dashboardAvatar" style="width:26px;height:26px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--gold);font-weight:600;">AD</div>
       <span id="dashboardUser" style="font-size:13px;">Admin</span>
     </div>
+    <button class="btn btn-outline" onclick="openPasswordModal()" style="font-size:12px;padding:5px 12px;">修改密码</button>
     <button class="btn btn-outline" id="dashboardAdminBtn" onclick="goAdmin()" style="font-size:12px;padding:5px 12px;">管理后台</button>
     <button class="btn btn-outline" onclick="logout()" style="font-size:12px;padding:5px 12px;color:var(--red);border-color:rgba(224,82,82,0.3);">退出</button>
   </div>
@@ -2128,13 +2132,14 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.7</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.8</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
-    <div style="display:flex;align-items:center;gap:8px;padding:4px 10px 4px 5px;border:1px solid var(--border2);border-radius:20px;">
-      <div style="width:26px;height:26px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--gold);font-weight:600;">AD</div>
-      <span style="font-size:13px;">超级管理员</span>
+    <div class="account-chip">
+      <div id="adminAvatar" style="width:26px;height:26px;border-radius:50%;background:var(--gold-dim);border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--gold);font-weight:600;">AD</div>
+      <span id="adminUser" style="font-size:13px;">超级管理员</span>
     </div>
+    <button class="btn btn-outline" onclick="openPasswordModal()" style="font-size:12px;padding:5px 12px;">修改密码</button>
     <button class="btn btn-outline" onclick="goDashboard()" style="font-size:12px;padding:5px 12px;">← 返回工作台</button>
     <button class="btn btn-outline" onclick="logout()" style="font-size:12px;padding:5px 12px;color:var(--red);border-color:rgba(224,82,82,0.3);">退出</button>
   </div>
@@ -2263,7 +2268,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.7</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.8</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -2558,6 +2563,38 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="passwordModal">
+  <div class="modal-panel" style="max-width:460px;">
+    <div class="panel-hd" style="padding-bottom:10px;">
+      <div>
+        <div class="panel-title">修改登录密码</div>
+        <div class="muted" id="passwordModalUser" style="font-size:12px;margin-top:4px;">当前账号</div>
+      </div>
+      <button class="btn btn-outline" id="passwordModalClose" type="button" style="font-size:12px;padding:6px 12px;">关闭</button>
+    </div>
+    <div class="password-hint">修改后当前登录会继续有效，下次登录请使用新密码。</div>
+    <div class="password-form">
+      <label>
+        <span class="lbl">当前密码</span>
+        <input class="inp" id="currentPasswordInput" type="password" autocomplete="current-password" placeholder="请输入当前密码" style="width:100%;">
+      </label>
+      <label>
+        <span class="lbl">新密码</span>
+        <input class="inp" id="newPasswordInput" type="password" autocomplete="new-password" placeholder="至少 6 位" style="width:100%;">
+      </label>
+      <label>
+        <span class="lbl">确认新密码</span>
+        <input class="inp" id="confirmPasswordInput" type="password" autocomplete="new-password" placeholder="再次输入新密码" style="width:100%;">
+      </label>
+      <div id="passwordStatus" class="muted" style="font-size:12px;min-height:18px;"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;">
+      <button class="btn btn-outline" id="passwordCancelBtn" type="button" style="font-size:12px;padding:7px 14px;">取消</button>
+      <button class="btn-primary" id="passwordSaveBtn" type="button" style="font-size:13px;padding:8px 18px;">保存新密码</button>
     </div>
   </div>
 </div>
@@ -3282,8 +3319,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.7";
+const APP_VERSION = "0.1.8";
 const APP_RELEASES = [
+  {
+    version: "0.1.8",
+    date: "2026-05-27",
+    title: "账号密码与 SOP 执行体验更新",
+    permissions: ["home", "sop", "admin-api"],
+    summary: "新增用户自助修改密码能力，并优化带新 SOP 今日执行页，让当前周任务更聚焦。",
+    items: [
+      "新增 POST /api/me/password 接口，登录用户可校验旧密码后修改自己的登录密码。",
+      "工作台和管理后台顶部新增 修改密码 按钮，弹窗支持当前密码、新密码、确认新密码校验。",
+      "密码修改会更新用户密码哈希并写入操作日志，当前登录态保持有效。",
+      "带新 SOP 页面改为主播带新今日执行，默认聚焦当前主播当前周。",
+      "SOP 执行动作支持勾选大项，细项和备注改为按需展开，页面更紧凑。"
+    ]
+  },
   {
     version: "0.1.7",
     date: "2026-05-27",
@@ -4235,8 +4286,19 @@ const els = {
   loginStatus: document.getElementById("loginStatus"),
   dashboardUser: document.getElementById("dashboardUser"),
   dashboardAvatar: document.getElementById("dashboardAvatar"),
+  adminUser: document.getElementById("adminUser"),
+  adminAvatar: document.getElementById("adminAvatar"),
   dashboardAdminBtn: document.getElementById("dashboardAdminBtn"),
   dashboardHealth: document.getElementById("dashboardHealth"),
+  passwordModal: document.getElementById("passwordModal"),
+  passwordModalUser: document.getElementById("passwordModalUser"),
+  currentPasswordInput: document.getElementById("currentPasswordInput"),
+  newPasswordInput: document.getElementById("newPasswordInput"),
+  confirmPasswordInput: document.getElementById("confirmPasswordInput"),
+  passwordStatus: document.getElementById("passwordStatus"),
+  passwordSaveBtn: document.getElementById("passwordSaveBtn"),
+  passwordCancelBtn: document.getElementById("passwordCancelBtn"),
+  passwordModalClose: document.getElementById("passwordModalClose"),
   rolePrompt: document.getElementById("rolePrompt"),
   taskPrompt: document.getElementById("taskPrompt"),
   reportStyleSelect: document.getElementById("reportStyleSelect"),
@@ -7770,6 +7832,57 @@ async function logout() {
   }
 }
 
+function resetPasswordModal() {
+  if (els.currentPasswordInput) els.currentPasswordInput.value = "";
+  if (els.newPasswordInput) els.newPasswordInput.value = "";
+  if (els.confirmPasswordInput) els.confirmPasswordInput.value = "";
+  if (els.passwordStatus) els.passwordStatus.textContent = "";
+}
+
+function openPasswordModal() {
+  if (!els.passwordModal) return;
+  resetPasswordModal();
+  if (els.passwordModalUser) {
+    els.passwordModalUser.textContent = `当前账号：${state.authUser?.username || "未登录"}`;
+  }
+  els.passwordModal.classList.add("active");
+  window.setTimeout(() => els.currentPasswordInput?.focus(), 40);
+}
+
+function closePasswordModal() {
+  if (!els.passwordModal) return;
+  els.passwordModal.classList.remove("active");
+  resetPasswordModal();
+}
+
+async function changeOwnPassword() {
+  const currentPassword = els.currentPasswordInput?.value || "";
+  const newPassword = els.newPasswordInput?.value || "";
+  const confirmPassword = els.confirmPasswordInput?.value || "";
+  try {
+    if (!currentPassword) throw new Error("请输入当前密码");
+    if (newPassword.length < 6) throw new Error("新密码至少需要 6 位");
+    if (newPassword !== confirmPassword) throw new Error("两次输入的新密码不一致");
+    if (newPassword === currentPassword) throw new Error("新密码不能和当前密码相同");
+    if (els.passwordSaveBtn) els.passwordSaveBtn.disabled = true;
+    if (els.passwordStatus) els.passwordStatus.textContent = "正在保存…";
+    const response = await apiFetch("/api/me/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload.ok) throw new Error(payload.detail || payload.error || "密码修改失败");
+    closePasswordModal();
+    showToast("密码已更新");
+  } catch (error) {
+    if (els.passwordStatus) els.passwordStatus.textContent = error.message;
+    showToast(error.message);
+  } finally {
+    if (els.passwordSaveBtn) els.passwordSaveBtn.disabled = false;
+  }
+}
+
 function isAdmin() {
   return state.authUser?.role === "admin";
 }
@@ -7780,6 +7893,8 @@ function applyAuthUser(user) {
   const initial = username.slice(0, 1).toUpperCase();
   els.dashboardUser.textContent = username;
   els.dashboardAvatar.textContent = initial;
+  if (els.adminUser) els.adminUser.textContent = isAdmin() ? "超级管理员" : username;
+  if (els.adminAvatar) els.adminAvatar.textContent = initial;
   els.dashboardAdminBtn.style.display = canAccessAdmin() ? "inline-flex" : "none";
   els.dashboardAdminBtn.textContent = isAdmin() ? "管理后台" : "API 管理";
   applyDashboardPermissions();
@@ -7789,6 +7904,18 @@ function applyAuthUser(user) {
 function syncRegistrationUi() {
   els.registerBtn.style.display = state.registrationEnabled ? "inline-flex" : "none";
 }
+
+els.passwordSaveBtn?.addEventListener("click", changeOwnPassword);
+els.passwordCancelBtn?.addEventListener("click", closePasswordModal);
+els.passwordModalClose?.addEventListener("click", closePasswordModal);
+els.passwordModal?.addEventListener("click", (event) => {
+  if (event.target === els.passwordModal) closePasswordModal();
+});
+[els.currentPasswordInput, els.newPasswordInput, els.confirmPasswordInput].forEach((input) => {
+  input?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") changeOwnPassword();
+  });
+});
 
 async function loadHealth() {
   try {

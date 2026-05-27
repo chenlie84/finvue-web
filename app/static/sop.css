@@ -734,9 +734,9 @@ textarea::placeholder {
 .week-switcher {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 22px;
+  border-radius: 18px;
   box-shadow: var(--shadow);
-  padding: 20px;
+  padding: 14px;
   min-width: 0;
 }
 
@@ -745,7 +745,7 @@ textarea::placeholder {
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .week-switcher-head .tag {
@@ -758,8 +758,8 @@ textarea::placeholder {
 }
 
 .week-switcher-head h3 {
-  font-family: var(--serif);
-  font-size: 24px;
+  font-family: var(--sans);
+  font-size: 16px;
   line-height: 1.2;
 }
 
@@ -781,8 +781,8 @@ textarea::placeholder {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, .028);
   color: var(--muted);
-  border-radius: 18px;
-  padding: 15px;
+  border-radius: 14px;
+  padding: 11px;
   cursor: pointer;
   transition: border-color .18s ease, background .18s ease, transform .18s ease;
 }
@@ -800,7 +800,7 @@ textarea::placeholder {
 
 .week-tab-code {
   display: inline-flex;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   color: var(--gold);
   font-family: var(--mono);
   font-size: 12px;
@@ -809,7 +809,7 @@ textarea::placeholder {
 .week-tab strong {
   display: block;
   color: var(--text);
-  font-size: 15px;
+  font-size: 13px;
   line-height: 1.35;
   margin-bottom: 7px;
   overflow-wrap: anywhere;
@@ -1159,7 +1159,7 @@ textarea::placeholder {
 }
 
 .plan-card-head {
-  padding: 20px 22px;
+  padding: 16px 18px;
   border-bottom: 1px solid var(--line);
   background: rgba(255, 255, 255, .025);
 }
@@ -1220,7 +1220,7 @@ textarea::placeholder {
   display: grid;
   justify-items: end;
   gap: 8px;
-  min-width: 190px;
+  min-width: 150px;
   color: var(--muted);
   font-family: var(--mono);
   font-size: 13px;
@@ -1232,10 +1232,10 @@ textarea::placeholder {
 
 .plan-action-row {
   display: grid;
-  grid-template-columns: 36px minmax(260px, .92fr) minmax(300px, 1.08fr);
-  gap: 18px;
+  grid-template-columns: 34px minmax(0, 1fr) 180px;
+  gap: 14px;
   align-items: start;
-  padding: 18px 22px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--line);
   transition: background .18s ease, border-color .18s ease;
 }
@@ -1301,7 +1301,7 @@ textarea::placeholder {
 
 .plan-action-title {
   font-weight: 900;
-  font-size: 17px;
+  font-size: 15px;
   color: var(--text);
   margin-bottom: 4px;
 }
@@ -1312,14 +1312,51 @@ textarea::placeholder {
 
 .plan-action-copy p {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
+}
+
+.plan-action-details,
+.plan-note-details {
+  margin-top: 9px;
+}
+
+.plan-action-details summary,
+.plan-note-details summary {
+  cursor: pointer;
+  color: var(--gold-2);
+  font-size: 12px;
+  list-style: none;
+}
+
+.plan-action-details summary::-webkit-details-marker,
+.plan-note-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.plan-action-details summary::before,
+.plan-note-details summary::before {
+  content: "+";
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
+  border-radius: 5px;
+  border: 1px solid rgba(217, 154, 0, .35);
+  color: var(--gold);
+}
+
+.plan-action-details[open] summary::before,
+.plan-note-details[open] summary::before {
+  content: "-";
 }
 
 .plan-subitem-strip {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 9px;
 }
 
 .plan-subitem-strip span {
@@ -1334,9 +1371,9 @@ textarea::placeholder {
 }
 
 .plan-action-note {
-  min-height: 96px;
-  margin-top: 0;
-  font-size: 13px;
+  min-height: 76px;
+  margin-top: 8px;
+  font-size: 12px;
 }
 
 .empty {

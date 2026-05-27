@@ -605,7 +605,7 @@
         <div class="week-switcher-head">
           <div>
             <div class="tag">Week Selector</div>
-            <h3>选择本次要处理的周计划</h3>
+            <h3>选择处理周</h3>
           </div>
           <span>${anchor ? `当前停留：第 ${currentWeekId} 周` : "先选择主播"}</span>
         </div>
@@ -1579,14 +1579,16 @@
     function renderPlan() {
       const anchor = getAnchorRecord(anchorNameEl.value);
       const currentWeekId = anchor?.currentWeek || 1;
+      const visibleWeekId = selectedWorkflowWeek || currentWeekId;
 
-      planGridEl.innerHTML = weeklyPlan.map((week) => {
+      planGridEl.innerHTML = weeklyPlan.filter((week) => week.id === visibleWeekId).map((week) => {
         const status = getWeekStatus(anchor, week.id);
         const stats = getWeekProgressStats(anchor, week);
         const pct = stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
         const checks = anchor?.weekActions?.[week.id] || week.actions.map(() => false);
         const notes = anchor?.weekNotes?.[week.id] || week.actions.map(() => "");
         const cardClass = week.id === currentWeekId ? "current" : (week.id < currentWeekId || (anchor?.status === "已完成" && week.id === 4) ? "done" : "wait");
+        const canEditWeek = !!anchor && week.id === currentWeekId;
 
         return `
           <section class="plan-card plan-exec-card ${cardClass}">
@@ -1614,6 +1616,7 @@
                   }
                   return title;
                 });
+                const disabled = !canEditWeek;
 
                 return `
                   <div class="plan-action-row ${checked ? "done" : ""}" data-plan-step-key="${week.id}-${index}">
@@ -1623,7 +1626,7 @@
                         data-plan-week="${week.id}"
                         data-plan-index="${index}"
                         ${checked ? "checked" : ""}
-                        ${anchor ? "" : "disabled"}
+                        ${disabled ? "disabled" : ""}
                       >
                       <span></span>
                     </label>
@@ -1631,18 +1634,24 @@
                       <div class="plan-action-title">${index + 1}. ${escapeHtml(action.title)}</div>
                       <p>${escapeHtml(action.desc)}</p>
                       ${children.length ? `
-                        <div class="plan-subitem-strip">
-                          ${children.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
-                        </div>
+                        <details class="plan-action-details">
+                          <summary>查看细项</summary>
+                          <div class="plan-subitem-strip">
+                            ${children.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+                          </div>
+                        </details>
                       ` : ""}
                     </div>
-                    <textarea
-                      class="step-note plan-action-note"
-                      data-week-note="${week.id}"
-                      data-note-index="${index}"
-                      placeholder="运营记录：执行情况、卡点、反馈结论..."
-                      ${anchor ? "" : "disabled"}
-                    >${escapeHtml(noteValue)}</textarea>
+                    <details class="plan-note-details" ${noteValue ? "open" : ""}>
+                      <summary>${noteValue ? "已写备注" : "添加备注"}</summary>
+                      <textarea
+                        class="step-note plan-action-note"
+                        data-week-note="${week.id}"
+                        data-note-index="${index}"
+                        placeholder="运营记录：执行情况、卡点、反馈结论..."
+                        ${disabled ? "disabled" : ""}
+                      >${escapeHtml(noteValue)}</textarea>
+                    </details>
                   </div>
                 `;
               }).join("")}
