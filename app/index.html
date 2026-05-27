@@ -3828,6 +3828,9 @@ function getExportRecordDocumentHtml(record) {
     if (html) return html;
   }
   if (!record.markdown) return "";
+  if (isHtmlReportContent(record.markdown)) {
+    return buildStandaloneHtmlReportDocument(record.markdown, record.title);
+  }
   const shell = buildReportShellHtml(record.markdown, {
     title: record.title,
     timestamp: new Date(record.createdAt || Date.now()).toLocaleString("zh-CN"),
@@ -6888,6 +6891,41 @@ function sanitizeHtmlDocumentForIframe(content) {
   ${previewStyles}
 </head>
 <body>${text}</body>
+</html>`;
+}
+
+function buildStandaloneHtmlReportDocument(content, title = "") {
+  const safeTitle = escapeInlineHtml(title || getCurrentReportTitle());
+  const exportStyles = `
+  <style>
+    html,body{height:auto!important;min-height:100%!important;overflow:visible!important;}
+    body{overflow:visible!important;padding-bottom:48px!important;}
+    body *{max-height:none!important;}
+    [style*="overflow: hidden"],[style*="overflow:hidden"]{overflow:visible!important;}
+    [style*="height: 100vh"],[style*="height:100vh"],[style*="max-height: 100vh"],[style*="max-height:100vh"]{height:auto!important;max-height:none!important;}
+    @page { size: A4; margin: 12mm; }
+    @media print {
+      html,body{overflow:visible!important;background:#0A0B0E!important;}
+    }
+  </style>`;
+  let doc = sanitizeHtmlDocumentForIframe(content);
+  if (/<title\b[^>]*>[\s\S]*?<\/title>/i.test(doc)) {
+    doc = doc.replace(/<title\b[^>]*>[\s\S]*?<\/title>/i, `<title>${safeTitle}</title>`);
+  } else if (/<\/head>/i.test(doc)) {
+    doc = doc.replace(/<\/head>/i, `<title>${safeTitle}</title></head>`);
+  }
+  if (/<\/head>/i.test(doc)) {
+    return doc.replace(/<\/head>/i, `${exportStyles}</head>`);
+  }
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${safeTitle}</title>
+  ${exportStyles}
+</head>
+<body>${doc}</body>
 </html>`;
 }
 
@@ -12264,6 +12302,9 @@ function setExportButtonLoading(kind, loading) {
 }
 
 function getReportExportHtml() {
+  if (state.lastMarkdown && isHtmlReportContent(state.lastMarkdown)) {
+    return buildStandaloneHtmlReportDocument(state.lastMarkdown, getCurrentReportTitle());
+  }
   const sourceWrap = els.liveResultWrap.cloneNode(true);
   sourceWrap.classList.add("visible");
   sourceWrap.classList.remove("generating");
