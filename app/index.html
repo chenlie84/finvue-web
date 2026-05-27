@@ -86,6 +86,10 @@
   .nav-item.active{color:var(--gold);background:var(--gold-dim);}
   .nav-item .ni{width:16px;text-align:center;flex-shrink:0;font-size:14px;}
   .nav-badge{margin-left:auto;font-size:10px;background:var(--gold-dim);color:var(--gold);padding:1px 6px;border-radius:10px;}
+  .nav-badge.live-status{display:none;font-size:10px;padding:2px 7px;border-radius:999px;white-space:nowrap;}
+  .nav-badge.live-status.running{display:inline-flex;background:rgba(74,144,217,.14);color:var(--blue);}
+  .nav-badge.live-status.done{display:inline-flex;background:rgba(45,189,133,.14);color:var(--green);}
+  .nav-badge.live-status.error{display:inline-flex;background:rgba(224,82,82,.14);color:var(--red);}
   .nav-badge.red-b{background:rgba(224,82,82,0.12);color:var(--red);}
   .main-content{flex:1;height:calc(100vh - 54px);min-height:0;overflow-y:auto;padding:28px 30px;}
   .ai-html-report-frame{width:100%;height:min(76vh,820px);border:none;border-radius:10px;background:#0A0B0E;display:block;}
@@ -895,7 +899,7 @@
       <div class="s-section">分析工具</div>
       <button class="nav-item active" data-sec="home" data-permission="home" onclick="showSec('home',this)"><span class="ni">◈</span> 工作台概览</button>
       <button class="nav-item" data-sec="ai-chat" data-permission="ai-chat" onclick="showSec('ai-chat',this)"><span class="ni">🤖</span> AI 对话</button>
-      <button class="nav-item" data-sec="live" data-permission="live" onclick="showSec('live',this)"><span class="ni">▶</span> 直播分析 <span class="nav-badge">3</span></button>
+      <button class="nav-item" data-sec="live" data-permission="live" onclick="showSec('live',this)"><span class="ni">▶</span> 直播分析 <span class="nav-badge live-status" id="liveAnalysisNavBadge"></span></button>
       <button class="nav-item" data-sec="anchor-library" data-permission="anchor-library" onclick="showSec('anchor-library',this)"><span class="ni">▣</span> 主播资料库</button>
       <button class="nav-item" data-sec="customer-library" data-permission="customer-library" onclick="showSec('customer-library',this)"><span class="ni">◉</span> 客户库</button>
       <button class="nav-item" data-permission="operation" onclick="goOperationDashboard()"><span class="ni">📊</span> 运营数据中心</button>
@@ -3155,6 +3159,7 @@ const state = {
   globalSettings: {},
   lastMarkdown: "",
   lastAiMeta: null,
+  liveAnalysisNavStatus: "",
   registrationEnabled: false,
   accessSettings: { openRegistration: false },
   currentRoleKey: "expert",
@@ -3986,6 +3991,7 @@ const els = {
   runProgressLabel: document.getElementById("runProgressLabel"),
   runProgressEta: document.getElementById("runProgressEta"),
   runProgressNote: document.getElementById("runProgressNote"),
+  liveAnalysisNavBadge: document.getElementById("liveAnalysisNavBadge"),
   liveResultWrap: document.getElementById("liveResultWrap"),
   liveResultShell: document.getElementById("liveResultShell"),
   liveResult: document.getElementById("liveResult"),
@@ -4251,6 +4257,9 @@ function showSec(id, btn) {
     targetBtn.classList.add("active");
   }
   if (id === "home") drawSpark("homeChart");
+  if (id === "live" && ["done", "error"].includes(state.liveAnalysisNavStatus)) {
+    updateLiveAnalysisNavBadge("");
+  }
   if (id === "portrait") window.AnchorPortraitPage?.ensureRendered();
   if (id === "backtest") setTimeout(() => drawSpark("btChart", [8,7.5,8.2,8.8,8.5,9,8.7,9.1,8.9,9.2], true), 100);
   if (id === "distill-library") renderDistillLibrary();
@@ -7081,6 +7090,21 @@ function renderLiveReport(markdown) {
 let runProgressStartedAt = 0;
 let runProgressEstimateSec = 45;
 
+function updateLiveAnalysisNavBadge(status = state.liveAnalysisNavStatus) {
+  state.liveAnalysisNavStatus = status || "";
+  if (!els.liveAnalysisNavBadge) return;
+  els.liveAnalysisNavBadge.classList.remove("running", "done", "error");
+  if (!status) {
+    els.liveAnalysisNavBadge.textContent = "";
+    els.liveAnalysisNavBadge.style.display = "none";
+    return;
+  }
+  const labelMap = { running: "进行中", done: "已完成", error: "失败" };
+  els.liveAnalysisNavBadge.textContent = labelMap[status] || "";
+  els.liveAnalysisNavBadge.classList.add(status);
+  els.liveAnalysisNavBadge.style.display = "inline-flex";
+}
+
 function setRunProgress(percent, label, note) {
   const safePercent = Math.max(0, Math.min(100, percent));
   els.runProgressCard.classList.add("active");
@@ -7120,11 +7144,13 @@ function showLiveResultReady() {
 function startRunProgress() {
   runProgressStartedAt = Date.now();
   runProgressEstimateSec = estimateRunSeconds();
+  updateLiveAnalysisNavBadge("running");
   setRunProgress(6, "正在整理输入内容", "检查逐字稿、热点和提示词结构。");
   showLiveResultGenerating();
 }
 
 function finishRunProgress(success = true, message = "") {
+  updateLiveAnalysisNavBadge(success ? "done" : "error");
   setRunProgress(100, success ? "分析完成" : "分析中断", message || (success ? "报告已生成，可继续查看和复制。" : "本次分析未完成，请检查提示后重试。"));
   setTimeout(() => {
     els.runProgressCard.classList.remove("active");
