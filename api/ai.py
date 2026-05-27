@@ -344,7 +344,7 @@ async def export_report_pdf(request: Request, _: dict = Depends(security.require
     body = await request.json()
     file_name = pdf_export.safe_pdf_filename(str(body.get("fileName") or body.get("filename") or "finvue-report"))
     try:
-        data = pdf_export.render_pdf_bytes(str(body.get("html") or ""))
+        data = pdf_export.render_pdf_bytes(str(body.get("html") or ""), body.get("pdfOptions") if isinstance(body.get("pdfOptions"), dict) else None)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     headers = {"Content-Disposition": f'attachment; filename="{file_name}.pdf"'}
