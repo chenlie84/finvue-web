@@ -3709,7 +3709,7 @@ function collectExportRecords() {
       aiMeta: state.currentAnchorCompareResult.aiMeta || null,
       createdAt: state.currentAnchorCompareResult.createdAt || "",
       htmlGetter: () => {
-        const shell = buildReportShellHtml(state.currentAnchorCompareResult.markdown, {
+        return buildReportExportDocument(compareTitle, state.currentAnchorCompareResult.markdown, {
           title: compareTitle,
           timestamp: new Date(state.currentAnchorCompareResult.createdAt || Date.now()).toLocaleString("zh-CN"),
           model: state.currentAnchorCompareResult.aiMeta?.providerLabel
@@ -3717,7 +3717,6 @@ function collectExportRecords() {
             : (state.currentAnchorCompareResult.aiMeta?.model || "后台路由"),
           badges: ["主播对比分析", `生成时间 ${new Date(state.currentAnchorCompareResult.createdAt || Date.now()).toLocaleString("zh-CN")}`]
         });
-        return wrapExportDocument(compareTitle, shell);
       }
     });
   }
@@ -3748,6 +3747,14 @@ ${headAssets}
   <div class="main-content" style="padding:0;">${reportHtml}</div>
 </body>
 </html>`;
+}
+
+function buildReportExportDocument(title, markdown, options = {}) {
+  if (isHtmlReportContent(markdown)) {
+    return buildStandaloneHtmlReportDocument(markdown, title || options.title || getCurrentReportTitle());
+  }
+  const shell = buildReportShellHtml(markdown, options);
+  return wrapExportDocument(title || options.title || "报告导出", shell);
 }
 
 function openExportRecord(recordKey) {
@@ -3828,10 +3835,7 @@ function getExportRecordDocumentHtml(record) {
     if (html) return html;
   }
   if (!record.markdown) return "";
-  if (isHtmlReportContent(record.markdown)) {
-    return buildStandaloneHtmlReportDocument(record.markdown, record.title);
-  }
-  const shell = buildReportShellHtml(record.markdown, {
+  return buildReportExportDocument(record.title, record.markdown, {
     title: record.title,
     timestamp: new Date(record.createdAt || Date.now()).toLocaleString("zh-CN"),
     model: record.aiMeta?.providerLabel
@@ -3842,7 +3846,6 @@ function getExportRecordDocumentHtml(record) {
       `生成时间 ${new Date(record.createdAt || Date.now()).toLocaleString("zh-CN")}`
     ]
   });
-  return wrapExportDocument(record.title, shell);
 }
 
 function getExportRecordBaseName(record) {
@@ -12353,9 +12356,10 @@ function getAnchorSnapshotExportHtml(profile, snapshot) {
     : snapshot.aiMeta?.model
       ? snapshot.aiMeta.model
       : state.lastAiMeta?.providerLabel
-        ? `${state.lastAiMeta.providerLabel} / ${state.lastAiMeta.model}`
-        : (state.lastAiMeta?.model || "后台路由");
-  const reportHtml = buildReportShellHtml(snapshot.markdown, {
+      ? `${state.lastAiMeta.providerLabel} / ${state.lastAiMeta.model}`
+      : (state.lastAiMeta?.model || "后台路由");
+  const title = REPORT_TYPE_META[snapshot.reportType]?.title || snapshot.reportType || "主播分析报告";
+  return buildReportExportDocument(title, snapshot.markdown, {
     title: REPORT_TYPE_META[snapshot.reportType]?.title || snapshot.reportType || "主播分析报告",
     timestamp: new Date(snapshot.analyzedAt || Date.now()).toLocaleString("zh-CN"),
     model: snapshotModelLabel,
@@ -12365,31 +12369,6 @@ function getAnchorSnapshotExportHtml(profile, snapshot) {
       `模型 ${snapshotModelLabel}`
     ]
   });
-  const headAssets = Array.from(document.head.querySelectorAll('style, link[rel="stylesheet"]'))
-    .map((node) => node.outerHTML)
-    .join("\n");
-  return `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>${REPORT_TYPE_META[snapshot.reportType]?.title || snapshot.reportType || "主播分析报告"}</title>
-${headAssets}
-<style>
-  html,body{height:auto !important;min-height:auto !important;overflow:visible !important;}
-  body{margin:0;padding:28px 24px;background:var(--bg0);color:var(--text0);}
-  .main-content{height:auto !important;min-height:auto !important;overflow:visible !important;padding:0 !important;}
-  .app-body,.app-page,.sec,.panel{height:auto !important;min-height:auto !important;overflow:visible !important;}
-  @page { size: A4; margin: 12mm; }
-  @media print {
-    body{padding:0 !important;background:var(--bg0);}
-  }
-</style>
-</head>
-<body>
-  <div class="main-content" style="padding:0;">${reportHtml}</div>
-</body>
-</html>`;
 }
 
 function exportHtmlReport() {
@@ -12480,7 +12459,7 @@ function getCurrentAnchorProgressInsightExportHtml() {
   const progressInsightKey = getAnchorProgressInsightKey(profile, progressSummary);
   const progressInsight = progressInsightKey ? state.currentAnchorProgressInsights[progressInsightKey] || null : null;
   if (!progressInsight?.markdown) return "";
-  const reportHtml = buildReportShellHtml(progressInsight.markdown, {
+  return buildReportExportDocument(`${profile.anchorName} · 提升复盘`, progressInsight.markdown, {
     title: `${profile.anchorName} · 提升复盘`,
     timestamp: new Date(progressInsight.createdAt || Date.now()).toLocaleString("zh-CN"),
     model: progressInsight.aiMeta?.providerLabel
@@ -12491,31 +12470,6 @@ function getCurrentAnchorProgressInsightExportHtml() {
       `生成时间 ${new Date(progressInsight.createdAt || Date.now()).toLocaleString("zh-CN")}`
     ]
   });
-  const headAssets = Array.from(document.head.querySelectorAll('style, link[rel="stylesheet"]'))
-    .map((node) => node.outerHTML)
-    .join("\n");
-  return `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>${profile.anchorName} · 提升复盘</title>
-${headAssets}
-<style>
-  html,body{height:auto !important;min-height:auto !important;overflow:visible !important;}
-  body{margin:0;padding:28px 24px;background:var(--bg0);color:var(--text0);}
-  .main-content{height:auto !important;min-height:auto !important;overflow:visible !important;padding:0 !important;}
-  .app-body,.app-page,.sec,.panel{height:auto !important;min-height:auto !important;overflow:visible !important;}
-  @page { size: A4; margin: 12mm; }
-  @media print {
-    body{padding:0 !important;background:var(--bg0);}
-  }
-</style>
-</head>
-<body>
-  <div class="main-content" style="padding:0;">${reportHtml}</div>
-</body>
-</html>`;
 }
 
 async function exportCurrentAnchorProgressInsight(kind) {
