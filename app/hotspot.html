@@ -354,8 +354,7 @@ async function fetchHotspots() {
   statusBar.style.display = 'block';
 
   try {
-    // 收集需要抓取的平台（知乎、B站、头条）
-    const platforms = ['zhihu', 'bilibili', 'toutiao'];
+    const platforms = state.platforms.map(p => p.id).filter(Boolean);
     
     const res = await fetch('/api/hotspot/fetch', {
       method: 'POST',
@@ -365,14 +364,17 @@ async function fetchHotspots() {
     });
     
     if (res.status === 401) { location.href = '/index.html'; return; }
-    if (!res.ok) throw new Error(res.statusText);
-    
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     const result = data.result || {};
+    if (!res.ok || data.ok === false || result.ok === false) {
+      const failed = (result.failedPlatforms || []).map(p => `${p.platform}: ${p.error}`).join('；');
+      throw new Error(data.error || result.error || failed || res.statusText || '抓取失败');
+    }
     
     overlay.classList.remove('active');
     statusBar.className = 'status-bar success';
-    statusBar.innerHTML = `✓ 抓取完成！共获取 ${fmt(result.totalItems || 0)} 条热搜 (${result.successPlatforms?.join('、') || '--'})`;
+    const failedCount = (result.failedPlatforms || []).length;
+    statusBar.innerHTML = `✓ 抓取完成！共获取 ${fmt(result.totalItems || 0)} 条热搜 (${result.successPlatforms?.join('、') || '--'})${failedCount ? `，${failedCount} 个平台失败` : ''}`;
     
     // 更新时间
     $('updateTimeText').textContent = '刚刚更新';

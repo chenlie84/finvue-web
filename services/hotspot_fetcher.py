@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+import os
 import re
 from datetime import datetime, timezone
 from typing import Any
@@ -10,6 +12,11 @@ from typing import Any
 import config
 import db
 
+logging.basicConfig(
+    level=os.environ.get("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 # 热点 API 基础地址（可通过环境变量 HOTSPOT_API_URL 配置）
 HOTSPOT_API_BASE = config.HOTSPOT_API_URL
@@ -120,14 +127,12 @@ def _extract_keywords(title: str) -> list[str]:
 
 def fetch_platform_hotspots(platform: str) -> dict:
     """抓取单个平台的热搜数据（优先直接爬取，失败则使用外部 API）"""
-    import requests
-    import os
-
     # 优先使用直接爬取（无需代理）
     if platform in DIRECT_FETCH_PLATFORMS:
         result = _fetch_direct(platform)
         if result.get("ok"):
             return result
+        logger.warning("[hotspot] direct fetch failed platform=%s error=%s", platform, result.get("error"))
 
     # 直接爬取失败，尝试外部 API
     return _fetch_via_api(platform)
@@ -173,9 +178,11 @@ def _fetch_direct(platform: str) -> dict:
                 "sourceName": "",
             })
 
+        logger.info("[hotspot] direct fetch success platform=%s count=%s", platform, len(items))
         return {"ok": True, "platform": platform, "items": items, "count": len(items)}
 
     except Exception as e:
+        logger.exception("[hotspot] direct fetch exception platform=%s", platform)
         return {"ok": False, "platform": platform, "error": str(e)}
 
 
@@ -291,10 +298,12 @@ def _fetch_via_api(platform: str) -> dict:
                 last_error = "API 返回数据格式错误"
                 continue
 
+            logger.info("[hotspot] api fetch success platform=%s attempt=%s count=%s", platform, attempt_name, len(items))
             return {"ok": True, "platform": platform, "items": items, "count": len(items)}
 
         except Exception as e:
             last_error = str(e)
+            logger.warning("[hotspot] api fetch failed platform=%s attempt=%s error=%s", platform, attempt_name, last_error)
             continue
 
     return {"ok": False, "platform": platform, "error": last_error or "连接失败"}
@@ -306,6 +315,7 @@ def fetch_all_platforms(platforms: list[str] | None = None) -> dict:
 
     # 检查 API 是否启用
     if not config.HOTSPOT_API_ENABLED:
+        logger.warning("[hotspot] fetch skipped because HOTSPOT_API_ENABLED is false")
         return {
             "ok": False,
             "error": "热点 API 已禁用。请在环境变量中设置 HOTSPOT_API_ENABLED=true 启用，或手动输入热点关键词。",
@@ -318,11 +328,17 @@ def fetch_all_platforms(platforms: list[str] | None = None) -> dict:
     if not platforms:
         platforms = list(PLATFORM_ID_MAP.keys())
 
+    logger.info("[hotspot] fetch started platforms=%s", ",".join(platforms))
     results = []
     with ThreadPoolExecutor(max_workers=min(len(platforms), 10)) as executor:
         futures = {executor.submit(fetch_platform_hotspots, p): p for p in platforms}
         for future in as_completed(futures):
-            results.append(future.result())
+            platform = futures[future]
+            try:
+                results.append(future.result())
+            except Exception as exc:
+                logger.exception("[hotspot] fetch worker crashed platform=%s", platform)
+                results.append({"ok": False, "platform": platform, "error": str(exc)})
 
     total_items = 0
     success_platforms = []
@@ -330,18 +346,25 @@ def fetch_all_platforms(platforms: list[str] | None = None) -> dict:
 
     for result in results:
         if result.get("ok"):
-            success_platforms.append(result["platform"])
-            total_items += result.get("count", 0)
-            # 保存到数据库
-            save_hotspot_items(result["platform"], result.get("items", []))
+            platform = result["platform"]
+            try:
+                saved_count = save_hotspot_items(platform, result.get("items", []))
+                success_platforms.append(platform)
+                total_items += result.get("count", 0)
+                logger.info("[hotspot] saved platform=%s fetched=%s saved=%s", platform, result.get("count", 0), saved_count)
+            except Exception as exc:
+                logger.exception("[hotspot] save failed platform=%s", platform)
+                failed_platforms.append({"platform": platform, "error": f"保存失败: {exc}"})
         else:
             failed_platforms.append({
                 "platform": result.get("platform"),
                 "error": result.get("error")
             })
 
+    ok = bool(success_platforms)
+    logger.info("[hotspot] fetch finished ok=%s total=%s success=%s failed=%s", ok, total_items, success_platforms, failed_platforms)
     return {
-        "ok": True,
+        "ok": ok,
         "totalItems": total_items,
         "successPlatforms": success_platforms,
         "failedPlatforms": failed_platforms,
@@ -423,8 +446,7 @@ def save_hotspot_items(platform: str, items: list[dict]) -> int:
 
 def sync_fetch_all_platforms(platforms: list[str] | None = None) -> dict:
     """同步版本的抓取函数（用于 worker 调用）"""
-    import asyncio
-    return asyncio.run(fetch_all_platforms(platforms))
+    return fetch_all_platforms(platforms)
 
 
 def cleanup_old_data(retention_days: int = 30) -> dict:

@@ -495,6 +495,8 @@ async def fetch_hotspots(
     from services.hotspot_fetcher import fetch_all_platforms
     from starlette.concurrency import run_in_threadpool
     result = await run_in_threadpool(fetch_all_platforms, platforms)
+    if not result.get("ok"):
+        raise HTTPException(status_code=502, detail=result.get("error") or "热搜抓取失败，所有平台均未返回数据")
 
     return {"ok": True, "message": "热搜抓取完成", "result": result}
 

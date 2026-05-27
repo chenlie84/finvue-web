@@ -13103,7 +13103,19 @@ function openFullAiChat() {
 
 // ══ 热点追踪相关函数 ══
 
-const PLATFORM_META = { zhihu: { name: '知乎', icon: '📘' }, bilibili: { name: 'B站', icon: '📺' }, toutiao: { name: '头条', icon: '📰' }, weibo: { name: '微博', icon: '🔥' } };
+const PLATFORM_META = {
+  zhihu: { name: '知乎', icon: '📘' },
+  bilibili: { name: 'B站', icon: '📺' },
+  toutiao: { name: '头条', icon: '📰' },
+  weibo: { name: '微博', icon: '🔥' },
+  baidu: { name: '百度', icon: '🔍' },
+  douyin: { name: '抖音', icon: '🎵' },
+  cls: { name: '财联社', icon: '💰' },
+  wallstreetcn: { name: '华尔街见闻', icon: '📈' },
+  ifeng: { name: '凤凰网', icon: '📰' },
+  pengpai: { name: '澎湃新闻', icon: '🌊' },
+  tieba: { name: '贴吧热议', icon: '💬' }
+};
 let hotspotState = { platforms: [], filter: '', keyword: '' };
 
 async function loadHotspotMain() {
@@ -13214,9 +13226,17 @@ async function fetchHotspotsMain() {
   const btn = document.getElementById('hotspotFetchBtn');
   btn.disabled = true; btn.textContent = '⏳ 抓取中...';
   try {
-    const res = await fetch('/api/hotspot/fetch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ platforms: ['zhihu','bilibili','toutiao'] }) });
-    if (res.ok) { showToast('热搜已更新'); loadHotspotMain(); }
-    else showToast('抓取失败');
+    const platforms = hotspotState.platforms.map(p => p.id).filter(Boolean);
+    const res = await fetch('/api/hotspot/fetch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ platforms }) });
+    const data = await res.json().catch(() => ({}));
+    const result = data.result || {};
+    if (!res.ok || data.ok === false || result.ok === false) {
+      const failed = (result.failedPlatforms || []).map(p => `${p.platform}: ${p.error}`).join('；');
+      throw new Error(data.error || result.error || failed || '抓取失败');
+    }
+    const failedCount = (result.failedPlatforms || []).length;
+    showToast(`热搜已更新：${fmt(result.totalItems || 0)} 条${failedCount ? `，${failedCount}个平台失败` : ''}`);
+    loadHotspotMain();
   } catch(e) { showToast('抓取失败: '+e.message); }
   btn.disabled = false; btn.textContent = '📥 刷新';
 }
