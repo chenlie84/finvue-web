@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="/static/modules/report-export.js"></script>
+<link rel="stylesheet" href="/static/modules/hotspot.css" />
 <style>
   :root {
     --bg0:#0A0B0E; --bg1:#11131A; --bg2:#181B24; --bg3:#1E2230;
@@ -1761,13 +1762,28 @@
           <div style="display:flex;gap:8px;align-items:center;">
             <input class="inp" id="hotspotSearchInput" placeholder="搜索关键词..." style="width:180px;" onkeydown="if(event.key==='Enter')hotspotSearch()">
             <button class="btn btn-outline" onclick="hotspotSearch()">🔍</button>
+            <button class="btn btn-outline" id="hotspotSummaryBtn" onclick="analyzeHotspotSummaryMain()">✨ AI总览</button>
             <button class="btn btn-gold" id="hotspotFetchBtn" onclick="fetchHotspotsMain()">📥 刷新</button>
+            <button class="btn btn-outline" onclick="openHotspotConfigPage()">⚙ 配置</button>
           </div>
         </div>
 
+        <div id="hotspotMainContent">
         <!-- 平台筛选 -->
         <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;" id="hotspotPlatformBtns">
           <button class="tag active" data-platform="" onclick="filterHotspotPlatform('')">全部</button>
+        </div>
+
+        <!-- AI 总览 -->
+        <div id="hotspotSummaryPanel" class="hotspot-summary-panel" style="display:none;">
+          <div class="hotspot-summary-hd">
+            <div>
+              <div class="hotspot-summary-title">✨ AI 热点总览</div>
+              <div class="hotspot-summary-meta" id="hotspotSummaryMeta">根据最新热搜生成</div>
+            </div>
+            <button class="btn btn-outline-sm" onclick="closeHotspotSummary()">关闭</button>
+          </div>
+          <div class="hotspot-analysis-content hotspot-summary-content" id="hotspotSummaryContent"></div>
         </div>
 
         <!-- 热搜列表（按平台分组） -->
@@ -1784,42 +1800,56 @@
               <div class="panel-title" style="color:var(--gold);">🤖 AI 分析结果</div>
               <button class="btn btn-outline-sm" onclick="closeHotspotAnalysis()">关闭</button>
             </div>
-            <div style="padding:16px;font-size:13px;color:var(--text0);line-height:1.8;white-space:pre-wrap;" id="hotspotAnalysisContent"></div>
+            <div class="hotspot-analysis-content" id="hotspotAnalysisContent"></div>
+          </div>
+        </div>
+        </div>
+
+        <div id="hotspotConfigPage" class="hotspot-config-page" style="display:none;">
+          <div class="hotspot-config-head">
+            <div>
+              <div class="page-title" style="font-size:20px;margin-bottom:4px;">热搜抓取配置</div>
+              <div style="font-size:12px;color:var(--text2);">选择需要抓取的平台，并设置后台定时刷新间隔</div>
+            </div>
+            <button class="btn btn-outline" onclick="closeHotspotConfigPage()">返回热搜</button>
+          </div>
+
+          <div class="hotspot-config-layout">
+            <section class="hotspot-config-section">
+              <div class="hotspot-config-section-hd">
+                <div>
+                  <div class="hotspot-config-title">抓取平台</div>
+                  <div class="hotspot-config-desc">刷新和后台定时任务都会按这里的勾选抓取</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button class="btn btn-outline-sm" onclick="toggleAllHotspotPlatforms(true)">全选</button>
+                  <button class="btn btn-outline-sm" onclick="toggleAllHotspotPlatforms(false)">清空</button>
+                </div>
+              </div>
+              <div class="hotspot-platform-config-grid" id="hotspotPlatformConfigGrid"></div>
+            </section>
+
+            <aside class="hotspot-config-section">
+              <div class="hotspot-config-title">定时刷新</div>
+              <div class="hotspot-config-desc">服务启动后会按该间隔自动抓取一次。最小 0.25 小时。</div>
+              <label class="hotspot-config-field">
+                <span>刷新间隔（小时）</span>
+                <input class="inp" id="hotspotIntervalHoursInput" type="number" min="0.25" step="0.25" value="1">
+              </label>
+              <label class="hotspot-config-field">
+                <span>数据保留天数</span>
+                <input class="inp" id="hotspotRetentionDaysInput" type="number" min="1" step="1" value="30">
+              </label>
+              <label class="hotspot-config-check">
+                <input id="hotspotAutoAnalyzeInput" type="checkbox">
+                <span>保留自动 AI 分析开关</span>
+              </label>
+              <button class="btn btn-gold" id="hotspotConfigSaveBtn" onclick="saveHotspotConfig()">保存配置</button>
+              <div class="hotspot-config-note" id="hotspotConfigNote">配置保存后立即生效；下一次后台轮询会读取新间隔。</div>
+            </aside>
           </div>
         </div>
       </div>
-
-      <!-- 热搜列表样式 -->
-      <style>
-      .hotspot-platform-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;}
-      .hotspot-card-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--border);}
-      .hotspot-card-title{font-size:13px;font-weight:600;color:var(--text0);display:flex;align-items:center;gap:6px;}
-      .hotspot-card-count{font-size:11px;color:var(--text2);font-family:var(--font-mono);}
-      .hotspot-card-body{padding:10px;max-height:320px;overflow-y:auto;}
-      .hotspot-item-main{padding:8px 10px;border-radius:var(--r);background:var(--bg2);margin-bottom:6px;}
-      .hotspot-item-main:hover{background:var(--bg3);}
-      .hotspot-item-main:last-child{margin-bottom:0;}
-      .hotspot-item-row{display:flex;align-items:flex-start;gap:8px;}
-      .hotspot-actions{display:flex;gap:4px;margin-top:4px;}
-      .hotspot-action-btn{font-size:10px;padding:2px 6px;border-radius:4px;border:none;background:var(--gold-dim);color:var(--gold);cursor:pointer;}
-      .hotspot-action-btn:hover{background:var(--gold);color:#0A0B0E;}
-      .hotspot-item-rank{font-family:var(--font-mono);font-size:12px;font-weight:600;min-width:20px;}
-      .hotspot-item-rank.r1{color:var(--red);}
-      .hotspot-item-rank.r2{color:#F59E0B;}
-      .hotspot-item-rank.r3{color:var(--gold);}
-      .hotspot-actions{display:flex;gap:4px;margin-top:4px;}
-      .hotspot-action-btn{font-size:10px;padding:2px 6px;border-radius:4px;border:none;background:var(--gold-dim);color:var(--gold);cursor:pointer;}
-      .hotspot-action-btn:hover{background:var(--gold);color:#0A0B0E;}
-      .hotspot-item-content{flex:1;}
-      .hotspot-item-title{font-size:12px;color:var(--text0);line-height:1.4;text-decoration:none;}
-      .hotspot-item-title:hover{color:var(--gold);}
-      .hotspot-item-title .arrow{color:var(--text2);margin-left:2px;font-size:10px;}
-      .hotspot-item-meta{font-size:10px;color:var(--text2);margin-top:2px;}
-      .hotspot-item-hot{color:var(--red);font-family:var(--font-mono);}
-      .tag{padding:4px 10px;border-radius:14px;font-size:11px;border:1px solid var(--border);color:var(--text1);cursor:pointer;background:var(--bg1);transition:all .15s;}
-      .tag:hover{border-color:var(--gold);color:var(--gold);}
-      .tag.active{background:var(--gold-dim);border-color:var(--gold);color:var(--gold);}
-      </style>
 
       <!-- ══ SOP ══ -->
       <div class="sec" id="sec-market">
@@ -2098,7 +2128,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.5</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.6</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div style="display:flex;align-items:center;gap:8px;padding:4px 10px 4px 5px;border:1px solid var(--border2);border-radius:20px;">
@@ -2233,7 +2263,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.5</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.6</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3252,8 +3282,25 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.5";
+const APP_VERSION = "0.1.6";
 const APP_RELEASES = [
+  {
+    version: "0.1.6",
+    date: "2026-05-27",
+    title: "AI 热点总览",
+    permissions: ["hotspot", "ai-chat"],
+    summary: "热点追踪新增 AI 总分析能力，刷新热搜后可自动筛选重要新闻并生成面向财经直播/投顾场景的总览报告。",
+    items: [
+      "热点追踪新增 AI总览 按钮，可手动生成本轮热搜总分析。",
+      "点击刷新抓取热搜成功后，会自动触发 AI 热点总览，并从最近 2 小时、各平台 Top 热搜中筛选重点内容。",
+      "总览包含重点新闻、可能影响的行业/方向、直播可用选题、风险与合规提醒，以及可忽略的低价值噪音。",
+      "总览结果会在浏览器本地缓存 2 小时，刷新页面后仍可展示。",
+      "热搜列表顶部新增 AI 热点总览面板，支持 Markdown 报告式渲染，不再显示原始 #、** 或代码块标记。",
+      "单条热搜 AI 分析也改为报告式展示，阅读体验更清晰。",
+      "后端新增 POST /api/hotspot/analyze-summary，会读取最近 2 小时热搜数据并调用 AI 汇总，提示词明确限制不输出荐股、收益承诺或具体买卖建议。",
+      "热点追踪前端逻辑拆分到 app/static/modules/hotspot.js，样式拆分到 app/static/modules/hotspot.css，README 已记录维护入口。"
+    ]
+  },
   {
     version: "0.1.5",
     date: "2026-05-27",
@@ -13101,146 +13148,6 @@ function openFullAiChat() {
   showSec('ai-chat');
 }
 
-// ══ 热点追踪相关函数 ══
-
-const PLATFORM_META = {
-  zhihu: { name: '知乎', icon: '📘' },
-  bilibili: { name: 'B站', icon: '📺' },
-  toutiao: { name: '头条', icon: '📰' },
-  weibo: { name: '微博', icon: '🔥' },
-  baidu: { name: '百度', icon: '🔍' },
-  douyin: { name: '抖音', icon: '🎵' },
-  cls: { name: '财联社', icon: '💰' },
-  wallstreetcn: { name: '华尔街见闻', icon: '📈' },
-  ifeng: { name: '凤凰网', icon: '📰' },
-  pengpai: { name: '澎湃新闻', icon: '🌊' },
-  tieba: { name: '贴吧热议', icon: '💬' }
-};
-let hotspotState = { platforms: [], filter: '', keyword: '' };
-
-async function loadHotspotMain() {
-  try {
-    const [statsRes, platformsRes, hotspotsRes] = await Promise.all([
-      fetch('/api/hotspot/stats', { credentials: 'include' }),
-      fetch('/api/hotspot/platforms', { credentials: 'include' }),
-      fetch(`/api/hotspot/current${hotspotState.filter ? '?platform='+encodeURIComponent(hotspotState.filter) : ''}`, { credentials: 'include' })
-    ]);
-    
-    const stats = statsRes.ok ? (await statsRes.json()).stats || {} : {};
-    document.getElementById('hotspotTotalCount').textContent = fmt(stats.active || 0);
-    
-    const platforms = platformsRes.ok ? (await platformsRes.json()).platforms || [] : [];
-    hotspotState.platforms = platforms;
-    document.getElementById('hotspotPlatformBtns').innerHTML = 
-      '<button class="tag active" data-platform="" onclick="filterHotspotPlatform(\'\')">全部</button>' +
-      platforms.map(p => `<button class="tag" data-platform="${p.id}" onclick="filterHotspotPlatform('${p.id}')">${(PLATFORM_META[p.id]||{}).icon||'🔥'} ${(PLATFORM_META[p.id]||{}).name||p.name}</button>`).join('');
-    
-    const hotspots = hotspotsRes.ok ? await hotspotsRes.json() : { byPlatform: {}, items: [] };
-    renderHotspotGridMain(hotspots.byPlatform || {});
-    
-    const latest = (hotspots.items||[]).reduce((m,i) => Math.max(m, new Date(i.lastSeenAt||0).getTime()), 0) || Date.now();
-    document.getElementById('hotspotUpdateTime').textContent = formatTimeShort(new Date(latest));
-  } catch(e) { console.log('热搜加载失败', e); }
-}
-
-function renderHotspotGridMain(byPlatform) {
-  if (!Object.keys(byPlatform).length) {
-    document.getElementById('hotspotGridMain').innerHTML = '<div style="grid-column:span 3;text-align:center;padding:30px;color:var(--text1);">暂无数据，点击刷新获取</div>';
-    return;
-  }
-  let html = '';
-  for (const [pid, items] of Object.entries(byPlatform)) {
-    const meta = PLATFORM_META[pid] || hotspotState.platforms.find(p=>p.id===pid) || { name: pid, icon: '🔥' };
-    html += `<div class="hotspot-platform-card">
-      <div class="hotspot-card-header"><div class="hotspot-card-title">${meta.icon} ${meta.name}</div><div class="hotspot-card-count">${items.length}条</div></div>
-      <div class="hotspot-card-body">${items.slice(0,15).map(i => {
-        const r = i.rank||0, rc = r===1?'r1':r===2?'r2':r===3?'r3':'';
-        return `<div class="hotspot-item-main"><div class="hotspot-item-row">
-          <div class="hotspot-item-rank ${rc}">#${r||'--'}</div>
-          <div class="hotspot-item-content">
-            ${i.url ? `<a class="hotspot-item-title" href="${i.url}" target="_blank">${i.title}<span class="arrow">↗</span></a>` : `<span class="hotspot-item-title">${i.title}</span>`}
-            <div class="hotspot-item-meta">${i.hotValue ? `<span class="hotspot-item-hot">${i.hotValue}</span> · ` : ''}${formatTimeShort(new Date(i.lastSeenAt))}</div>
-            <div class="hotspot-actions">
-              <button class="hotspot-action-btn" onclick="analyzeHotspotMain('${i.id}', '${i.title.replace(/'/g, "\\'")}')">🤖 分析</button>
-            </div>
-          </div>
-        </div></div>`;
-      }).join('')}</div></div>`;
-  }
-  document.getElementById('hotspotGridMain').innerHTML = html;
-}
-
-// AI分析热搜
-async function analyzeHotspotMain(itemId, title) {
-  if (!itemId) {
-    showToast('缺少热搜ID');
-    return;
-  }
-  showToast('正在分析...');
-  try {
-    const res = await fetch('/api/hotspot/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ itemId: itemId, title: title })
-    });
-    if (!res.ok) throw new Error('分析失败');
-    const data = await res.json();
-    if (data.ok && data.analysis) {
-      // 在当前页面显示分析结果
-      document.getElementById('hotspotAnalysisPanel').style.display = 'block';
-      document.getElementById('hotspotAnalysisContent').textContent = data.analysis;
-      showToast('分析完成');
-    } else {
-      showToast(data.error || '分析失败');
-    }
-  } catch(e) {
-    showToast('分析失败: '+e.message);
-  }
-}
-
-function closeHotspotAnalysis() {
-  document.getElementById('hotspotAnalysisPanel').style.display = 'none';
-}
-
-function formatTimeShort(d) {
-  const diff = Date.now() - d.getTime();
-  if (diff < 60000) return '刚刚';
-  if (diff < 3600000) return Math.floor(diff/60000)+'分钟前';
-  if (diff < 86400000) return Math.floor(diff/3600000)+'小时前';
-  return d.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
-}
-
-function filterHotspotPlatform(p) {
-  hotspotState.filter = p;
-  document.querySelectorAll('#hotspotPlatformBtns .tag').forEach(b => b.classList.toggle('active', b.dataset.platform === p));
-  loadHotspotMain();
-}
-
-function hotspotSearch() {
-  const kw = document.getElementById('hotspotSearchInput').value.trim();
-  if (kw) location.href = `/hotspot.html?keyword=${encodeURIComponent(kw)}`;
-}
-
-async function fetchHotspotsMain() {
-  const btn = document.getElementById('hotspotFetchBtn');
-  btn.disabled = true; btn.textContent = '⏳ 抓取中...';
-  try {
-    const platforms = hotspotState.platforms.map(p => p.id).filter(Boolean);
-    const res = await fetch('/api/hotspot/fetch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ platforms }) });
-    const data = await res.json().catch(() => ({}));
-    const result = data.result || {};
-    if (!res.ok || data.ok === false || result.ok === false) {
-      const failed = (result.failedPlatforms || []).map(p => `${p.platform}: ${p.error}`).join('；');
-      throw new Error(data.error || result.error || failed || '抓取失败');
-    }
-    const failedCount = (result.failedPlatforms || []).length;
-    showToast(`热搜已更新：${fmt(result.totalItems || 0)} 条${failedCount ? `，${failedCount}个平台失败` : ''}`);
-    loadHotspotMain();
-  } catch(e) { showToast('抓取失败: '+e.message); }
-  btn.disabled = false; btn.textContent = '📥 刷新';
-}
-
 // 添加AI助手按钮到顶部导航
 function addAiChatButton() {
   const topnav = document.querySelector(".topnav");
@@ -13279,6 +13186,7 @@ window.addEventListener("resize", () => {
   drawSpark("homeChart");
 });
 </script>
+<script src="/static/modules/hotspot.js"></script>
 <script src="/static/modules/anchor-dashboard-api.js"></script>
 <script src="/static/modules/roi-calculator.js"></script>
 <script src="/static/modules/anchor-portrait.js"></script>

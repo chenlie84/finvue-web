@@ -27,7 +27,7 @@ FinVue Web 是一个面向财经直播复盘、主播运营、客户画像、AI 
 - 客户档案、客户直播场次、客户趋势分析
 - 运营看板、直播/短视频数据导入、在线远程导入
 - SOP 管理
-- 热点平台抓取、检索、趋势和 AI 分析
+- 热点平台抓取、检索、趋势、AI 总览、单条 AI 分析和定时刷新配置
 
 ## 目录结构
 
@@ -41,7 +41,7 @@ FinVue Web 是一个面向财经直播复盘、主播运营、客户画像、AI 
 ├── worker.py                # 后台任务 worker
 ├── api/                     # API 路由
 ├── app/                     # Jinja2 页面和静态资源
-├── services/                # PDF、对象存储、同步、热点抓取等服务
+├── services/                # PDF、对象存储、同步、热点抓取和调度等服务
 ├── sql/migrations/          # 数据库迁移文件
 ├── scripts/                 # 运维、初始化、备份、镜像构建脚本
 ├── templates/               # 导入模板
@@ -229,6 +229,29 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 | `HOTSPOT_API_URL` | 热点接口地址 |
 
 生产环境不要把真实密码、密钥、对象存储凭据写进 Dockerfile 或提交到 Git。请通过 `.env`、`.env.production`、Docker Compose environment、服务器密钥管理或 CI/CD secret 注入。
+
+## 热点追踪模块
+
+热点追踪现在拆分为独立维护入口，后续热搜相关前端逻辑不要继续追加到 `app/index.html` 的大脚本中：
+
+| 文件 | 说明 |
+| --- | --- |
+| `api/hotspot.py` | 热搜列表、平台配置、手动抓取、单条 AI 分析、AI 热点总览接口 |
+| `services/hotspot_fetcher.py` | 多平台热搜抓取和入库 |
+| `services/hotspot_scheduler.py` | 服务启动后的后台定时刷新调度 |
+| `app/static/modules/hotspot.js` | 热点追踪前端逻辑，包括刷新、AI 总览、单条分析和配置页 |
+| `app/static/modules/hotspot.css` | 热点追踪列表、AI 总览和配置页样式 |
+
+页面入口仍在 `app/index.html` 的“热点追踪”区块中，但只保留结构和静态资源引用。热搜页面右上角的“配置”按钮可以设置抓取平台和定时刷新间隔，配置写入 `finvue_hotspot_settings.fetch_interval_minutes`。后台调度器每分钟检查一次是否到期，到期后按配置的平台列表抓取。
+
+生产环境启用后台定时刷新需要设置：
+
+```bash
+HOTSPOT_API_ENABLED=true
+HOTSPOT_API_URL=https://newsnow.busiyi.world/api/s
+```
+
+如果服务部署在 Northflank 或其他容器平台，修改平台/间隔配置后不需要改环境变量；配置保存后会由后台调度器在下一次轮询时读取。
 
 ## 数据库迁移
 

@@ -1,6 +1,7 @@
 """FinVue FastAPI production entrypoint."""
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
@@ -18,6 +19,8 @@ from api import operation as api_operation
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    hotspot_stop_event: asyncio.Event | None = None
+    hotspot_task: asyncio.Task | None = None
     print(f"[lifespan] AUTO_MIGRATE={config.AUTO_MIGRATE}, ENV={config.ENV}, has_mysql={config.has_mysql_config()}")
     if config.AUTO_MIGRATE and config.has_mysql_config() and config.ENV.lower() != "test":
         print("[lifespan] Running migrations...")
@@ -30,7 +33,20 @@ async def lifespan(_: FastAPI):
         print("[lifespan] Skipping migrations")
     if not config.has_ceph_config():
         config.OBJECT_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-    yield
+    if config.has_mysql_config() and config.HOTSPOT_API_ENABLED and config.ENV.lower() != "test":
+        from services.hotspot_scheduler import run_scheduler
+        hotspot_stop_event = asyncio.Event()
+        hotspot_task = asyncio.create_task(run_scheduler(hotspot_stop_event))
+    try:
+        yield
+    finally:
+        if hotspot_stop_event and hotspot_task:
+            hotspot_stop_event.set()
+            hotspot_task.cancel()
+            try:
+                await hotspot_task
+            except asyncio.CancelledError:
+                pass
 
 
 app = FastAPI(title="FinVue", version="2.0.0-fastapi", lifespan=lifespan)

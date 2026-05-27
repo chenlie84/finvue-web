@@ -97,16 +97,19 @@ def get_settings(_: dict = Depends(security.require_permission("hotspot"))) -> d
                 "enabledPlatforms": ["weibo", "zhihu", "baidu", "douyin", "bilibili", "toutiao", "cls", "wallstreetcn"],
                 "trackedKeywords": [],
                 "fetchIntervalMinutes": 60,
+                "fetchIntervalHours": 1,
                 "retentionDays": 30,
                 "autoAnalyze": False,
             }
         }
+    interval_minutes = int(row.get("fetch_interval_minutes") or 60)
     return {
         "ok": True,
         "settings": {
             "enabledPlatforms": parse_json(row.get("enabled_platforms"), []),
             "trackedKeywords": parse_json(row.get("tracked_keywords"), []),
-            "fetchIntervalMinutes": row.get("fetch_interval_minutes") or 60,
+            "fetchIntervalMinutes": interval_minutes,
+            "fetchIntervalHours": round(interval_minutes / 60, 2),
             "retentionDays": row.get("retention_days") or 30,
             "autoAnalyze": bool(row.get("auto_analyze")),
         }
@@ -119,9 +122,11 @@ async def update_settings(request: Request, _: dict = Depends(security.require_p
     body = await request.json()
     enabled_platforms = parse_json(body.get("enabledPlatforms"), [])
     tracked_keywords = parse_json(body.get("trackedKeywords"), [])
-    fetch_interval = int(body.get("fetchIntervalMinutes") or 60)
-    retention_days = int(body.get("retentionDays") or 30)
+    fetch_interval = max(15, int(body.get("fetchIntervalMinutes") or 60))
+    retention_days = max(1, int(body.get("retentionDays") or 30))
     auto_analyze = bool(body.get("autoAnalyze"))
+    if not enabled_platforms:
+        raise HTTPException(status_code=400, detail="至少选择一个热搜平台")
 
     db.execute(
         """
@@ -465,6 +470,111 @@ async def analyze_hotspot(
         "title": title,
         "platform": platform,
         "analysis": analysis_text,
+        "aiMeta": ai_result.get("aiMeta"),
+    }
+
+
+@router.post("/api/hotspot/analyze-summary")
+async def analyze_hotspot_summary(
+    request: Request,
+    session: dict = Depends(security.require_permission("hotspot"))
+) -> dict:
+    """AI 总览最近一轮热搜，筛选重要新闻和直播选题"""
+    body = await request.json()
+    top_per_platform = min(10, max(3, int(body.get("topPerPlatform") or 8)))
+
+    rows = db.fetch_all(
+        """
+        SELECT platform, title, url, `rank`, hot_value, last_seen_at
+        FROM finvue_hotspot_items
+        WHERE last_seen_at >= DATE_SUB(NOW(), INTERVAL 2 HOUR)
+        ORDER BY platform ASC, `rank` ASC
+        LIMIT 220
+        """
+    )
+
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        platform = text(row.get("platform"))
+        if not platform:
+            continue
+        items = grouped.setdefault(platform, [])
+        if len(items) >= top_per_platform:
+            continue
+        items.append({
+            "platform": platform,
+            "title": text(row.get("title")),
+            "rank": row.get("rank") or 0,
+            "hotValue": text(row.get("hot_value")),
+            "url": text(row.get("url")),
+        })
+
+    items = [item for platform_items in grouped.values() for item in platform_items if item.get("title")]
+    if not items:
+        raise HTTPException(status_code=400, detail="暂无可分析的热搜数据，请先刷新热搜")
+
+    platform_names = {
+        "weibo": "微博",
+        "zhihu": "知乎",
+        "baidu": "百度",
+        "douyin": "抖音",
+        "bilibili": "B站",
+        "toutiao": "头条",
+        "cls": "财联社",
+        "wallstreetcn": "华尔街见闻",
+        "ifeng": "凤凰网",
+        "pengpai": "澎湃新闻",
+        "tieba": "贴吧",
+    }
+
+    lines = []
+    for item in items:
+        platform_label = platform_names.get(item["platform"], item["platform"])
+        hot = f"｜热度 {item['hotValue']}" if item.get("hotValue") else ""
+        lines.append(f"- [{platform_label} #{item['rank']}] {item['title']}{hot}")
+
+    system_prompt = """你是财经直播内容主编和投顾合规助手。你需要从全网热搜中筛出真正重要、适合投顾团队关注的新闻，并转化为直播选题。
+要求：
+1. 优先关注财经、宏观政策、产业链、上市公司、科技、消费、监管、地缘风险等与投资相关的话题。
+2. 对纯娱乐、低价值八卦、重复话题要降权或忽略。
+3. 不编造具体股票买卖建议，不承诺收益，不输出荐股结论。
+4. 输出必须简洁、可直接展示在后台顶部。"""
+
+    user_prompt = f"""下面是最近一轮热搜数据，每个平台取前 {top_per_platform} 条：
+
+{chr(10).join(lines)}
+
+请输出 Markdown，总长度控制在 900 字以内，结构如下：
+
+# 今日热搜总览
+
+## 最值得关注的 5 条
+用编号列表输出，每条包含：事件、为什么重要、可能影响的行业/方向。
+
+## 直播可用选题
+给出 3-5 个适合财经直播展开的话题角度。
+
+## 风险与合规提醒
+列出 2-4 条讨论时需要避开的表达边界。
+
+## 可忽略噪音
+用一句话概括本轮哪些类型热搜价值较低。"""
+
+    ai_result = ai_router.generate(
+        {
+            "systemPrompt": system_prompt,
+            "userPrompt": user_prompt,
+        },
+        username=str(session.get("username") or ""),
+    )
+
+    analysis_text = ai_result.get("markdown") or ""
+    return {
+        "ok": True,
+        "analysis": analysis_text,
+        "itemCount": len(items),
+        "platforms": sorted(grouped.keys()),
+        "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "aiMeta": ai_result.get("aiMeta"),
     }
 
