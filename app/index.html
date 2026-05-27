@@ -297,6 +297,15 @@
   .perm-item{display:flex;align-items:center;gap:9px;border:1px solid var(--border);background:var(--bg1);border-radius:var(--r);padding:10px 12px;color:var(--text1);font-size:13px;cursor:pointer;}
   .perm-item input{accent-color:var(--gold);}
   .perm-item:has(input:checked){border-color:var(--gold);background:var(--gold-dim);color:var(--text0);}
+  .release-list{display:flex;flex-direction:column;gap:12px;}
+  .release-item{border:1px solid var(--border);background:var(--bg1);border-radius:var(--r);padding:14px;}
+  .release-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;}
+  .release-version{font-family:var(--font-mono);font-size:13px;color:var(--gold);font-weight:600;}
+  .release-title{font-size:15px;font-weight:600;color:var(--text0);margin-top:4px;}
+  .release-date{font-family:var(--font-mono);font-size:11px;color:var(--text2);white-space:nowrap;}
+  .release-scope{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 0;}
+  .release-scope span{font-size:11px;padding:2px 7px;border-radius:999px;background:var(--gold-dim);color:var(--gold);}
+  .release-item ul{margin:8px 0 0;padding-left:18px;color:var(--text1);font-size:13px;line-height:1.7;}
   @media(max-width:760px){.perm-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.modal-panel{padding:16px;}}
 
   /* ── SPINNER ── */
@@ -2089,7 +2098,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold">⚙ v2.4.1</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.5</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div style="display:flex;align-items:center;gap:8px;padding:4px 10px 4px 5px;border:1px solid var(--border2);border-radius:20px;">
@@ -2105,6 +2114,7 @@
       <button class="nav-item active" onclick="showAdminSec('console',this)"><span class="ni">◈</span> 控制台</button>
       <button class="nav-item" onclick="showAdminSec('users',this)"><span class="ni">👥</span> 用户管理</button>
       <button class="nav-item" onclick="showAdminSec('roles',this)"><span class="ni">🔒</span> 权限配置</button>
+      <button class="nav-item" onclick="showAdminSec('updates',this)"><span class="ni">◎</span> 更新记录</button>
       <button class="nav-item" onclick="showAdminSec('settings',this)"><span class="ni">⚙</span> 系统设置</button>
       <div class="s-section">数据与安全</div>
       <button class="nav-item" onclick="showAdminSec('logs',this)"><span class="ni">≡</span> 操作日志</button>
@@ -2154,9 +2164,9 @@
           <div class="panel-hd"><div class="panel-title">快捷操作</div><span class="panel-act" onclick="goDashboard()">查看工作台 →</span></div>
           <div class="admin-quick-grid">
             <button class="admin-quick-btn" onclick="showAdminSec('users',null)"><div style="font-size:20px;margin-bottom:8px;">👥</div><div style="font-size:13px;font-weight:600;">用户管理</div><div class="muted" style="font-size:12px;margin-top:4px;">账号、角色与权限状态</div></button>
+            <button class="admin-quick-btn" onclick="showAdminSec('updates',null)"><div style="font-size:20px;margin-bottom:8px;">◎</div><div style="font-size:13px;font-weight:600;">更新记录</div><div class="muted" style="font-size:12px;margin-top:4px;">版本变更与权限范围</div></button>
             <button class="admin-quick-btn" onclick="showAdminSec('settings',null)"><div style="font-size:20px;margin-bottom:8px;">⚙</div><div style="font-size:13px;font-weight:600;">系统设置</div><div class="muted" style="font-size:12px;margin-top:4px;">提示词、热点与输出说明</div></button>
             <button class="admin-quick-btn" onclick="showAdminSec('api',null)"><div style="font-size:20px;margin-bottom:8px;">↯</div><div style="font-size:13px;font-weight:600;">API 管理</div><div class="muted" style="font-size:12px;margin-top:4px;">AI 路由池、回退与健康</div></button>
-            <button class="admin-quick-btn" onclick="showAdminSec('monitor',null)"><div style="font-size:20px;margin-bottom:8px;">◷</div><div style="font-size:13px;font-weight:600;">性能监控</div><div class="muted" style="font-size:12px;margin-top:4px;">本地服务与沉淀活跃度</div></button>
           </div>
         </div>
       </div>
@@ -2214,6 +2224,18 @@
               <div class="admin-note">正在汇总当前角色定义与任务项。</div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="asec" id="asec-updates">
+        <div class="page-title">更新记录</div>
+        <div class="page-sub">从 0.1.5 开始记录每次页面更新、影响模块和登录提示内容</div>
+        <div class="panel">
+          <div class="panel-hd">
+            <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.5</span>
+          </div>
+          <div class="release-list" id="adminReleaseHistory"></div>
         </div>
       </div>
 
@@ -2524,6 +2546,22 @@
       <button class="btn btn-outline" id="permissionSelectAllBtn" type="button" style="font-size:12px;padding:7px 14px;">全选</button>
       <button class="btn btn-outline" id="permissionClearBtn" type="button" style="font-size:12px;padding:7px 14px;">清空</button>
       <button class="btn-primary" id="permissionSaveBtn" type="button" style="font-size:13px;padding:8px 18px;">保存授权</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="releaseModal">
+  <div class="modal-panel">
+    <div class="panel-hd" style="padding-bottom:10px;">
+      <div>
+        <div class="panel-title" id="releaseModalTitle">版本更新</div>
+        <div class="muted" id="releaseModalSub" style="font-size:12px;margin-top:4px;">以下是与你当前权限相关的更新内容</div>
+      </div>
+      <button class="btn btn-outline" id="releaseModalClose" type="button" style="font-size:12px;padding:6px 12px;">稍后再看</button>
+    </div>
+    <div class="release-list" id="releaseModalList"></div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;">
+      <button class="btn-primary" id="releaseModalAck" type="button" style="font-size:13px;padding:8px 18px;">知道了</button>
     </div>
   </div>
 </div>
@@ -3187,6 +3225,7 @@ const state = {
   currentExportRecordKey: "",
   currentNotifyFilter: "all",
   permissionEditorUsername: "",
+  pendingReleaseVersions: [],
   metricsAnchorOptions: [],
   metricsAnchorRange: { start: "", end: "" }
 };
@@ -3213,6 +3252,25 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
+const APP_VERSION = "0.1.5";
+const APP_RELEASES = [
+  {
+    version: "0.1.5",
+    date: "2026-05-27",
+    title: "权限、通知与报告体验更新",
+    permissions: ["live", "notify", "admin-api", "ai-chat", "operation", "export"],
+    summary: "修复 HTML 报告预览、直播分析状态、通知未读数，并新增按权限展示的版本更新弹窗。",
+    items: [
+      "直播分析支持直接渲染 HTML 报告，批量结果不再显示 <!DOCTYPE html> 源码片段。",
+      "直播分析侧边栏状态改为进行中、已完成、失败，完成后进入页面会自动清除状态提示。",
+      "通知中心角标改为未读消息数，已读动态不再继续累加。",
+      "登录后新增版本更新弹窗，只展示当前账号权限相关的更新内容。",
+      "管理后台新增更新记录模块，用于查看完整版本历史和影响范围。",
+      "用户管理支持开放注册开关、创建/删除用户和模块授权。"
+    ]
+  }
+];
+
 function getAuthPermissions() {
   if (isAdmin()) return Object.fromEntries(Object.keys(DASHBOARD_PERMISSION_LABELS).map((key) => [key, true]));
   return state.authUser?.permissions && typeof state.authUser.permissions === "object" ? state.authUser.permissions : {};
@@ -3221,6 +3279,67 @@ function getAuthPermissions() {
 function hasDashboardPermission(permissionKey) {
   if (isAdmin()) return true;
   return Boolean(getAuthPermissions()[permissionKey]);
+}
+
+function getCurrentUsername() {
+  return state.authUser?.username || "guest";
+}
+
+function readJsonList(key) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeJsonList(key, values) {
+  localStorage.setItem(key, JSON.stringify(Array.from(new Set(values))));
+}
+
+function getReleaseReadKey() {
+  return `finvue-release-read:${getCurrentUsername()}`;
+}
+
+function getReadReleaseVersions() {
+  return new Set(readJsonList(getReleaseReadKey()));
+}
+
+function markReleasesRead(versions) {
+  const current = getReadReleaseVersions();
+  versions.forEach((version) => current.add(version));
+  writeJsonList(getReleaseReadKey(), Array.from(current));
+}
+
+function releaseMatchesCurrentUser(release) {
+  if (isAdmin()) return true;
+  const permissions = release.permissions || [];
+  const granted = getAuthPermissions();
+  return permissions.some((permission) => Boolean(granted[permission]));
+}
+
+function getRelevantReleases(includeRead = false) {
+  const read = getReadReleaseVersions();
+  return APP_RELEASES
+    .filter((release) => releaseMatchesCurrentUser(release))
+    .filter((release) => includeRead || !read.has(release.version));
+}
+
+function getNotifyReadKey() {
+  return `finvue-notify-read:${getCurrentUsername()}`;
+}
+
+function getReadNotificationIds() {
+  return new Set(readJsonList(getNotifyReadKey()));
+}
+
+function markNotificationsRead(ids) {
+  const current = getReadNotificationIds();
+  ids.forEach((id) => {
+    if (id) current.add(id);
+  });
+  writeJsonList(getNotifyReadKey(), Array.from(current).slice(-600));
 }
 
 function getFirstAllowedSection() {
@@ -3770,8 +3889,82 @@ async function exportSelectedRecord(kind) {
   }
 }
 
+function renderReleaseCards(releases) {
+  return releases.map((release) => {
+    const scope = (release.permissions || []).map((permission) => DASHBOARD_PERMISSION_LABELS[permission] || permission);
+    return `
+      <div class="release-item">
+        <div class="release-head">
+          <div>
+            <div class="release-version">v${escapeHtml(release.version)}</div>
+            <div class="release-title">${escapeHtml(release.title || "版本更新")}</div>
+          </div>
+          <div class="release-date">${escapeHtml(release.date || "")}</div>
+        </div>
+        <div class="notif-desc">${escapeHtml(release.summary || "")}</div>
+        <div class="release-scope">${scope.map((label) => `<span>${escapeHtml(label)}</span>`).join("")}</div>
+        <ul>${(release.items || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderAdminReleaseHistory() {
+  if (els.adminReleaseCurrent) els.adminReleaseCurrent.textContent = `v${APP_VERSION}`;
+  if (!els.adminReleaseHistory) return;
+  els.adminReleaseHistory.innerHTML = APP_RELEASES.length
+    ? renderReleaseCards(APP_RELEASES)
+    : `<div class="muted">暂无更新记录。</div>`;
+}
+
+function showReleaseModal(releases, { markAsReadOnAck = true } = {}) {
+  const list = Array.isArray(releases) ? releases.filter(Boolean) : [];
+  if (!list.length || !els.releaseModal || !els.releaseModalList) return;
+  state.pendingReleaseVersions = list.map((release) => release.version);
+  els.releaseModalList.innerHTML = renderReleaseCards(list);
+  if (els.releaseModalTitle) {
+    els.releaseModalTitle.textContent = list.length === 1 ? `v${list[0].version} 更新` : "版本更新";
+  }
+  if (els.releaseModalAck) {
+    els.releaseModalAck.dataset.markRead = markAsReadOnAck ? "1" : "0";
+  }
+  els.releaseModal.classList.add("active");
+}
+
+function closeReleaseModal(markRead = false) {
+  if (markRead) {
+    markReleasesRead(state.pendingReleaseVersions || []);
+    markNotificationsRead((state.pendingReleaseVersions || []).map((version) => `release-${version}`));
+    updateNotifyBadge();
+  }
+  state.pendingReleaseVersions = [];
+  els.releaseModal?.classList.remove("active");
+}
+
+function maybeShowReleaseModal() {
+  const releases = getRelevantReleases(false);
+  if (releases.length) showReleaseModal(releases);
+}
+
+function openReleaseFromNotify(version) {
+  const release = APP_RELEASES.find((item) => item.version === decodeURIComponent(version || ""));
+  if (release) showReleaseModal([release], { markAsReadOnAck: true });
+}
+
 function buildNotifyItems() {
   const items = [];
+  getRelevantReleases(true).forEach((release) => {
+    items.push({
+      id: `release-${release.version}`,
+      type: "system",
+      title: `版本更新：v${release.version}`,
+      desc: release.summary || "系统发布了新的页面更新",
+      time: release.date || "",
+      tone: "var(--gold)",
+      actionLabel: "查看更新",
+      action: `openReleaseFromNotify('${encodeURIComponent(release.version)}')`
+    });
+  });
   (Array.isArray(state.batchRunResults) ? state.batchRunResults : []).forEach((item) => {
     items.push({
       id: `batch-${item.id}`,
@@ -3841,9 +4034,13 @@ function buildNotifyItems() {
 
 function updateNotifyBadge() {
   const items = buildNotifyItems();
-  const unread = items.filter((item) => item.type === "risk" || item.type === "analysis").length;
-  if (els.notifyNavBadge) els.notifyNavBadge.textContent = String(unread);
-  if (els.notifyAllBadge) els.notifyAllBadge.textContent = String(items.length);
+  const readIds = getReadNotificationIds();
+  const unread = items.filter((item) => !readIds.has(item.id)).length;
+  if (els.notifyNavBadge) {
+    els.notifyNavBadge.textContent = String(unread);
+    els.notifyNavBadge.style.display = unread ? "inline-flex" : "none";
+  }
+  if (els.notifyAllBadge) els.notifyAllBadge.textContent = String(unread);
 }
 
 function setNotifyFilter(filter, button) {
@@ -3860,12 +4057,15 @@ function renderNotifyCenter() {
   updateNotifyBadge();
   const filter = state.currentNotifyFilter || "all";
   const filtered = items.filter((item) => filter === "all" ? true : item.type === filter);
+  const readIds = getReadNotificationIds();
+  const unreadIds = filtered.filter((item) => !readIds.has(item.id)).map((item) => item.id);
   if (els.notifyMeta) {
-    els.notifyMeta.textContent = `共 ${items.length} 条动态 · 当前筛选 ${filter === "all" ? "全部" : filter}`;
+    const unread = items.filter((item) => !readIds.has(item.id)).length;
+    els.notifyMeta.textContent = `共 ${items.length} 条动态 · 未读 ${unread} 条 · 当前筛选 ${filter === "all" ? "全部" : filter}`;
   }
   if (!els.notifyList) return;
   els.notifyList.innerHTML = filtered.length ? filtered.map((item) => `
-    <div class="notif-item${item.type === "risk" ? " notif-unread" : ""}">
+    <div class="notif-item${readIds.has(item.id) ? "" : " notif-unread"}">
       <div class="notif-dot" style="background:${item.tone};"></div>
       <div style="flex:1;">
         <div class="notif-title">${escapeHtml(item.title)}</div>
@@ -3875,6 +4075,18 @@ function renderNotifyCenter() {
       ${item.action ? `<button class="btn-sm btn-outline-sm" onclick="${item.action}">${escapeHtml(item.actionLabel || "查看")}</button>` : ""}
     </div>
   `).join("") : `<div class="muted">当前筛选下没有通知。</div>`;
+  if (unreadIds.length) {
+    window.setTimeout(() => {
+      markNotificationsRead(unreadIds);
+      updateNotifyBadge();
+      const currentItems = buildNotifyItems();
+      const currentReadIds = getReadNotificationIds();
+      if (els.notifyMeta) {
+        const unread = currentItems.filter((item) => !currentReadIds.has(item.id)).length;
+        els.notifyMeta.textContent = `共 ${currentItems.length} 条动态 · 未读 ${unread} 条 · 当前筛选 ${filter === "all" ? "全部" : filter}`;
+      }
+    }, 350);
+  }
 }
 
 function refreshDerivedViews() {
@@ -4096,6 +4308,9 @@ const els = {
   notifyAllBadge: document.getElementById("notifyAllBadge"),
   notifyMeta: document.getElementById("notifyMeta"),
   notifyList: document.getElementById("notifyList"),
+  appVersionBadge: document.getElementById("appVersionBadge"),
+  adminReleaseCurrent: document.getElementById("adminReleaseCurrent"),
+  adminReleaseHistory: document.getElementById("adminReleaseHistory"),
   s1: document.getElementById("s1"),
   s1Label: document.getElementById("s1Label"),
   s2: document.getElementById("s2"),
@@ -4207,6 +4422,12 @@ els.permissionModalClose = document.getElementById("permissionModalClose");
 els.permissionSelectAllBtn = document.getElementById("permissionSelectAllBtn");
 els.permissionClearBtn = document.getElementById("permissionClearBtn");
 els.permissionSaveBtn = document.getElementById("permissionSaveBtn");
+els.releaseModal = document.getElementById("releaseModal");
+els.releaseModalTitle = document.getElementById("releaseModalTitle");
+els.releaseModalList = document.getElementById("releaseModalList");
+els.releaseModalClose = document.getElementById("releaseModalClose");
+els.releaseModalAck = document.getElementById("releaseModalAck");
+if (els.appVersionBadge) els.appVersionBadge.textContent = `⚙ v${APP_VERSION}`;
 
 function showPage(id) {
   document.querySelectorAll(".app-page").forEach((p) => p.classList.remove("active"));
@@ -4285,6 +4506,7 @@ function showAdminSec(id, btn) {
     target?.classList.add("active");
   }
   if (id === "operation-import") loadOperationImportLogs();
+  if (id === "updates") renderAdminReleaseHistory();
   if (id === "logs") loadActionLogs();
   if (id === "remote-db") loadRemoteDbSettings();
 }
@@ -7518,6 +7740,8 @@ async function afterAuth() {
     els.adminStatus.textContent = "当前账号不是管理员。";
   }
   updateAdminDashboardSummary();
+  updateNotifyBadge();
+  window.setTimeout(maybeShowReleaseModal, 600);
 }
 
 async function loadHomeOverview() {
@@ -12389,6 +12613,11 @@ els.permissionModal?.addEventListener("click", (event) => {
 els.permissionSelectAllBtn?.addEventListener("click", () => setPermissionModalChecks(true));
 els.permissionClearBtn?.addEventListener("click", () => setPermissionModalChecks(false));
 els.permissionSaveBtn?.addEventListener("click", savePermissionModal);
+els.releaseModalClose?.addEventListener("click", () => closeReleaseModal(false));
+els.releaseModalAck?.addEventListener("click", () => closeReleaseModal(els.releaseModalAck?.dataset.markRead !== "0"));
+els.releaseModal?.addEventListener("click", (event) => {
+  if (event.target === els.releaseModal) closeReleaseModal(false);
+});
 els.adminUserSearch?.addEventListener("input", () => renderAdminUsers());
 els.anchorLibrarySearch?.addEventListener("input", renderAnchorLibraryList);
 els.customerLibrarySearch?.addEventListener("input", renderCustomerLibraryList);
