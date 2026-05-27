@@ -196,13 +196,133 @@ function renderHotspotAnalysis(markdown, title) {
   });
 }
 
+function stripHotspotMarkdownInline(text) {
+  return String(text || "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .trim();
+}
+
+function formatHotspotSummaryInline(text) {
+  return escapeHtml(stripHotspotMarkdownInline(text))
+    .replace(/(事件|为什么重要|可能影响的行业\/方向|可能影响的行业方向|方向|风险|合规提醒)：/g, '<strong>$1：</strong>');
+}
+
+function getHotspotSummarySection(markdown, titlePattern) {
+  const text = normalizeHotspotAnalysisMarkdown(markdown);
+  const headings = [...text.matchAll(/^##\s+(.+)$/gm)];
+  for (let i = 0; i < headings.length; i += 1) {
+    const heading = headings[i];
+    if (!titlePattern.test(heading[1])) continue;
+    const start = heading.index + heading[0].length;
+    const end = i + 1 < headings.length ? headings[i + 1].index : text.length;
+    return text.slice(start, end).trim();
+  }
+  return "";
+}
+
+function parseHotspotFocusItems(markdown) {
+  const section = getHotspotSummarySection(markdown, /值得关注|关注的\s*5\s*条/i);
+  const lines = section.split("\n");
+  const items = [];
+  let current = null;
+
+  const pushCurrent = () => {
+    if (current?.title) items.push(current);
+    current = null;
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const itemMatch = line.match(/^\d+[.、]\s+(.+)$/);
+    if (itemMatch) {
+      pushCurrent();
+      current = { title: stripHotspotMarkdownInline(itemMatch[1]), event: "", reason: "", impact: "", extra: [] };
+      continue;
+    }
+    if (!current) continue;
+    const bullet = line.replace(/^[-*]\s+/, "");
+    const clean = stripHotspotMarkdownInline(bullet);
+    const value = clean.replace(/^(事件|为什么重要|可能影响的行业\/方向|可能影响的行业方向|方向)[:：]\s*/, "");
+    if (/^事件[:：]/.test(clean)) current.event = value;
+    else if (/^为什么重要[:：]/.test(clean)) current.reason = value;
+    else if (/^(可能影响的行业\/方向|可能影响的行业方向|方向)[:：]/.test(clean)) current.impact = value;
+    else current.extra.push(clean);
+  }
+  pushCurrent();
+  return items.slice(0, 5);
+}
+
+function parseHotspotSimpleList(markdown, titlePattern, limit = 5) {
+  const section = getHotspotSummarySection(markdown, titlePattern);
+  const rows = section
+    .split("\n")
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => line.replace(/^[-*]\s+/, "").replace(/^\d+[.、]\s+/, ""))
+    .map(stripHotspotMarkdownInline)
+    .filter(Boolean);
+  return rows.slice(0, limit);
+}
+
 function renderHotspotSummary(markdown, metaText) {
   const cleaned = normalizeHotspotAnalysisMarkdown(markdown);
-  return buildReportShellHtml(cleaned, {
-    title: "AI 热点总览",
-    badges: ["本轮热搜", metaText || new Date().toLocaleString("zh-CN")],
-    footer: ""
-  });
+  const focusItems = parseHotspotFocusItems(cleaned);
+  const topics = parseHotspotSimpleList(cleaned, /直播.*选题|可用选题/i, 5);
+  const risks = parseHotspotSimpleList(cleaned, /风险|合规/i, 4);
+  const noise = getHotspotSummarySection(cleaned, /噪音|忽略/i)
+    .replace(/^[-*]\s+/, "")
+    .replace(/^\d+[.、]\s+/, "")
+    .trim();
+
+  if (!focusItems.length && !topics.length && !risks.length) {
+    return buildReportShellHtml(cleaned, {
+      title: "AI 热点总览",
+      badges: ["本轮热搜", metaText || new Date().toLocaleString("zh-CN")],
+      footer: ""
+    });
+  }
+
+  return `
+    <div class="hotspot-summary-dashboard">
+      <div class="hotspot-summary-hero">
+        <div>
+          <div class="hotspot-summary-kicker">AI 热点雷达</div>
+          <h2>本轮最值得盯的 ${focusItems.length || 0} 条</h2>
+          <p>${escapeHtml(metaText || "根据最新热搜生成")}</p>
+        </div>
+        <div class="hotspot-summary-stat">
+          <span>${focusItems.length || 0}</span>
+          <small>重点新闻</small>
+        </div>
+      </div>
+
+      <div class="hotspot-focus-grid">
+        ${focusItems.map((item, index) => `
+          <article class="hotspot-focus-card ${index === 0 ? 'is-primary' : ''}">
+            <div class="hotspot-focus-rank">#${index + 1}</div>
+            <h3>${escapeHtml(item.title)}</h3>
+            ${item.event ? `<p class="hotspot-focus-event">${formatHotspotSummaryInline(item.event)}</p>` : ""}
+            ${item.reason ? `<p class="hotspot-focus-reason">${formatHotspotSummaryInline(item.reason)}</p>` : ""}
+            ${item.impact ? `<div class="hotspot-impact-tags">${item.impact.split(/[、，,]/).filter(Boolean).slice(0, 5).map(tag => `<span>${escapeHtml(tag.trim())}</span>`).join("")}</div>` : ""}
+          </article>
+        `).join("")}
+      </div>
+
+      <div class="hotspot-summary-side-grid">
+        <section class="hotspot-summary-box">
+          <div class="hotspot-summary-box-title">直播可用选题</div>
+          <ol>${topics.map(item => `<li>${formatHotspotSummaryInline(item)}</li>`).join("")}</ol>
+        </section>
+        <section class="hotspot-summary-box is-warning">
+          <div class="hotspot-summary-box-title">风险与合规提醒</div>
+          <ol>${risks.map(item => `<li>${formatHotspotSummaryInline(item)}</li>`).join("")}</ol>
+        </section>
+      </div>
+      ${noise ? `<div class="hotspot-noise-strip"><strong>可忽略噪音</strong><span>${formatHotspotSummaryInline(noise)}</span></div>` : ""}
+    </div>
+  `;
 }
 
 function setHotspotSummaryLoading(message = "AI 正在筛选重要新闻...") {

@@ -2128,7 +2128,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.6</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.7</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div style="display:flex;align-items:center;gap:8px;padding:4px 10px 4px 5px;border:1px solid var(--border2);border-radius:20px;">
@@ -2263,7 +2263,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.6</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.7</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3282,8 +3282,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.6";
+const APP_VERSION = "0.1.7";
 const APP_RELEASES = [
+  {
+    version: "0.1.7",
+    date: "2026-05-27",
+    title: "AI 热点总览看板化",
+    permissions: ["hotspot", "ai-chat"],
+    summary: "AI 热点总览从通用 Markdown 报告升级为看板式展示，让重点新闻、直播选题和风险提醒更突出。",
+    items: [
+      "AI 热点总览不再直接使用通用报告渲染，而是解析为看板结构。",
+      "新增解析逻辑，将最值得关注 5 条、直播选题、风险提醒、可忽略噪音拆分展示。",
+      "重点新闻渲染为卡片，首条重点新闻突出展示，行业方向以标签形式呈现。",
+      "新增 AI 热点雷达顶部摘要，展示本轮重点新闻数量和生成时间。",
+      "新增直播选题块、风险提醒块和噪音提示条，让财经直播可用信息更容易扫读。"
+    ]
+  },
   {
     version: "0.1.6",
     date: "2026-05-27",
