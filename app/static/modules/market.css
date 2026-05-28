@@ -1,0 +1,23 @@
+.market-page{display:flex;flex-direction:column;gap:16px;}
+.market-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
+.market-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.market-status{border:1px solid var(--border);background:var(--bg1);border-radius:var(--r);padding:10px 12px;color:var(--text1);font-size:12px;}
+.market-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+.market-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+.market-quote-card{border:1px solid var(--border);border-radius:var(--r2);background:var(--bg1);padding:16px;min-height:124px;}
+.market-quote-name{font-size:12px;color:var(--text1);margin-bottom:8px;}
+.market-quote-value{font-family:var(--font-mono);font-size:24px;color:var(--text0);font-weight:700;}
+.market-quote-meta{display:flex;gap:8px;align-items:center;margin-top:10px;font-family:var(--font-mono);font-size:12px;}
+.market-table{width:100%;border-collapse:collapse;}
+.market-table th{font-size:11px;color:var(--text2);font-weight:600;text-align:left;padding:9px 8px;border-bottom:1px solid var(--border);background:var(--bg2);}
+.market-table td{font-size:12px;color:var(--text1);padding:10px 8px;border-bottom:1px solid var(--border);}
+.market-table tr:last-child td{border-bottom:none;}
+.market-name{font-weight:700;color:var(--text0);}
+.market-code{font-family:var(--font-mono);font-size:11px;color:var(--text2);margin-top:2px;}
+.market-num{font-family:var(--font-mono);color:var(--text0);}
+.market-admin-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start;}
+.market-admin-form{display:grid;gap:12px;}
+.market-admin-codes{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.market-note{font-size:12px;color:var(--text1);line-height:1.7;border:1px solid var(--border);background:var(--bg1);border-radius:var(--r);padding:12px;}
+@media(max-width:1100px){.market-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.market-layout,.market-admin-grid{grid-template-columns:1fr;}}
+@media(max-width:700px){.market-header{flex-direction:column}.market-kpi-grid,.market-admin-codes{grid-template-columns:1fr;}}

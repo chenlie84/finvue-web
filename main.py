@@ -13,7 +13,7 @@ import uvicorn
 
 import config
 import migrate
-from api import admin, ai, auth, customers, files, jobs, libraries, reports, settings, sop, system, logs, ai_chat, hotspot
+from api import admin, ai, auth, customers, files, jobs, libraries, reports, settings, sop, system, logs, ai_chat, hotspot, market
 from api import operation as api_operation
 
 
@@ -21,6 +21,8 @@ from api import operation as api_operation
 async def lifespan(_: FastAPI):
     hotspot_stop_event: asyncio.Event | None = None
     hotspot_task: asyncio.Task | None = None
+    market_stop_event: asyncio.Event | None = None
+    market_task: asyncio.Task | None = None
     print(f"[lifespan] AUTO_MIGRATE={config.AUTO_MIGRATE}, ENV={config.ENV}, has_mysql={config.has_mysql_config()}")
     if config.AUTO_MIGRATE and config.has_mysql_config() and config.ENV.lower() != "test":
         print("[lifespan] Running migrations...")
@@ -37,6 +39,10 @@ async def lifespan(_: FastAPI):
         from services.hotspot_scheduler import run_scheduler
         hotspot_stop_event = asyncio.Event()
         hotspot_task = asyncio.create_task(run_scheduler(hotspot_stop_event))
+    if config.has_mysql_config() and config.ENV.lower() != "test":
+        from services.market_scheduler import run_scheduler as run_market_scheduler
+        market_stop_event = asyncio.Event()
+        market_task = asyncio.create_task(run_market_scheduler(market_stop_event))
     try:
         yield
     finally:
@@ -45,6 +51,13 @@ async def lifespan(_: FastAPI):
             hotspot_task.cancel()
             try:
                 await hotspot_task
+            except asyncio.CancelledError:
+                pass
+        if market_stop_event and market_task:
+            market_stop_event.set()
+            market_task.cancel()
+            try:
+                await market_task
             except asyncio.CancelledError:
                 pass
 
@@ -70,6 +83,7 @@ app.include_router(logs.router)
 app.include_router(api_operation.router)
 app.include_router(ai_chat.router)
 app.include_router(hotspot.router)
+app.include_router(market.router)
 
 
 @app.exception_handler(HTTPException)
