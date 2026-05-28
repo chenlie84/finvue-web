@@ -12,18 +12,61 @@
   const dateText = (value) => String(value || "").replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3") || "--";
   const timeText = (value) => value ? new Date(value).toLocaleString("zh-CN") : "暂无缓存";
   const html = (value) => String(value ?? "").replace(/[&<>"']/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
+  const inlineMd = (value) => html(value)
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+
+  function markdownToHtml(markdown) {
+    const lines = String(markdown || "").split(/\r?\n/);
+    let out = "";
+    let listOpen = false;
+    const closeList = () => {
+      if (listOpen) {
+        out += "</ul>";
+        listOpen = false;
+      }
+    };
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line) {
+        closeList();
+        continue;
+      }
+      const heading = line.match(/^(#{1,3})\s+(.+)$/);
+      if (heading) {
+        closeList();
+        out += `<h${heading[1].length}>${inlineMd(heading[2])}</h${heading[1].length}>`;
+        continue;
+      }
+      const bullet = line.match(/^[-*]\s+(.+)$/) || line.match(/^\d+[.)]\s+(.+)$/);
+      if (bullet) {
+        if (!listOpen) {
+          out += "<ul>";
+          listOpen = true;
+        }
+        out += `<li>${inlineMd(bullet[1])}</li>`;
+        continue;
+      }
+      closeList();
+      out += `<p>${inlineMd(line)}</p>`;
+    }
+    closeList();
+    return out || "暂无分析结果";
+  }
 
   function renderStatus(settings, snapshot) {
     const badge = document.getElementById("marketSourceBadge");
     const status = document.getElementById("marketStatus");
+    const hasData = Boolean((snapshot?.indexes || []).length || (snapshot?.stocks || []).length);
+    const hasToken = Boolean(settings?.configured || settings?.hasToken || hasData);
     if (badge) {
-      badge.textContent = settings?.configured ? "TuShare已配置" : "TuShare未配置";
-      badge.className = `badge ${settings?.configured ? "green" : "gray"}`;
+      badge.textContent = hasToken ? (settings?.schedulerEnabled ? "TuShare已配置" : "TuShare已配置·定时关闭") : "TuShare未配置";
+      badge.className = `badge ${hasToken ? "green" : "gray"}`;
     }
     if (status) {
       const counts = snapshot?.summary ? `指数 ${snapshot.summary.indexCount || 0} / 股票 ${snapshot.summary.stockCount || 0}` : "暂无数据";
-      status.textContent = settings?.configured
-        ? `数据源：TuShare · ${counts} · 更新时间 ${timeText(snapshot?.updatedAt)}`
+      status.textContent = hasToken || hasData
+        ? `数据源：TuShare · ${counts} · 更新时间 ${timeText(snapshot?.updatedAt)}${settings?.schedulerEnabled ? "" : " · 后台定时未启用"}`
         : "请先到后台管理 / TuShare配置 中填写 token 并保存。";
     }
   }
@@ -103,6 +146,30 @@
     }
   }
 
+  async function generateAttribution() {
+    const btn = document.getElementById("marketAttributionBtn");
+    const content = document.getElementById("marketAttributionContent");
+    const meta = document.getElementById("marketAttributionMeta");
+    try {
+      if (btn) btn.disabled = true;
+      if (content) content.innerHTML = '<span class="spinner"></span> 正在结合行情与热点追踪生成归因...';
+      const res = await fetch("/api/market/ai-attribution", { method: "POST", credentials: "include" });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || payload.detail || "归因生成失败");
+      if (content) content.innerHTML = markdownToHtml(payload.analysis || "");
+      if (meta) {
+        const generated = payload.generatedAt ? new Date(payload.generatedAt).toLocaleString("zh-CN") : new Date().toLocaleString("zh-CN");
+        meta.textContent = `生成于 ${generated} · 命中 ${payload.matchedTargets?.length || 0} 个标的/主题 · 覆盖 ${payload.hotspotCount || 0} 条热点`;
+      }
+      window.showToast?.("AI 消息面归因已生成");
+    } catch (error) {
+      if (content) content.textContent = error.message;
+      window.showToast?.(error.message);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   function adminTemplate() {
     return `<div class="market-admin-grid">
       <section class="panel">
@@ -150,7 +217,7 @@
     document.getElementById("tushareStockCodes").value = (settings.stockCodes || []).join("\n");
     const badge = document.getElementById("tushareAdminBadge");
     if (badge) {
-      badge.textContent = settings.configured ? "已配置" : "未配置";
+      badge.textContent = settings.configured ? (settings.schedulerEnabled ? "已配置" : "已配置·定时关闭") : "未配置";
       badge.className = `badge ${settings.configured ? "green" : "gray"}`;
     }
   }
@@ -218,9 +285,10 @@
     }
   }
 
-  window.FinVueMarket = { load: loadMarket, refresh: refreshMarket };
+  window.FinVueMarket = { load: loadMarket, refresh: refreshMarket, generateAttribution };
   window.FinVueMarketAdmin = { load: loadAdmin };
   window.addEventListener("load", () => {
     document.getElementById("marketRefreshBtn")?.addEventListener("click", refreshMarket);
+    document.getElementById("marketAttributionBtn")?.addEventListener("click", generateAttribution);
   });
 })();

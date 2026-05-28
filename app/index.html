@@ -1870,6 +1870,16 @@
             </div>
           </div>
           <div id="marketStatus" class="market-status">正在读取行情缓存...</div>
+          <section class="market-attribution-panel" id="marketAttributionPanel">
+            <div class="market-attribution-head">
+              <div>
+                <div class="market-attribution-title">AI 消息面归因</div>
+                <div class="market-attribution-sub" id="marketAttributionMeta">结合行情缓存与最近 6 小时热点追踪，判断消息面关联强弱。</div>
+              </div>
+              <button class="btn btn-gold" id="marketAttributionBtn" type="button">生成归因</button>
+            </div>
+            <div class="market-attribution-content" id="marketAttributionContent">点击生成后，会把已配置指数/股票的行情表现与热点追踪数据交给 AI 做弱关联分析。</div>
+          </section>
           <div id="marketKpiGrid" class="market-kpi-grid"></div>
           <div class="market-layout">
             <section class="panel">
@@ -2091,7 +2101,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.12</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.13</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2228,7 +2238,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.12</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.13</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3285,8 +3295,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.12";
+const APP_VERSION = "0.1.13";
 const APP_RELEASES = [
+  {
+    version: "0.1.13",
+    date: "2026-05-28",
+    title: "AI 消息面归因",
+    permissions: ["market", "hotspot", "ai-chat"],
+    summary: "实时行情新增 AI 消息面归因，把 TuShare 行情缓存与最近 6 小时热点追踪做弱关联分析，辅助直播团队判断消息催化强弱。",
+    items: [
+      "新增 POST /api/market/ai-attribution，读取当前行情缓存和最近 6 小时热点数据。",
+      "用指数、股票名称、代码和行业主题关键词做轻量匹配，生成命中标的和主题。",
+      "调用现有 AI 路由输出归因分析，明确区分直接关联、主题关联、情绪相关和噪音。",
+      "实时行情页新增 AI 消息面归因卡片，支持生成时间、命中数量和覆盖热点数量展示。",
+      "归因结果用 Markdown 报告式渲染，避免把热点与行情硬说成因果。"
+    ]
+  },
   {
     version: "0.1.12",
     date: "2026-05-28",

@@ -85,7 +85,8 @@ def mask_settings(settings: dict[str, Any] | None = None) -> dict[str, Any]:
     } | {
         "token": "********" if raw.get("token") else "",
         "hasToken": bool(raw.get("token")),
-        "configured": bool(raw.get("enabled") and raw.get("token")),
+        "configured": bool(raw.get("token")),
+        "schedulerEnabled": bool(raw.get("enabled") and raw.get("token")),
     }
 
 
