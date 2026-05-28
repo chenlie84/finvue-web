@@ -110,6 +110,44 @@
     </table>`;
   }
 
+  function renderHotSectors(sectors) {
+    const grid = document.getElementById("marketSectorGrid");
+    const meta = document.getElementById("marketSectorMeta");
+    if (!grid) return;
+    if (!sectors?.length) {
+      grid.innerHTML = '<div class="market-status" style="grid-column:1/-1;">暂无板块数据。可在后台 TuShare 配置中增加重点股票，刷新行情后生成。</div>';
+      if (meta) meta.textContent = "暂无板块数据";
+      return;
+    }
+    if (meta) meta.textContent = `覆盖 ${sectors.length} 个板块 · 龙头股以当前行情池优先`;
+    grid.innerHTML = sectors.map((sector) => {
+      const pct = sector.avgPctChange;
+      const hasPct = Number.isFinite(Number(pct));
+      const leaders = (sector.leaders || []).slice(0, 5);
+      return `<article class="market-sector-card">
+        <div class="market-sector-head">
+          <div>
+            <div class="market-sector-name">${html(sector.name)}</div>
+            <div class="market-sector-sub">${sector.leaderCount || 0} 只已入行情池 · 成交额 ${fmt(Number(sector.amount || 0) / 100000, 2)}亿</div>
+          </div>
+          <span class="badge ${hasPct ? cls(pct) : "gray"}">${hasPct ? `${sign(pct)}${fmt(pct)}%` : "待观察"}</span>
+        </div>
+        <div class="market-leader-list">
+          ${leaders.map((item) => `<div class="market-leader-row ${item.pending ? "pending" : ""}">
+            <div>
+              <div class="market-name">${html(item.name || item.code)}</div>
+              <div class="market-code">${html(item.code || "")}${item.pending ? " · 待加入行情池" : ""}</div>
+            </div>
+            <div class="market-leader-side">
+              <div class="market-num">${item.pending ? "--" : fmt(item.close)}</div>
+              <div class="${item.pending ? "muted" : cls(item.pctChange)}">${item.pending ? "未取数" : `${sign(item.pctChange)}${fmt(item.pctChange)}%`}</div>
+            </div>
+          </div>`).join("")}
+        </div>
+      </article>`;
+    }).join("");
+  }
+
   async function loadMarket() {
     const status = document.getElementById("marketStatus");
     if (status) status.textContent = "正在读取行情...";
@@ -119,6 +157,7 @@
       if (!res.ok) throw new Error(payload.error || payload.detail || "行情读取失败");
       renderStatus(payload.settings || {}, payload.snapshot || {});
       renderKpis(payload.snapshot?.indexes || []);
+      renderHotSectors(payload.snapshot?.hotSectors || []);
       renderTable("marketIndexTable", payload.snapshot?.indexes || []);
       renderTable("marketStockTable", payload.snapshot?.stocks || []);
       state.loaded = true;

@@ -25,6 +25,48 @@ STOCK_NAMES = {
     "601318.SH": "中国平安",
     "600036.SH": "招商银行",
 }
+SECTOR_LEADERS = {
+    "金融地产": {
+        "keywords": ["银行", "保险", "证券", "券商", "房地产", "多元金融"],
+        "leaders": [
+            {"code": "600036.SH", "name": "招商银行"},
+            {"code": "601318.SH", "name": "中国平安"},
+            {"code": "000001.SZ", "name": "平安银行"},
+        ],
+    },
+    "白酒消费": {
+        "keywords": ["白酒", "食品", "饮料", "消费", "零售", "旅游", "家电"],
+        "leaders": [
+            {"code": "600519.SH", "name": "贵州茅台"},
+            {"code": "000858.SZ", "name": "五粮液"},
+            {"code": "000333.SZ", "name": "美的集团"},
+        ],
+    },
+    "新能源车": {
+        "keywords": ["电池", "新能源", "汽车", "锂电", "光伏", "电气设备"],
+        "leaders": [
+            {"code": "300750.SZ", "name": "宁德时代"},
+            {"code": "002594.SZ", "name": "比亚迪"},
+            {"code": "601012.SH", "name": "隆基绿能"},
+        ],
+    },
+    "半导体": {
+        "keywords": ["半导体", "芯片", "集成电路", "电子", "元件"],
+        "leaders": [
+            {"code": "688981.SH", "name": "中芯国际"},
+            {"code": "002371.SZ", "name": "北方华创"},
+            {"code": "688012.SH", "name": "中微公司"},
+        ],
+    },
+    "医药生物": {
+        "keywords": ["医药", "医疗", "生物", "制药", "创新药"],
+        "leaders": [
+            {"code": "600276.SH", "name": "恒瑞医药"},
+            {"code": "300760.SZ", "name": "迈瑞医疗"},
+            {"code": "603259.SH", "name": "药明康德"},
+        ],
+    },
+}
 
 
 def _now_iso() -> str:
@@ -188,6 +230,73 @@ def _latest_quote(api_name: str, token: str, code: str, name_map: dict[str, str]
     }
 
 
+def _stock_meta_map() -> dict[str, dict[str, Any]]:
+    universe = store.safe_object(store.get_kv("tushare-stock-universe", {}))
+    items = universe.get("items") if isinstance(universe.get("items"), list) else []
+    return {str(item.get("code") or "").upper(): item for item in items if item.get("code")}
+
+
+def _classify_sector(stock: dict[str, Any], meta: dict[str, Any] | None = None) -> str:
+    text_blob = " ".join(
+        str(value or "")
+        for value in (
+            stock.get("name"),
+            stock.get("code"),
+            (meta or {}).get("industry"),
+            (meta or {}).get("market"),
+        )
+    )
+    for sector, rule in SECTOR_LEADERS.items():
+        if any(keyword and keyword in text_blob for keyword in rule["keywords"]):
+            return sector
+    return str((meta or {}).get("industry") or "重点观察")
+
+
+def build_hot_sectors(stocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    meta_map = _stock_meta_map()
+    quote_map = {str(item.get("code") or "").upper(): item for item in stocks}
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for stock in stocks:
+        code = str(stock.get("code") or "").upper()
+        sector = _classify_sector(stock, meta_map.get(code))
+        grouped.setdefault(sector, []).append(stock)
+
+    for sector, rule in SECTOR_LEADERS.items():
+        leaders = grouped.setdefault(sector, [])
+        existing = {str(item.get("code") or "").upper() for item in leaders}
+        for leader in rule["leaders"]:
+            code = str(leader.get("code") or "").upper()
+            if code not in existing:
+                leaders.append({**leader, "pending": code not in quote_map, **(quote_map.get(code) or {})})
+                existing.add(code)
+
+    sectors = []
+    for sector, leaders in grouped.items():
+        quoted = [item for item in leaders if not item.get("pending") and item.get("pctChange") is not None]
+        avg_pct = sum(float(item.get("pctChange") or 0) for item in quoted) / len(quoted) if quoted else None
+        amount = sum(float(item.get("amount") or 0) for item in quoted)
+        leaders_sorted = sorted(
+            leaders,
+            key=lambda item: (
+                1 if item.get("pending") else 0,
+                -abs(float(item.get("pctChange") or 0)) if item.get("pctChange") is not None else 0,
+            ),
+        )[:5]
+        sectors.append(
+            {
+                "name": sector,
+                "avgPctChange": avg_pct,
+                "amount": amount,
+                "leaderCount": len(quoted),
+                "leaders": leaders_sorted,
+            }
+        )
+    return sorted(
+        sectors,
+        key=lambda item: (item["leaderCount"] <= 0, -abs(float(item.get("avgPctChange") or 0)), -float(item.get("amount") or 0)),
+    )[:8]
+
+
 def fetch_market_snapshot(settings: dict[str, Any] | None = None) -> dict[str, Any]:
     cfg = settings or get_settings()
     token = str(cfg.get("token") or "").strip()
@@ -209,6 +318,7 @@ def fetch_market_snapshot(settings: dict[str, Any] | None = None) -> dict[str, A
         "updatedAt": _now_iso(),
         "indexes": indexes,
         "stocks": stocks,
+        "hotSectors": build_hot_sectors(stocks),
         "summary": {
             "indexCount": len(indexes),
             "stockCount": len(stocks),

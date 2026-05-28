@@ -1880,6 +1880,10 @@
             </div>
             <div class="market-attribution-content" id="marketAttributionContent">点击生成后，会把已配置指数/股票的行情表现与热点追踪数据交给 AI 做弱关联分析。</div>
           </section>
+          <section class="panel">
+            <div class="panel-hd"><div class="panel-title">热门板块与龙头股</div><span class="muted" id="marketSectorMeta">按重点股票行情与板块映射生成</span></div>
+            <div id="marketSectorGrid" class="market-sector-grid"></div>
+          </section>
           <div id="marketKpiGrid" class="market-kpi-grid"></div>
           <div class="market-layout">
             <section class="panel">
@@ -2101,7 +2105,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.14</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.15</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2238,7 +2242,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.14</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.15</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3295,8 +3299,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.14";
+const APP_VERSION = "0.1.15";
 const APP_RELEASES = [
+  {
+    version: "0.1.15",
+    date: "2026-05-28",
+    title: "热门板块与龙头股",
+    permissions: ["market"],
+    summary: "实时行情新增热门板块与龙头股展示，根据当前行情池重点股票自动归类板块，并展示板块表现和龙头股状态。",
+    items: [
+      "行情快照新增 hotSectors，按重点股票行情和板块映射生成热门板块。",
+      "每个板块展示平均涨跌幅、已入行情池龙头数量和成交额。",
+      "板块卡片列出对应龙头股，已取数股票展示收盘价和涨跌幅。",
+      "未加入当前行情池的龙头股显示待加入行情池，不额外触发大量 TuShare 请求。",
+      "旧行情缓存缺少 hotSectors 时，接口会即时补算以兼容已存在缓存。"
+    ]
+  },
   {
     version: "0.1.14",
     date: "2026-05-28",

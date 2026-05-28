@@ -31,6 +31,8 @@ THEME_KEYWORDS = {
 def overview(_: dict = Depends(security.require_permission("market"))) -> dict:
     settings = tushare_market.mask_settings()
     cache = tushare_market.get_cached_snapshot()
+    if cache and "hotSectors" not in cache:
+        cache = {**cache, "hotSectors": tushare_market.build_hot_sectors(cache.get("stocks") or [])}
     return {"ok": True, "settings": settings, "snapshot": cache}
 
 
