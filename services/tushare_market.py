@@ -10,6 +10,7 @@ import store
 TUSHARE_API_URL = "http://api.tushare.pro"
 DEFAULT_INDEX_CODES = ["000001.SH", "399001.SZ", "399006.SZ", "000300.SH", "000905.SH"]
 DEFAULT_STOCK_CODES = ["000001.SZ", "600519.SH", "300750.SZ", "601318.SH", "600036.SH"]
+DEFAULT_STOCK_UNIVERSE_LIMIT = 8000
 INDEX_NAMES = {
     "000001.SH": "上证指数",
     "399001.SZ": "深证成指",
@@ -111,6 +112,55 @@ def _request(api_name: str, token: str, params: dict[str, Any] | None = None, fi
     return [dict(zip(columns, row)) for row in data.get("items") or []]
 
 
+def _stock_name_map() -> dict[str, str]:
+    universe = store.safe_object(store.get_kv("tushare-stock-universe", {}))
+    items = universe.get("items") if isinstance(universe.get("items"), list) else []
+    names = {
+        str(item.get("code") or "").upper(): str(item.get("name") or "").strip()
+        for item in items
+        if item.get("code") and item.get("name")
+    }
+    return {**STOCK_NAMES, **names}
+
+
+def fetch_stock_universe(settings: dict[str, Any] | None = None) -> dict[str, Any]:
+    cfg = settings or get_settings()
+    token = str(cfg.get("token") or "").strip()
+    if not token:
+        raise RuntimeError("TuShare token 未配置")
+    rows = _request(
+        "stock_basic",
+        token,
+        {"list_status": "L"},
+        "ts_code,symbol,name,area,industry,market,exchange,list_date",
+    )
+    items = []
+    for row in rows[:DEFAULT_STOCK_UNIVERSE_LIMIT]:
+        code = str(row.get("ts_code") or "").upper()
+        if not code:
+            continue
+        items.append(
+            {
+                "code": code,
+                "symbol": row.get("symbol"),
+                "name": row.get("name"),
+                "area": row.get("area"),
+                "industry": row.get("industry") or "未分类",
+                "market": row.get("market"),
+                "exchange": row.get("exchange"),
+                "listDate": row.get("list_date"),
+            }
+        )
+    items.sort(key=lambda item: str(item.get("code") or ""))
+    payload = {"updatedAt": _now_iso(), "count": len(items), "items": items}
+    store.set_kv("tushare-stock-universe", payload)
+    return payload
+
+
+def get_stock_universe() -> dict[str, Any]:
+    return store.safe_object(store.get_kv("tushare-stock-universe", {}))
+
+
 def _latest_quote(api_name: str, token: str, code: str, name_map: dict[str, str]) -> dict[str, Any] | None:
     start_date, end_date = _date_range()
     rows = _request(
@@ -148,10 +198,11 @@ def fetch_market_snapshot(settings: dict[str, Any] | None = None) -> dict[str, A
         for code in normalize_codes(cfg.get("indexCodes"), DEFAULT_INDEX_CODES)
         if (quote := _latest_quote("index_daily", token, code, INDEX_NAMES))
     ]
+    stock_names = _stock_name_map()
     stocks = [
         quote
         for code in normalize_codes(cfg.get("stockCodes"), DEFAULT_STOCK_CODES)
-        if (quote := _latest_quote("daily", token, code, STOCK_NAMES))
+        if (quote := _latest_quote("daily", token, code, stock_names))
     ]
     snapshot = {
         "source": "tushare",

@@ -201,3 +201,21 @@ async def test_tushare_settings(request: Request, _: dict = Depends(security.req
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"TuShare 连接失败：{exc}") from exc
     return {"ok": True, "message": f"连接成功，交易日历返回 {result.get('rows', 0)} 条"}
+
+
+@router.get("/api/admin/tushare/stocks")
+def get_tushare_stocks(_: dict = Depends(security.require_admin)) -> dict:
+    universe = tushare_market.get_stock_universe()
+    return {"ok": True, "universe": universe}
+
+
+@router.post("/api/admin/tushare/stocks/refresh")
+async def refresh_tushare_stocks(_: Request, __: dict = Depends(security.require_admin)) -> dict:
+    settings = tushare_market.get_settings()
+    if not settings.get("token"):
+        raise HTTPException(status_code=400, detail="TuShare token 未配置")
+    try:
+        universe = await asyncio.to_thread(tushare_market.fetch_stock_universe, settings)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"股票基础库刷新失败：{exc}") from exc
+    return {"ok": True, "universe": universe}

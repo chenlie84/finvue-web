@@ -2101,7 +2101,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.13</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.14</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2238,7 +2238,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.13</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.14</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3295,8 +3295,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.13";
+const APP_VERSION = "0.1.14";
 const APP_RELEASES = [
+  {
+    version: "0.1.14",
+    date: "2026-05-28",
+    title: "TuShare 股票池选择器",
+    permissions: ["market", "admin-api"],
+    summary: "后台 TuShare 配置新增股票基础库选择器，可从全量 A 股代码中按中文名、代码、板块和市场搜索选择。",
+    items: [
+      "新增 TuShare stock_basic 股票基础库缓存，保存代码、中文名、行业板块、市场、地区和上市日期。",
+      "新增后台接口读取和刷新股票基础库，避免每次打开页面都请求 TuShare。",
+      "TuShare 配置页新增股票搜索、板块筛选、选中股票标签和一键加入/移除。",
+      "行情刷新会优先使用股票基础库中的中文名展示已选股票。",
+      "仍保留手动编辑股票代码能力，方便临时补充或快速粘贴代码。"
+    ]
+  },
   {
     version: "0.1.13",
     date: "2026-05-28",

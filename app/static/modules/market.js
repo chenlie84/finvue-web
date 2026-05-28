@@ -1,5 +1,5 @@
 (function () {
-  const state = { loaded: false, adminLoaded: false };
+  const state = { loaded: false, adminLoaded: false, stockUniverse: [], stockQuery: "", stockIndustry: "" };
 
   const fmt = (value, digits = 2) => {
     const num = Number(value);
@@ -182,7 +182,17 @@
           <label><span class="lbl">取数间隔（分钟，最小 15）</span><input class="inp" id="tushareInterval" type="number" min="15" step="15" value="60" style="width:180px;"></label>
           <div class="market-admin-codes">
             <label><span class="lbl">指数代码（逗号或换行分隔）</span><textarea class="textarea" id="tushareIndexCodes" rows="6"></textarea></label>
-            <label><span class="lbl">股票代码（逗号或换行分隔）</span><textarea class="textarea" id="tushareStockCodes" rows="6"></textarea></label>
+            <label><span class="lbl">股票代码（由下方股票库选择，也可手动补充）</span><textarea class="textarea" id="tushareStockCodes" rows="6"></textarea></label>
+          </div>
+          <div class="market-stock-picker">
+            <div class="market-stock-toolbar">
+              <input class="inp" id="tushareStockSearch" placeholder="搜索代码 / 名称 / 行业 / 板块" style="min-width:220px;flex:1;">
+              <select class="sel" id="tushareIndustryFilter" style="width:180px;"><option value="">全部板块</option></select>
+              <button class="btn btn-outline" id="tushareLoadStocksBtn" type="button">读取股票库</button>
+              <button class="btn btn-outline" id="tushareRefreshStocksBtn" type="button">从TuShare刷新</button>
+            </div>
+            <div class="market-selected-stocks" id="tushareSelectedStocks">尚未选择股票</div>
+            <div class="market-stock-list" id="tushareStockList">点击“读取股票库”后可按中文名、代码或板块搜索选择。</div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-outline" id="tushareTestBtn" type="button">测试 Token</button>
@@ -209,6 +219,111 @@
     };
   }
 
+  function selectedStockCodes() {
+    return String(document.getElementById("tushareStockCodes")?.value || "")
+      .replace(/\n/g, ",")
+      .split(",")
+      .map((code) => code.trim().toUpperCase())
+      .filter(Boolean)
+      .filter((code, index, arr) => arr.indexOf(code) === index);
+  }
+
+  function setSelectedStockCodes(codes) {
+    const target = document.getElementById("tushareStockCodes");
+    if (target) target.value = (codes || []).filter(Boolean).join("\n");
+    renderSelectedStocks();
+    renderStockList();
+  }
+
+  function renderIndustryOptions() {
+    const select = document.getElementById("tushareIndustryFilter");
+    if (!select) return;
+    const current = select.value;
+    const industries = [...new Set(state.stockUniverse.map((item) => item.industry || "未分类"))].sort((a, b) => a.localeCompare(b, "zh-CN"));
+    select.innerHTML = `<option value="">全部板块</option>${industries.map((item) => `<option value="${html(item)}">${html(item)}</option>`).join("")}`;
+    select.value = industries.includes(current) ? current : "";
+  }
+
+  function renderSelectedStocks() {
+    const wrap = document.getElementById("tushareSelectedStocks");
+    if (!wrap) return;
+    const codes = selectedStockCodes();
+    if (!codes.length) {
+      wrap.textContent = "尚未选择股票";
+      return;
+    }
+    const map = Object.fromEntries(state.stockUniverse.map((item) => [item.code, item]));
+    wrap.innerHTML = codes.map((code) => {
+      const item = map[code] || { code, name: code, industry: "手动添加" };
+      return `<button class="market-stock-chip" type="button" data-remove-stock="${html(code)}">
+        <span>${html(item.name || code)}</span><span>${html(code)}</span><small>${html(item.industry || "未分类")}</small>
+      </button>`;
+    }).join("");
+  }
+
+  function renderStockList() {
+    const list = document.getElementById("tushareStockList");
+    if (!list) return;
+    if (!state.stockUniverse.length) {
+      list.textContent = "暂无股票基础库。点击“从TuShare刷新”后会缓存所有A股代码、中文名和板块。";
+      renderIndustryOptions();
+      renderSelectedStocks();
+      return;
+    }
+    const selected = new Set(selectedStockCodes());
+    const query = state.stockQuery.trim().toLowerCase();
+    const industry = state.stockIndustry;
+    const rows = state.stockUniverse
+      .filter((item) => !industry || item.industry === industry)
+      .filter((item) => {
+        if (!query) return true;
+        return [item.code, item.symbol, item.name, item.industry, item.market, item.area]
+          .some((value) => String(value || "").toLowerCase().includes(query));
+      })
+      .slice(0, 120);
+    list.innerHTML = rows.length ? rows.map((item) => {
+      const checked = selected.has(item.code);
+      return `<button class="market-stock-row ${checked ? "selected" : ""}" type="button" data-stock-code="${html(item.code)}">
+        <span class="market-stock-check">${checked ? "✓" : "+"}</span>
+        <span><b>${html(item.name || item.code)}</b><small>${html(item.code)} · ${html(item.market || item.exchange || "--")}</small></span>
+        <span>${html(item.industry || "未分类")}</span>
+        <span>${html(item.area || "--")}</span>
+      </button>`;
+    }).join("") : "没有匹配的股票。";
+    renderIndustryOptions();
+    renderSelectedStocks();
+  }
+
+  function toggleStock(code) {
+    const codes = selectedStockCodes();
+    if (codes.includes(code)) {
+      setSelectedStockCodes(codes.filter((item) => item !== code));
+    } else {
+      setSelectedStockCodes([...codes, code]);
+    }
+  }
+
+  async function loadStockUniverse(forceRefresh = false) {
+    const status = document.getElementById("tushareAdminStatus");
+    try {
+      if (status) status.textContent = forceRefresh ? "正在从 TuShare 刷新股票基础库..." : "正在读取股票基础库缓存...";
+      const res = await fetch(forceRefresh ? "/api/admin/tushare/stocks/refresh" : "/api/admin/tushare/stocks", {
+        method: forceRefresh ? "POST" : "GET",
+        credentials: "include"
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || payload.detail || "股票基础库读取失败");
+      state.stockUniverse = Array.isArray(payload.universe?.items) ? payload.universe.items : [];
+      renderStockList();
+      if (status) status.textContent = state.stockUniverse.length
+        ? `股票基础库已加载：${state.stockUniverse.length} 只，更新时间 ${timeText(payload.universe?.updatedAt)}。`
+        : "暂无股票基础库缓存，请点击从TuShare刷新。";
+    } catch (error) {
+      if (status) status.textContent = error.message;
+      window.showToast?.(error.message);
+    }
+  }
+
   function renderAdmin(settings) {
     document.getElementById("tushareEnabled").checked = !!settings.enabled;
     document.getElementById("tushareToken").value = settings.token || "";
@@ -220,6 +335,7 @@
       badge.textContent = settings.configured ? (settings.schedulerEnabled ? "已配置" : "已配置·定时关闭") : "未配置";
       badge.className = `badge ${settings.configured ? "green" : "gray"}`;
     }
+    renderSelectedStocks();
   }
 
   async function loadAdmin() {
@@ -229,6 +345,28 @@
       mount.innerHTML = adminTemplate();
       document.getElementById("tushareSaveBtn")?.addEventListener("click", saveAdmin);
       document.getElementById("tushareTestBtn")?.addEventListener("click", testAdmin);
+      document.getElementById("tushareLoadStocksBtn")?.addEventListener("click", () => loadStockUniverse(false));
+      document.getElementById("tushareRefreshStocksBtn")?.addEventListener("click", () => loadStockUniverse(true));
+      document.getElementById("tushareStockSearch")?.addEventListener("input", (event) => {
+        state.stockQuery = event.target.value || "";
+        renderStockList();
+      });
+      document.getElementById("tushareIndustryFilter")?.addEventListener("change", (event) => {
+        state.stockIndustry = event.target.value || "";
+        renderStockList();
+      });
+      document.getElementById("tushareStockList")?.addEventListener("click", (event) => {
+        const row = event.target.closest("[data-stock-code]");
+        if (row?.dataset?.stockCode) toggleStock(row.dataset.stockCode);
+      });
+      document.getElementById("tushareSelectedStocks")?.addEventListener("click", (event) => {
+        const chip = event.target.closest("[data-remove-stock]");
+        if (chip?.dataset?.removeStock) toggleStock(chip.dataset.removeStock);
+      });
+      document.getElementById("tushareStockCodes")?.addEventListener("input", () => {
+        renderSelectedStocks();
+        renderStockList();
+      });
       state.adminLoaded = true;
     }
     const status = document.getElementById("tushareAdminStatus");
@@ -239,6 +377,7 @@
       if (!res.ok) throw new Error(payload.error || payload.detail || "配置读取失败");
       renderAdmin(payload.settings || {});
       if (status) status.textContent = "配置已加载。";
+      if (!state.stockUniverse.length) loadStockUniverse(false);
     } catch (error) {
       if (status) status.textContent = error.message;
     }
