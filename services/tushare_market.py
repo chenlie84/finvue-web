@@ -165,6 +165,45 @@ def _stock_name_map() -> dict[str, str]:
     return {**STOCK_NAMES, **names}
 
 
+def get_stock_name_map() -> dict[str, str]:
+    return _stock_name_map()
+
+
+def fetch_history_quotes(
+    api_name: str,
+    token: str,
+    code: str,
+    start_date: str,
+    end_date: str,
+    name_map: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    rows = _request(
+        api_name,
+        token,
+        {"ts_code": code, "start_date": start_date, "end_date": end_date},
+        "ts_code,trade_date,open,high,low,close,pre_close,change,pct_chg,vol,amount",
+    )
+    names = name_map or (_stock_name_map() if api_name == "daily" else INDEX_NAMES)
+    quotes = [
+        {
+            "code": code,
+            "name": names.get(code, code),
+            "tradeDate": row.get("trade_date"),
+            "open": row.get("open"),
+            "high": row.get("high"),
+            "low": row.get("low"),
+            "close": row.get("close"),
+            "preClose": row.get("pre_close"),
+            "change": row.get("change"),
+            "pctChange": row.get("pct_chg"),
+            "volume": row.get("vol"),
+            "amount": row.get("amount"),
+        }
+        for row in rows
+    ]
+    return sorted(quotes, key=lambda item: str(item.get("tradeDate") or ""))
+
+
 def fetch_stock_universe(settings: dict[str, Any] | None = None) -> dict[str, Any]:
     cfg = settings or get_settings()
     token = str(cfg.get("token") or "").strip()

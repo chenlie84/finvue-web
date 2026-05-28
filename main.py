@@ -13,7 +13,7 @@ import uvicorn
 
 import config
 import migrate
-from api import admin, ai, auth, customers, files, jobs, libraries, reports, settings, sop, system, logs, ai_chat, hotspot, market
+from api import admin, ai, auth, customers, files, jobs, libraries, reports, settings, sop, system, logs, ai_chat, hotspot, market, backtest
 from api import operation as api_operation
 
 
@@ -84,6 +84,7 @@ app.include_router(api_operation.router)
 app.include_router(ai_chat.router)
 app.include_router(hotspot.router)
 app.include_router(market.router)
+app.include_router(backtest.router)
 
 
 @app.exception_handler(HTTPException)

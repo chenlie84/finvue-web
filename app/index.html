@@ -11,6 +11,7 @@
 <script src="/static/modules/report-export.js"></script>
 <link rel="stylesheet" href="/static/modules/hotspot.css" />
 <link rel="stylesheet" href="/static/modules/market.css" />
+<link rel="stylesheet" href="/static/modules/backtest.css" />
 <style>
   :root {
     --bg0:#0A0B0E; --bg1:#11131A; --bg2:#181B24; --bg3:#1E2230;
@@ -1970,63 +1971,64 @@
 
       <!-- ══ 历史回测 ══ -->
       <div class="sec" id="sec-backtest">
-        <div class="page-title">历史回测</div>
-        <div class="page-sub">基于历史直播数据，验证投顾观点与市场走势的相关性</div>
-
-        <!-- 参数设置 -->
-        <div class="panel mb">
-          <div class="panel-hd"><div class="panel-title">回测参数设置</div></div>
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px;">
-            <div><div class="lbl">回测主体</div><select class="sel" style="width:100%;"><option>王晓明</option><option>张慧芳</option><option>全体投顾</option></select></div>
-            <div><div class="lbl">分析维度</div><select class="sel" style="width:100%;"><option>综合评分</option><option>专业性</option><option>合规性</option><option>热点关联</option></select></div>
-            <div><div class="lbl">起始日期</div><input class="inp" type="date" value="2025-10-01" style="width:100%;"/></div>
-            <div><div class="lbl">结束日期</div><input class="inp" type="date" value="2026-04-02" style="width:100%;"/></div>
-          </div>
-          <div style="margin-bottom:14px;">
-            <div class="lbl">回测周期</div>
-            <div style="display:flex;gap:8px;">
-              <button class="bt-chip active" onclick="btChip(this)">近1个月</button>
-              <button class="bt-chip" onclick="btChip(this)">近3个月</button>
-              <button class="bt-chip" onclick="btChip(this)">近6个月</button>
-              <button class="bt-chip" onclick="btChip(this)">近1年</button>
-              <button class="bt-chip" onclick="btChip(this)">自定义</button>
+        <div class="backtest-page">
+          <div class="backtest-header">
+            <div>
+              <div class="backtest-title">历史回测</div>
+              <div class="backtest-sub">结合主播资料库/历史分析报告与 TuShare 历史行情，验证观点方向和市场走势的相关性。</div>
             </div>
           </div>
-          <button class="btn btn-gold" onclick="runBacktest()" style="padding:10px 32px;">▶ 开始回测</button>
-        </div>
-
-        <!-- 回测结果 -->
-        <div id="btResult" style="display:block;">
-          <div class="g4 mb">
-            <div class="kpi" style="--accent:var(--gold)"><div class="kpi-lbl">综合评分均值</div><div class="kpi-val gold">8.6</div><div class="kpi-delta green">↑ 超平台均值 0.5</div></div>
-            <div class="kpi" style="--accent:var(--green)"><div class="kpi-lbl">合规通过率</div><div class="kpi-val">97.2%</div><div class="kpi-delta green">↑ 全平台最高</div></div>
-            <div class="kpi" style="--accent:var(--blue)"><div class="kpi-lbl">热点覆盖率</div><div class="kpi-val">78%</div><div class="kpi-delta muted">行业中位</div></div>
-            <div class="kpi" style="--accent:var(--purple)"><div class="kpi-lbl">回测场次</div><div class="kpi-val">48</div><div class="kpi-delta muted">6个月 · 王晓明</div></div>
-          </div>
-
-          <div class="g2 mb">
-            <div class="panel">
-              <div class="panel-hd"><div class="panel-title">评分趋势</div></div>
-              <div class="spark-wrap" style="height:100px;"><canvas id="btChart"></canvas></div>
+          <div class="backtest-panel">
+            <div class="backtest-form">
+              <div class="backtest-field">
+                <label>回测主体</label>
+                <select class="sel" id="backtestAnchor"><option value="all">全体主播</option></select>
+              </div>
+              <div class="backtest-field">
+                <label>分析维度</label>
+                <select class="sel" id="backtestDimension">
+                  <option value="market-validation">观点方向验证</option>
+                  <option value="theme-coverage">行情主题命中</option>
+                  <option value="risk-warning">风险提示复盘</option>
+                </select>
+              </div>
+              <div class="backtest-field">
+                <label>起始日期</label>
+                <input class="inp" id="backtestStart" type="date">
+              </div>
+              <div class="backtest-field">
+                <label>结束日期</label>
+                <input class="inp" id="backtestEnd" type="date">
+              </div>
+              <button class="btn btn-gold" id="backtestRunBtn" type="button">开始回测</button>
             </div>
-            <div class="panel">
-              <div class="panel-hd"><div class="panel-title">观点验证率</div><span class="muted" style="font-size:12px;">预测 vs 实际</span></div>
-              <div class="prog-wrap"><div class="prog-hd"><span>大盘方向判断</span><span class="green">76%</span></div><div class="prog-track"><div class="prog-fill green" style="width:76%"></div></div></div>
-              <div class="prog-wrap"><div class="prog-hd"><span>板块轮动预判</span><span class="gold">68%</span></div><div class="prog-track"><div class="prog-fill" style="width:68%"></div></div></div>
-              <div class="prog-wrap"><div class="prog-hd"><span>个股推荐胜率</span><span class="blue">54%</span></div><div class="prog-track"><div class="prog-fill blue" style="width:54%"></div></div></div>
-              <div class="prog-wrap"><div class="prog-hd"><span>风险预警准确率</span><span class="green">82%</span></div><div class="prog-track"><div class="prog-fill green" style="width:82%"></div></div></div>
+            <div class="backtest-periods">
+              <button class="backtest-chip" type="button" data-backtest-days="30">近1个月</button>
+              <button class="backtest-chip" type="button" data-backtest-days="90">近3个月</button>
+              <button class="backtest-chip active" type="button" data-backtest-days="180">近6个月</button>
+              <button class="backtest-chip" type="button" data-backtest-days="365">近1年</button>
             </div>
           </div>
-
-          <div class="panel">
-            <div class="panel-hd"><div class="panel-title">逐场回测明细</div><span class="panel-act" onclick="showToast('导出回测报告')">导出</span></div>
-            <table class="tbl">
-              <tr><th>日期</th><th>直播时长</th><th>主要观点</th><th>评分</th><th>市场验证</th><th>结论</th></tr>
-              <tr><td class="mono muted">04-01</td><td class="mono">92min</td><td>超配AI算力，规避消费</td><td><span class="gold mono">9.1</span></td><td><span class="badge green">验证 ✓</span></td><td><span class="green">观点准确</span></td></tr>
-              <tr><td class="mono muted">03-28</td><td class="mono">78min</td><td>黄金突破看多配置</td><td><span class="gold mono">8.8</span></td><td><span class="badge green">验证 ✓</span></td><td><span class="green">观点准确</span></td></tr>
-              <tr><td class="mono muted">03-21</td><td class="mono">65min</td><td>银行分红确定性机会</td><td><span class="gold mono">8.5</span></td><td><span class="badge gold">部分</span></td><td><span class="gold">基本准确</span></td></tr>
-              <tr><td class="mono muted">03-14</td><td class="mono">88min</td><td>新能源短期调整后买入</td><td><span class="mono">7.9</span></td><td><span class="badge red">未验证</span></td><td><span class="red">时机偏早</span></td></tr>
-            </table>
+          <div class="backtest-status" id="backtestStatus">正在读取主播资料库...</div>
+          <div class="backtest-kpis" id="backtestKpis">
+            <div class="backtest-kpi" style="--accent:var(--gold)"><div class="backtest-kpi-label">综合评分</div><div class="backtest-kpi-value">--</div><div class="backtest-kpi-note">等待回测</div></div>
+            <div class="backtest-kpi" style="--accent:var(--green)"><div class="backtest-kpi-label">观点验证率</div><div class="backtest-kpi-value">--</div><div class="backtest-kpi-note">等待回测</div></div>
+            <div class="backtest-kpi" style="--accent:var(--blue)"><div class="backtest-kpi-label">行情命中率</div><div class="backtest-kpi-value">--</div><div class="backtest-kpi-note">等待回测</div></div>
+            <div class="backtest-kpi" style="--accent:var(--purple)"><div class="backtest-kpi-label">回测样本</div><div class="backtest-kpi-value">--</div><div class="backtest-kpi-note">等待回测</div></div>
+          </div>
+          <div class="backtest-grid">
+            <div class="backtest-panel">
+              <div class="panel-hd"><div class="panel-title">验证评分趋势</div><span class="muted" style="font-size:12px;">按历史报告排序</span></div>
+              <div class="backtest-chart"><canvas id="backtestChart"></canvas></div>
+            </div>
+            <div class="backtest-panel">
+              <div class="panel-hd"><div class="panel-title">回测结构</div><span class="muted" style="font-size:12px;">命中与验证</span></div>
+              <div id="backtestInsight" class="backtest-bars"></div>
+            </div>
+          </div>
+          <div class="backtest-panel">
+            <div class="panel-hd"><div class="panel-title">逐场回测明细</div><span class="muted" style="font-size:12px;">基于报告关键词和后续 5 个交易日表现</span></div>
+            <div id="backtestTable" class="backtest-empty">请选择参数后点击“开始回测”。</div>
           </div>
         </div>
       </div>
@@ -2105,7 +2107,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.16</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.17</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2242,7 +2244,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.16</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.17</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3299,8 +3301,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.16";
+const APP_VERSION = "0.1.17";
 const APP_RELEASES = [
+  {
+    version: "0.1.17",
+    date: "2026-05-28",
+    title: "历史回测 MVP",
+    permissions: ["backtest", "market", "anchor-library"],
+    summary: "历史回测从静态展示升级为可运行版本，结合主播分析报告和 TuShare 历史行情做可解释的弱验证。",
+    items: [
+      "新增历史回测接口，支持读取主播列表和按参数运行回测。",
+      "从主播分析报告中提取历史观点，匹配股票、指数和板块关键词。",
+      "接入 TuShare 历史行情查询，用后续 5 个交易日表现做方向验证。",
+      "历史回测页面拆分为独立前端模块，展示评分、命中率、趋势和逐场明细。",
+      "回测结论保持弱验证口径，避免把相关性直接表述为因果。"
+    ]
+  },
   {
     version: "0.1.16",
     date: "2026-05-28",
@@ -4687,7 +4703,7 @@ function showSec(id, btn) {
   }
   if (id === "portrait") window.AnchorPortraitPage?.ensureRendered();
   if (id === "market") window.FinVueMarket?.load?.();
-  if (id === "backtest") setTimeout(() => drawSpark("btChart", [8,7.5,8.2,8.8,8.5,9,8.7,9.1,8.9,9.2], true), 100);
+  if (id === "backtest") window.FinVueBacktest?.load?.();
   if (id === "distill-library") renderDistillLibrary();
   if (id === "ai-chat") initAiChat();
   if (id === "export") renderExportCenter();
@@ -12542,11 +12558,7 @@ function showPortrait() {
 }
 
 function runBacktest() {
-  showToast("回测运行中…");
-  setTimeout(() => {
-    showToast("回测完成！");
-    drawSpark("btChart", [8,7.5,8.2,8.8,8.5,9,8.7,9.1,8.9,9.2], true);
-  }, 1200);
+  window.FinVueBacktest?.run?.();
 }
 
 function getReportExportBaseName() {
@@ -13406,6 +13418,7 @@ window.addEventListener("resize", () => {
 </script>
 <script src="/static/modules/hotspot.js"></script>
 <script src="/static/modules/market.js"></script>
+<script src="/static/modules/backtest.js"></script>
 <script src="/static/modules/anchor-dashboard-api.js"></script>
 <script src="/static/modules/roi-calculator.js"></script>
 <script src="/static/modules/anchor-portrait.js"></script>
