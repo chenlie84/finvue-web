@@ -120,30 +120,47 @@
       return;
     }
     if (meta) meta.textContent = `覆盖 ${sectors.length} 个板块 · 龙头股以当前行情池优先`;
-    grid.innerHTML = sectors.map((sector) => {
+    grid.innerHTML = sectors.map((sector, index) => {
       const pct = sector.avgPctChange;
       const hasPct = Number.isFinite(Number(pct));
       const leaders = (sector.leaders || []).slice(0, 5);
-      return `<article class="market-sector-card">
+      const activeLeaders = leaders.filter((item) => !item.pending).slice(0, index < 3 ? 3 : 2);
+      const pendingLeaders = leaders.filter((item) => item.pending).slice(0, 3);
+      const topLeader = activeLeaders[0] || leaders[0] || {};
+      return `<article class="market-sector-card ${index < 3 ? "featured" : "compact"}">
         <div class="market-sector-head">
           <div>
             <div class="market-sector-name">${html(sector.name)}</div>
-            <div class="market-sector-sub">${sector.leaderCount || 0} 只已入行情池 · 成交额 ${fmt(Number(sector.amount || 0) / 100000, 2)}亿</div>
+            <div class="market-sector-sub">${sector.leaderCount || 0} 只入池 · ${fmt(Number(sector.amount || 0) / 100000, 2)}亿成交额</div>
           </div>
           <span class="badge ${hasPct ? cls(pct) : "gray"}">${hasPct ? `${sign(pct)}${fmt(pct)}%` : "待观察"}</span>
         </div>
+        ${index < 3 ? `<div class="market-sector-hero">
+          <div>
+            <div class="market-sector-hero-label">核心龙头</div>
+            <div class="market-sector-hero-name">${html(topLeader.name || topLeader.code || "--")}</div>
+            <div class="market-code">${html(topLeader.code || "")}${topLeader.pending ? " · 待加入行情池" : ""}</div>
+          </div>
+          <div class="market-sector-hero-price">
+            <span>${topLeader.pending ? "--" : fmt(topLeader.close)}</span>
+            <small class="${topLeader.pending ? "muted" : cls(topLeader.pctChange)}">${topLeader.pending ? "未取数" : `${sign(topLeader.pctChange)}${fmt(topLeader.pctChange)}%`}</small>
+          </div>
+        </div>` : ""}
         <div class="market-leader-list">
-          ${leaders.map((item) => `<div class="market-leader-row ${item.pending ? "pending" : ""}">
+          ${activeLeaders.map((item) => `<div class="market-leader-row">
             <div>
               <div class="market-name">${html(item.name || item.code)}</div>
-              <div class="market-code">${html(item.code || "")}${item.pending ? " · 待加入行情池" : ""}</div>
+              <div class="market-code">${html(item.code || "")}</div>
             </div>
             <div class="market-leader-side">
-              <div class="market-num">${item.pending ? "--" : fmt(item.close)}</div>
-              <div class="${item.pending ? "muted" : cls(item.pctChange)}">${item.pending ? "未取数" : `${sign(item.pctChange)}${fmt(item.pctChange)}%`}</div>
+              <div class="market-num">${fmt(item.close)}</div>
+              <div class="${cls(item.pctChange)}">${sign(item.pctChange)}${fmt(item.pctChange)}%</div>
             </div>
           </div>`).join("")}
         </div>
+        ${pendingLeaders.length ? `<div class="market-pending-leaders">
+          ${pendingLeaders.map((item) => `<span>${html(item.name || item.code)} · 待入池</span>`).join("")}
+        </div>` : ""}
       </article>`;
     }).join("");
   }

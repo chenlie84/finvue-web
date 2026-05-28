@@ -2105,7 +2105,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.15</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.16</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2242,7 +2242,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.15</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.16</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3299,8 +3299,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.15";
+const APP_VERSION = "0.1.16";
 const APP_RELEASES = [
+  {
+    version: "0.1.16",
+    date: "2026-05-28",
+    title: "热门板块看板优化",
+    permissions: ["market"],
+    summary: "优化实时行情热门板块与龙头股展示，突出前三个板块和核心龙头，让未入池龙头以标签形式呈现。",
+    items: [
+      "热门板块前 3 项升级为主卡片，单独展示核心龙头。",
+      "已入行情池龙头显示价格和涨跌幅，减少表格堆叠。",
+      "未取数龙头改为底部待入池标签，整体更紧凑。",
+      "热门板块卡片改为响应式看板布局，提升行情页扫读效率。"
+    ]
+  },
   {
     version: "0.1.15",
     date: "2026-05-28",
