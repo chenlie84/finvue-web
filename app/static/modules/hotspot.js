@@ -13,7 +13,7 @@ const PLATFORM_META = {
   pengpai: { name: '澎湃新闻', icon: '🌊' },
   tieba: { name: '贴吧热议', icon: '💬' }
 };
-let hotspotState = { platforms: [], settings: null, filter: '', keyword: '' };
+let hotspotState = { platforms: [], settings: null, filter: '', keyword: '', latestSummary: '' };
 
 async function loadHotspotMain() {
   try {
@@ -350,6 +350,7 @@ function loadCachedHotspotSummary() {
     if (!cached?.analysis) return;
     const generatedAt = new Date(cached.generatedAt || 0).getTime();
     if (!generatedAt || Date.now() - generatedAt > 2 * 60 * 60 * 1000) return;
+    hotspotState.latestSummary = cached.analysis || "";
     renderHotspotSummaryPanel(cached.analysis, cached);
   } catch(e) {}
 }
@@ -384,6 +385,7 @@ async function analyzeHotspotSummaryMain(options = {}) {
     };
     localStorage.setItem('hotspotSummaryCache', JSON.stringify(cache));
     renderHotspotSummaryPanel(data.analysis, cache);
+    hotspotState.latestSummary = data.analysis;
     if (!options.silent) showToast('AI 热点总览已生成');
   } catch(e) {
     document.getElementById('hotspotSummaryMeta').textContent = '总览生成失败';
@@ -395,6 +397,121 @@ async function analyzeHotspotSummaryMain(options = {}) {
       btn.textContent = '✨ AI总览';
     }
   }
+}
+
+function latestHotspotSummaryText() {
+  if (hotspotState.latestSummary) return hotspotState.latestSummary;
+  try {
+    const cached = JSON.parse(localStorage.getItem('hotspotSummaryCache') || 'null');
+    return cached?.analysis || "";
+  } catch(e) {
+    return "";
+  }
+}
+
+function quoteClass(value) {
+  return Number(value || 0) >= 0 ? "green" : "red";
+}
+
+function quoteText(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "--";
+  return `${num >= 0 ? "+" : ""}${num.toFixed(2)}%`;
+}
+
+function renderHotspotStocks(data) {
+  const items = data.items || [];
+  const themes = data.themes || [];
+  const generated = data.generatedAt ? new Date(data.generatedAt).toLocaleString("zh-CN") : new Date().toLocaleString("zh-CN");
+  document.getElementById('hotspotStockPanel').style.display = 'block';
+  document.getElementById('hotspotStockMeta').textContent =
+    `生成于 ${generated} · 扫描 ${fmt(data.universeCount || 0)} 只股票 · 命中 ${items.length} 个候选 · 覆盖 ${fmt(data.hotspotCount || 0)} 条热搜`;
+
+  if (!items.length) {
+    document.getElementById('hotspotStockContent').innerHTML = '<div class="hotspot-stock-empty">暂未从本轮热点中匹配到明确标的。可先刷新热搜或生成 AI 总览后再试。</div>';
+    return;
+  }
+
+  const themeHtml = themes.length ? `
+    <div class="hotspot-stock-themes">
+      ${themes.slice(0, 8).map(item => `<span>${escapeHtml(item.theme)}${item.keywords?.length ? ` · ${escapeHtml(item.keywords.slice(0, 3).join("/"))}` : ""}</span>`).join("")}
+    </div>` : "";
+
+  document.getElementById('hotspotStockContent').innerHTML = `
+    ${themeHtml}
+    <div class="hotspot-stock-grid">
+      ${items.map((item, index) => {
+        const quote = item.quote || {};
+        const pct = quote.pctChange;
+        const hasQuote = pct !== undefined && pct !== null && pct !== "";
+        return `<article class="hotspot-stock-card ${index < 3 ? "is-top" : ""}">
+          <div class="hotspot-stock-card-head">
+            <div>
+              <div class="hotspot-stock-name">${escapeHtml(item.name)} <span>${escapeHtml(item.code)}</span></div>
+              <div class="hotspot-stock-industry">${escapeHtml(item.theme || item.industry || "关联观察")}</div>
+            </div>
+            <div class="hotspot-stock-confidence">${fmt(item.confidence || 0)}<small>%</small></div>
+          </div>
+          <div class="hotspot-stock-quote">
+            <span>${hasQuote ? escapeHtml(String(quote.close ?? "--")) : "未取行情"}</span>
+            <strong class="${hasQuote ? quoteClass(pct) : "muted"}">${hasQuote ? quoteText(pct) : "--"}</strong>
+          </div>
+          <div class="hotspot-stock-reasons">
+            ${(item.reasons || []).slice(0, 3).map(reason => `<span>${escapeHtml(reason)}</span>`).join("")}
+          </div>
+          <div class="hotspot-stock-evidence">
+            ${(item.evidence || []).slice(0, 2).map(hit => `<div>来自热搜：${escapeHtml(hit.title || "")}</div>`).join("") || '<div>基于主题词与行业映射召回</div>'}
+          </div>
+        </article>`;
+      }).join("")}
+    </div>
+    <div class="hotspot-stock-note">仅表示热点与行业/标的存在弱关联，不代表因果关系或投资建议。</div>
+  `;
+}
+
+function setHotspotStocksLoading() {
+  document.getElementById('hotspotStockPanel').style.display = 'block';
+  document.getElementById('hotspotStockMeta').textContent = '正在从股票基础库中召回候选...';
+  document.getElementById('hotspotStockContent').innerHTML = `
+    <div class="hotspot-stock-loading">
+      <span class="spinner" style="width:14px;height:14px;border-width:1px;"></span>
+      <span>正在扫描股票名称、行业与主题关键词，并补充候选行情...</span>
+    </div>
+  `;
+}
+
+async function analyzeHotspotRelatedStocks() {
+  const btn = document.getElementById('hotspotStockBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '匹配中...';
+  }
+  setHotspotStocksLoading();
+  try {
+    const res = await fetch('/api/hotspot/related-stocks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ summary: latestHotspotSummaryText(), limit: 18, quoteLimit: 12 })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) throw new Error(data.error || data.detail || '关联标的匹配失败');
+    renderHotspotStocks(data);
+    showToast('热点关联标的已生成');
+  } catch(e) {
+    document.getElementById('hotspotStockMeta').textContent = '关联标的生成失败';
+    document.getElementById('hotspotStockContent').innerHTML = `<div class="hotspot-stock-empty" style="color:var(--red);">${escapeHtml(e.message)}</div>`;
+    showToast('关联标的失败: '+e.message);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '关联标的';
+    }
+  }
+}
+
+function closeHotspotStocks() {
+  document.getElementById('hotspotStockPanel').style.display = 'none';
 }
 
 // AI分析热搜

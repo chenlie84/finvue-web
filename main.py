@@ -13,7 +13,7 @@ import uvicorn
 
 import config
 import migrate
-from api import admin, ai, auth, customers, files, jobs, libraries, reports, settings, sop, system, logs, ai_chat, hotspot, market, backtest
+from api import admin, ai, auth, customers, files, jobs, libraries, reports, settings, sop, system, logs, ai_chat, hotspot, market, backtest, feishu
 from api import operation as api_operation
 
 
@@ -23,6 +23,8 @@ async def lifespan(_: FastAPI):
     hotspot_task: asyncio.Task | None = None
     market_stop_event: asyncio.Event | None = None
     market_task: asyncio.Task | None = None
+    feishu_stop_event: asyncio.Event | None = None
+    feishu_task: asyncio.Task | None = None
     print(f"[lifespan] AUTO_MIGRATE={config.AUTO_MIGRATE}, ENV={config.ENV}, has_mysql={config.has_mysql_config()}")
     if config.AUTO_MIGRATE and config.has_mysql_config() and config.ENV.lower() != "test":
         print("[lifespan] Running migrations...")
@@ -43,6 +45,9 @@ async def lifespan(_: FastAPI):
         from services.market_scheduler import run_scheduler as run_market_scheduler
         market_stop_event = asyncio.Event()
         market_task = asyncio.create_task(run_market_scheduler(market_stop_event))
+        from services.feishu_scheduler import run_scheduler as run_feishu_scheduler
+        feishu_stop_event = asyncio.Event()
+        feishu_task = asyncio.create_task(run_feishu_scheduler(feishu_stop_event))
     try:
         yield
     finally:
@@ -58,6 +63,13 @@ async def lifespan(_: FastAPI):
             market_task.cancel()
             try:
                 await market_task
+            except asyncio.CancelledError:
+                pass
+        if feishu_stop_event and feishu_task:
+            feishu_stop_event.set()
+            feishu_task.cancel()
+            try:
+                await feishu_task
             except asyncio.CancelledError:
                 pass
 
@@ -85,6 +97,7 @@ app.include_router(ai_chat.router)
 app.include_router(hotspot.router)
 app.include_router(market.router)
 app.include_router(backtest.router)
+app.include_router(feishu.router)
 
 
 @app.exception_handler(HTTPException)

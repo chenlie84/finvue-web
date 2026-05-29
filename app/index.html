@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="/static/modules/hotspot.css" />
 <link rel="stylesheet" href="/static/modules/market.css" />
 <link rel="stylesheet" href="/static/modules/backtest.css" />
+<link rel="stylesheet" href="/static/modules/feishu.css" />
 <style>
   :root {
     --bg0:#0A0B0E; --bg1:#11131A; --bg2:#181B24; --bg3:#1E2230;
@@ -1769,6 +1770,7 @@
             <input class="inp" id="hotspotSearchInput" placeholder="搜索关键词..." style="width:180px;" onkeydown="if(event.key==='Enter')hotspotSearch()">
             <button class="btn btn-outline" onclick="hotspotSearch()">🔍</button>
             <button class="btn btn-outline" id="hotspotSummaryBtn" onclick="analyzeHotspotSummaryMain()">✨ AI总览</button>
+            <button class="btn btn-outline" id="hotspotStockBtn" onclick="analyzeHotspotRelatedStocks()">关联标的</button>
             <button class="btn btn-gold" id="hotspotFetchBtn" onclick="fetchHotspotsMain()">📥 刷新</button>
             <button class="btn btn-outline" onclick="openHotspotConfigPage()">⚙ 配置</button>
           </div>
@@ -1790,6 +1792,18 @@
             <button class="btn btn-outline-sm" onclick="closeHotspotSummary()">关闭</button>
           </div>
           <div class="hotspot-analysis-content hotspot-summary-content" id="hotspotSummaryContent"></div>
+        </div>
+
+        <!-- 关联标的 -->
+        <div id="hotspotStockPanel" class="hotspot-stock-panel" style="display:none;">
+          <div class="hotspot-stock-hd">
+            <div>
+              <div class="hotspot-stock-title">热点关联标的</div>
+              <div class="hotspot-stock-meta" id="hotspotStockMeta">从 TuShare 股票基础库中匹配</div>
+            </div>
+            <button class="btn btn-outline-sm" onclick="closeHotspotStocks()">关闭</button>
+          </div>
+          <div id="hotspotStockContent" class="hotspot-stock-content"></div>
         </div>
 
         <!-- 热搜列表（按平台分组） -->
@@ -2107,7 +2121,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.17</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.18</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2131,6 +2145,7 @@
       <button class="nav-item" onclick="showAdminSec('operation-import',this)"><span class="ni">📊</span> 运营数据导入</button>
       <button class="nav-item" onclick="showAdminSec('remote-db',this)"><span class="ni">▦</span> 远程数据库</button>
       <button class="nav-item" onclick="showAdminSec('tushare',this)"><span class="ni">↗</span> TuShare配置</button>
+      <button class="nav-item" onclick="showAdminSec('feishu',this)"><span class="ni">✉</span> 飞书推送</button>
       <button class="nav-item" onclick="showAdminSec('api',this)"><span class="ni">↯</span> API管理 <span class="nav-badge red-b">!</span></button>
       <button class="nav-item" onclick="showAdminSec('backup',this)"><span class="ni">☁</span> 备份管理</button>
       <div class="s-section">监控</div>
@@ -2244,7 +2259,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.17</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.18</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -2364,6 +2379,12 @@
         <div class="page-title">TuShare 行情配置</div>
         <div class="page-sub">配置 TuShare token、指数/股票代码和后台定时取数间隔。</div>
         <div id="tushareAdminMount"></div>
+      </div>
+
+      <div class="asec" id="asec-feishu">
+        <div class="page-title">飞书推送配置</div>
+        <div class="page-sub">把热点关联标的雷达推送到飞书群机器人，支持手动测试和后台定时推送。</div>
+        <div id="feishuAdminMount"></div>
       </div>
 
       <div class="asec" id="asec-logs">
@@ -3301,8 +3322,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.17";
+const APP_VERSION = "0.1.18";
 const APP_RELEASES = [
+  {
+    version: "0.1.18",
+    date: "2026-05-29",
+    title: "热点关联标的与飞书推送",
+    permissions: ["hotspot", "market", "admin-api"],
+    summary: "热点追踪新增关联标的召回能力，并在后台新增飞书推送配置，用于把热点关联标的雷达推送到飞书群。",
+    items: [
+      "热点页新增关联标的按钮，可基于最近 2 小时热搜和 AI 热点总览生成候选股票。",
+      "新增 /api/hotspot/related-stocks，先从 TuShare 股票基础库召回候选，再只对前排候选补充行情。",
+      "关联结果展示主题、股票名称、代码、置信度、涨跌幅、匹配原因和来源热搜。",
+      "后台新增飞书推送配置，支持 webhook、定时间隔、是否包含关联标的和测试推送。",
+      "新增飞书后台调度任务，推送内容明确标注弱关联，不作为投资建议。"
+    ]
+  },
   {
     version: "0.1.17",
     date: "2026-05-28",
@@ -4731,6 +4766,7 @@ function showAdminSec(id, btn) {
   if (id === "logs") loadActionLogs();
   if (id === "remote-db") loadRemoteDbSettings();
   if (id === "tushare") window.FinVueMarketAdmin?.load?.();
+  if (id === "feishu") window.FinVueFeishuAdmin?.load?.();
 }
 
 function renderRemoteDbSettings(settings = {}) {
@@ -13419,6 +13455,7 @@ window.addEventListener("resize", () => {
 <script src="/static/modules/hotspot.js"></script>
 <script src="/static/modules/market.js"></script>
 <script src="/static/modules/backtest.js"></script>
+<script src="/static/modules/feishu.js"></script>
 <script src="/static/modules/anchor-dashboard-api.js"></script>
 <script src="/static/modules/roi-calculator.js"></script>
 <script src="/static/modules/anchor-portrait.js"></script>

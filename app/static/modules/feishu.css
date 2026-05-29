@@ -1,0 +1,12 @@
+.feishu-admin-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start;}
+.feishu-admin-form{display:grid;gap:14px;}
+.feishu-field label{display:block;font-size:12px;color:var(--text1);margin-bottom:6px;}
+.feishu-field input{width:100%;}
+.feishu-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);padding:12px;}
+.feishu-toggle-row input{accent-color:var(--gold);}
+.feishu-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.feishu-side-card{border:1px solid var(--border);border-radius:var(--r);background:var(--bg1);padding:14px;}
+.feishu-side-card h4{font-size:14px;margin-bottom:8px;color:var(--text0);}
+.feishu-side-card p{font-size:12px;color:var(--text1);line-height:1.7;}
+.feishu-status{font-size:12px;color:var(--text1);line-height:1.7;margin-top:10px;}
+@media(max-width:1100px){.feishu-admin-grid{grid-template-columns:1fr;}}
