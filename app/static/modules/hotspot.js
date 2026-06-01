@@ -427,8 +427,8 @@ function renderHotspotStockAiInsights(data) {
   return `<section class="hotspot-stock-ai">
     <div class="hotspot-stock-ai-head">
       <div>
-        <div class="hotspot-stock-ai-kicker">AI 先分析热搜</div>
-        <h4>本轮识别出的产业主题与直接公司</h4>
+        <div class="hotspot-stock-ai-kicker">AI 板块识别</div>
+        <h4>本轮识别出的高热度板块</h4>
       </div>
       <span>${themes.length} 个主题</span>
     </div>
@@ -437,13 +437,13 @@ function renderHotspotStockAiInsights(data) {
         <article class="hotspot-stock-ai-card">
           <div class="hotspot-stock-ai-title">
             <strong>${escapeHtml(item.theme || "未命名主题")}</strong>
-            ${item.confidence ? `<span>${fmt(item.confidence)}%</span>` : ""}
+            ${item.heatLevel ? `<span>${escapeHtml(item.heatLevel)}热度</span>` : (item.confidence ? `<span>${fmt(item.confidence)}%</span>` : "")}
           </div>
           ${item.reason ? `<p>${escapeHtml(item.reason)}</p>` : ""}
           <div class="hotspot-stock-ai-tags">
             ${(item.keywords || []).slice(0, 4).map(word => `<em>${escapeHtml(word)}</em>`).join("")}
           </div>
-          ${(item.directCompanies || []).length ? `<div class="hotspot-stock-ai-companies">直接公司：${escapeHtml(item.directCompanies.slice(0, 5).join("、"))}</div>` : ""}
+          ${(item.industries || []).length ? `<div class="hotspot-stock-ai-companies">映射行业：${escapeHtml(item.industries.slice(0, 5).join("、"))}</div>` : ""}
         </article>
       `).join("")}
     </div>
@@ -453,14 +453,15 @@ function renderHotspotStockAiInsights(data) {
 
 function renderHotspotStocks(data) {
   const items = data.items || [];
+  const sectors = data.sectors || [];
   const themes = data.themes || [];
   const generated = data.generatedAt ? new Date(data.generatedAt).toLocaleString("zh-CN") : new Date().toLocaleString("zh-CN");
   document.getElementById('hotspotStockPanel').style.display = 'block';
   document.getElementById('hotspotStockMeta').textContent =
-    `生成于 ${generated} · ${data.aiUsed ? "AI 主题识别" : "规则兜底"} · 扫描 ${fmt(data.universeCount || 0)} 只股票 · 命中 ${items.length} 个候选 · 覆盖 ${fmt(data.hotspotCount || 0)} 条热搜`;
+    `生成于 ${generated} · ${data.aiUsed ? "AI 板块识别" : "规则兜底"} · 识别 ${sectors.length || themes.length} 个板块 · 覆盖 ${fmt(data.hotspotCount || 0)} 条热搜`;
 
-  if (!items.length) {
-    document.getElementById('hotspotStockContent').innerHTML = '<div class="hotspot-stock-empty">暂未从本轮热点中匹配到明确标的。可先刷新热搜或生成 AI 总览后再试。</div>';
+  if (!sectors.length && !items.length) {
+    document.getElementById('hotspotStockContent').innerHTML = '<div class="hotspot-stock-empty">暂未从本轮热点中识别到明确板块。可先刷新热搜或生成 AI 总览后再试。</div>';
     return;
   }
 
@@ -470,9 +471,11 @@ function renderHotspotStocks(data) {
     </div>` : "";
 
   document.getElementById('hotspotStockContent').innerHTML = `
-    ${renderHotspotStockAiInsights(data)}
+    ${sectors.length ? renderHotspotSectorRadar(sectors) : renderHotspotStockAiInsights(data)}
     ${themeHtml}
-    <div class="hotspot-stock-grid">
+    ${items.length ? `<details class="hotspot-stock-detail">
+      <summary>查看关联股票观察池 <span>${items.length} 个候选</span></summary>
+      <div class="hotspot-stock-grid">
       ${items.map((item, index) => {
         const quote = item.quote || {};
         const pct = quote.pctChange;
@@ -499,18 +502,70 @@ function renderHotspotStocks(data) {
           </div>
         </article>`;
       }).join("")}
-    </div>
-    <div class="hotspot-stock-note">仅表示热点与行业/标的存在弱关联，不代表因果关系或投资建议。</div>
+      </div>
+    </details>` : ""}
+    <div class="hotspot-stock-note">仅表示热点与板块/行业存在弱关联，股票为观察池补充，不代表因果关系或投资建议。</div>
   `;
+}
+
+function renderHotspotSectorRadar(sectors) {
+  const top = sectors[0] || {};
+  return `<section class="hotspot-sector-radar">
+    <div class="hotspot-sector-hero">
+      <div>
+        <div class="hotspot-sector-kicker">热点板块雷达</div>
+        <h4>${escapeHtml(top.theme || "本轮板块热度")}</h4>
+        <p>${escapeHtml(top.reason || "AI 先识别热搜对应的板块，再结合股票库生成观察池。")}</p>
+      </div>
+      <div class="hotspot-sector-score">
+        <span>${fmt(top.heatScore || 0)}</span>
+        <small>热度分</small>
+      </div>
+    </div>
+    <div class="hotspot-sector-grid">
+      ${sectors.slice(0, 6).map((sector, index) => {
+        const stocks = sector.stocks || [];
+        const evidence = sector.evidence || [];
+        return `<article class="hotspot-sector-card ${index === 0 ? "is-primary" : ""}">
+          <div class="hotspot-sector-head">
+            <div>
+              <div class="hotspot-sector-name">${escapeHtml(sector.theme || "未命名板块")}</div>
+              <div class="hotspot-sector-sub">${escapeHtml(sector.heatLevel || "热度")} · ${fmt(sector.evidenceCount || 0)} 条证据 · ${fmt(stocks.length)} 个观察标的</div>
+            </div>
+            <div class="hotspot-sector-badge">${fmt(sector.heatScore || 0)}</div>
+          </div>
+          ${sector.reason ? `<p class="hotspot-sector-reason">${escapeHtml(sector.reason)}</p>` : ""}
+          <div class="hotspot-sector-tags">
+            ${(sector.keywords || []).slice(0, 5).map(word => `<span>${escapeHtml(word)}</span>`).join("")}
+          </div>
+          ${(sector.industries || []).length ? `<div class="hotspot-sector-industries">映射行业：${escapeHtml(sector.industries.slice(0, 5).join("、"))}</div>` : ""}
+          <div class="hotspot-sector-evidence">
+            ${evidence.slice(0, 2).map(hit => `<div>${escapeHtml(hit.platform || "")} #${escapeHtml(String(hit.rank || "--"))} · ${escapeHtml(hit.title || "")}</div>`).join("") || "<div>暂无明确热搜证据，需人工复核。</div>"}
+          </div>
+          ${stocks.length ? `<div class="hotspot-sector-stocks">
+            ${stocks.slice(0, 4).map(stock => {
+              const quote = stock.quote || {};
+              const pct = quote.pctChange;
+              const hasQuote = pct !== undefined && pct !== null && pct !== "";
+              return `<div class="hotspot-sector-stock-row">
+                <div><strong>${escapeHtml(stock.name || stock.code || "--")}</strong><span>${escapeHtml(stock.code || "")} · ${escapeHtml(stock.relationType || "观察")}</span></div>
+                <em class="${hasQuote ? quoteClass(pct) : "muted"}">${hasQuote ? quoteText(pct) : "待行情"}</em>
+              </div>`;
+            }).join("")}
+          </div>` : ""}
+        </article>`;
+      }).join("")}
+    </div>
+  </section>`;
 }
 
 function setHotspotStocksLoading() {
   document.getElementById('hotspotStockPanel').style.display = 'block';
-  document.getElementById('hotspotStockMeta').textContent = 'AI 正在读取热搜主题，然后结合股票基础库召回候选...';
+  document.getElementById('hotspotStockMeta').textContent = 'AI 正在读取热搜主题，先生成热点板块雷达...';
   document.getElementById('hotspotStockContent').innerHTML = `
     <div class="hotspot-stock-loading">
       <span class="spinner" style="width:14px;height:14px;border-width:1px;"></span>
-      <span>先抽取明确公司、产业链和排除项，再匹配股票名称/行业并补充候选行情...</span>
+      <span>先识别高热度板块和排除项，再按行业映射生成观察池...</span>
     </div>
   `;
 }
@@ -519,7 +574,7 @@ async function analyzeHotspotRelatedStocks() {
   const btn = document.getElementById('hotspotStockBtn');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = '匹配中...';
+    btn.textContent = '识别中...';
   }
   setHotspotStocksLoading();
   try {
@@ -530,17 +585,17 @@ async function analyzeHotspotRelatedStocks() {
       body: JSON.stringify({ summary: latestHotspotSummaryText(), limit: 18, quoteLimit: 12, useAi: true })
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || data.ok === false) throw new Error(data.error || data.detail || '关联标的匹配失败');
+    if (!res.ok || data.ok === false) throw new Error(data.error || data.detail || '板块雷达生成失败');
     renderHotspotStocks(data);
-    showToast('热点关联标的已生成');
+    showToast('热点板块雷达已生成');
   } catch(e) {
-    document.getElementById('hotspotStockMeta').textContent = '关联标的生成失败';
+    document.getElementById('hotspotStockMeta').textContent = '板块雷达生成失败';
     document.getElementById('hotspotStockContent').innerHTML = `<div class="hotspot-stock-empty" style="color:var(--red);">${escapeHtml(e.message)}</div>`;
-    showToast('关联标的失败: '+e.message);
+    showToast('板块雷达失败: '+e.message);
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = '关联标的';
+      btn.textContent = '板块雷达';
     }
   }
 }

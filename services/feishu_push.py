@@ -132,13 +132,16 @@ def _format_ai_insights(related: dict[str, Any]) -> list[str]:
         for index, item in enumerate(themes[:5], 1):
             theme = store.text(item.get("theme") or "未命名主题")
             keywords = "、".join(store.text(word) for word in (item.get("keywords") or [])[:4] if store.text(word))
-            companies = "、".join(store.text(word) for word in (item.get("directCompanies") or [])[:4] if store.text(word))
+            industries = "、".join(store.text(word) for word in (item.get("industries") or [])[:4] if store.text(word))
             reason = store.text(item.get("reason"))
+            heat = store.text(item.get("heatLevel"))
             parts = [theme]
+            if heat:
+                parts.append(f"热度：{heat}")
             if keywords:
                 parts.append(f"关键词：{keywords}")
-            if companies:
-                parts.append(f"直接公司：{companies}")
+            if industries:
+                parts.append(f"映射行业：{industries}")
             if reason:
                 parts.append(f"AI判断：{reason}")
             lines.append(f"{index}. " + "｜".join(parts))
@@ -155,6 +158,37 @@ def _format_ai_insights(related: dict[str, Any]) -> list[str]:
     return ["暂未识别出明确主题。"]
 
 
+def _format_sector_radar(related: dict[str, Any]) -> list[str]:
+    sectors = related.get("sectors") if isinstance(related.get("sectors"), list) else []
+    if not sectors:
+        return _format_ai_insights(related)
+    lines = []
+    for index, sector in enumerate(sectors[:6], 1):
+        theme = store.text(sector.get("theme") or "未命名板块")
+        score = store.to_int(sector.get("heatScore"), 0) or 0
+        reason = store.text(sector.get("reason"))
+        keywords = "、".join(store.text(word) for word in (sector.get("keywords") or [])[:5] if store.text(word))
+        evidence = sector.get("evidence") if isinstance(sector.get("evidence"), list) else []
+        stocks = sector.get("stocks") if isinstance(sector.get("stocks"), list) else []
+        first_hit = store.safe_object(evidence[0]) if evidence else {}
+        stock_names = "、".join(
+            f"{store.text(item.get('name'))}({_format_quote(item)})"
+            for item in stocks[:3]
+            if store.text(item.get("name"))
+        )
+        parts = [f"{index}. {theme}", f"热度分 {score}"]
+        if keywords:
+            parts.append(f"关键词：{keywords}")
+        if reason:
+            parts.append(f"AI判断：{reason}")
+        if first_hit:
+            parts.append(f"代表热搜：[{first_hit.get('platform')} #{first_hit.get('rank') or '-'}] {first_hit.get('title')}")
+        if stock_names:
+            parts.append(f"观察池：{stock_names}")
+        lines.append("｜".join(parts))
+    return lines
+
+
 def build_message(settings: dict[str, Any] | None = None, refresh_result: dict[str, Any] | None = None) -> dict[str, Any]:
     cfg = settings or get_settings()
     hotspots = _recent_hotspots()
@@ -164,13 +198,14 @@ def build_message(settings: dict[str, Any] | None = None, refresh_result: dict[s
         else {"items": [], "themes": []}
     )
     items = related.get("items") or []
+    sectors = related.get("sectors") or []
     themes = related.get("themes") or []
     ai_used = bool(related.get("aiUsed"))
     lines = [
-        "FinVue 热点关联标的雷达",
+        "FinVue 热点板块雷达",
         f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}",
         _format_refresh_line(refresh_result),
-        f"分析方式：{'AI 先分析热搜，再匹配股票库' if ai_used else '规则兜底匹配'}",
+        f"分析方式：{'AI 先识别热度板块，再生成观察池' if ai_used else '规则兜底识别板块'}",
         "",
         "一、重点热搜",
     ]
@@ -183,13 +218,13 @@ def build_message(settings: dict[str, Any] | None = None, refresh_result: dict[s
         lines.append("暂无最近 2 小时热搜数据。")
 
     lines.append("")
-    lines.append("二、AI 先分析热搜")
-    lines.extend(_format_ai_insights(related))
+    lines.append("二、热点板块雷达")
+    lines.extend(_format_sector_radar(related))
 
     lines.append("")
-    lines.append("三、关联标的候选")
+    lines.append("三、股票观察池（仅作板块下补充）")
     if items:
-        for index, item in enumerate(items[:8], 1):
+        for index, item in enumerate(items[:6], 1):
             reasons = "；".join((item.get("reasons") or [])[:2]) or "基于主题/行业弱关联"
             relation = item.get("relationType") or "主题关联"
             ai_reason = store.text(item.get("aiReason"))
@@ -202,11 +237,12 @@ def build_message(settings: dict[str, Any] | None = None, refresh_result: dict[s
         lines.append("暂未匹配到明确候选标的。")
 
     lines.append("")
-    lines.append("合规提示：以上仅为热点与行业/标的的弱关联召回，不代表因果关系、买卖建议或收益承诺。")
+    lines.append("合规提示：以上仅为热点与板块/行业的弱关联识别，股票为观察池补充，不代表因果关系、买卖建议或收益承诺。")
     return {
         "text": "\n".join(lines),
         "hotspotCount": len(hotspots),
         "stockCount": len(items),
+        "sectorCount": len(sectors),
         "themeCount": len(themes),
         "refresh": refresh_result or {},
     }
@@ -248,7 +284,7 @@ def push_now(settings: dict[str, Any] | None = None) -> dict[str, Any]:
     next_settings = {
         **cfg,
         "lastPushedAt": _now_iso(),
-        "lastStatus": f"成功推送：{message['stockCount']} 个候选标的，{refresh_label}",
+        "lastStatus": f"成功推送：{message.get('sectorCount', 0)} 个热点板块，{message['stockCount']} 个观察标的，{refresh_label}",
     }
     store.set_kv(SETTINGS_KEY, next_settings)
     return {"ok": True, "message": next_settings["lastStatus"], "feishu": result, "payload": message}

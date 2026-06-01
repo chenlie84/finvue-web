@@ -1770,7 +1770,7 @@
             <input class="inp" id="hotspotSearchInput" placeholder="搜索关键词..." style="width:180px;" onkeydown="if(event.key==='Enter')hotspotSearch()">
             <button class="btn btn-outline" onclick="hotspotSearch()">🔍</button>
             <button class="btn btn-outline" id="hotspotSummaryBtn" onclick="analyzeHotspotSummaryMain()">✨ AI总览</button>
-            <button class="btn btn-outline" id="hotspotStockBtn" onclick="analyzeHotspotRelatedStocks()">关联标的</button>
+            <button class="btn btn-outline" id="hotspotStockBtn" onclick="analyzeHotspotRelatedStocks()">板块雷达</button>
             <button class="btn btn-gold" id="hotspotFetchBtn" onclick="fetchHotspotsMain()">📥 刷新</button>
             <button class="btn btn-outline" onclick="openHotspotConfigPage()">⚙ 配置</button>
           </div>
@@ -1794,12 +1794,12 @@
           <div class="hotspot-analysis-content hotspot-summary-content" id="hotspotSummaryContent"></div>
         </div>
 
-        <!-- 关联标的 -->
+        <!-- 热点板块雷达 -->
         <div id="hotspotStockPanel" class="hotspot-stock-panel" style="display:none;">
           <div class="hotspot-stock-hd">
             <div>
-              <div class="hotspot-stock-title">热点关联标的</div>
-              <div class="hotspot-stock-meta" id="hotspotStockMeta">从 TuShare 股票基础库中匹配</div>
+              <div class="hotspot-stock-title">热点板块雷达</div>
+              <div class="hotspot-stock-meta" id="hotspotStockMeta">AI 识别热度板块，股票仅作观察池补充</div>
             </div>
             <button class="btn btn-outline-sm" onclick="closeHotspotStocks()">关闭</button>
           </div>
@@ -2383,7 +2383,7 @@
 
       <div class="asec" id="asec-feishu">
         <div class="page-title">飞书推送配置</div>
-        <div class="page-sub">把热点关联标的雷达推送到飞书群机器人，支持手动测试和后台定时推送。</div>
+        <div class="page-sub">把热点板块雷达推送到飞书群机器人，支持手动测试和后台定时推送。</div>
         <div id="feishuAdminMount"></div>
       </div>
 
@@ -3322,20 +3322,34 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.21";
+const APP_VERSION = "0.1.22";
 const APP_RELEASES = [
+  {
+    version: "0.1.22",
+    date: "2026-06-01",
+    title: "热点板块雷达",
+    permissions: ["hotspot", "market", "admin-api"],
+    summary: "热点追踪从“先匹配股票”调整为“先识别热度板块”，股票只作为板块下的观察池补充，降低关键词误伤。",
+    items: [
+      "关联接口新增 sectors 结果，按热搜证据、AI 置信度和板块热度生成板块榜。",
+      "热点页按钮改为板块雷达，主展示优先呈现板块、关键词、证据热搜和观察池。",
+      "股票候选折叠到观察池，不再作为第一层结论展示。",
+      "飞书推送改为先推热点板块雷达，再附股票观察池和合规提示。",
+      "借鉴 daily_stock_analysis 的结构化市场复盘思路，让 AI 负责解释板块热度，而不是直接荐股。"
+    ]
+  },
   {
     version: "0.1.21",
     date: "2026-06-01",
     title: "飞书 AI 热点分析结果",
     permissions: ["hotspot", "admin-api"],
-    summary: "飞书热点推送新增 AI 先分析热搜的结构化结果，让推送内容先呈现主题判断，再展示关联标的候选。",
+    summary: "飞书热点推送新增 AI 板块识别的结构化结果，让推送内容先呈现主题判断，再展示候选观察池。",
     items: [
-      "飞书正文新增 AI 识别主题、关键词、直接公司/品牌和判断理由。",
-      "飞书消息会展示已降权噪音，说明哪些热搜不进入标的匹配重点。",
-      "关联标的候选追加 AI 依据，帮助判断为什么被召回。",
+      "飞书正文新增 AI 识别主题、关键词和判断理由。",
+      "飞书消息会展示已降权噪音，说明哪些热搜不进入板块判断重点。",
+      "观察池候选追加 AI 依据，帮助判断为什么被召回。",
       "关联标的接口返回 aiInsights，飞书推送和热点页面共用同一份 AI 分析结果。",
-      "热点页面新增 AI 先分析热搜展示区，与飞书推送内容保持一致。"
+      "热点页面新增 AI 板块识别展示区，与飞书推送内容保持一致。"
     ]
   },
   {
@@ -3357,11 +3371,11 @@ const APP_RELEASES = [
     date: "2026-06-01",
     title: "热点关联标的 AI 识别",
     permissions: ["hotspot", "market"],
-    summary: "关联标的改为 AI 先抽取主题、产业链和明确公司，再结合 TuShare 股票库匹配，减少单纯行业弱关联误伤。",
+    summary: "关联标的改为 AI 先抽取主题和产业链，再结合 TuShare 股票库匹配，减少单纯行业弱关联误伤。",
     items: [
-      "关联标的接口会优先调用当前用户 AI 路由，结构化抽取主题、产业链关键词、明确公司和排除词。",
+      "关联标的接口会优先调用当前用户 AI 路由，结构化抽取主题、产业链关键词和排除词。",
       "后端匹配改为 AI 优先、规则兜底，AI 不可用时页面仍可正常生成候选。",
-      "仅展示直接提及、AI 直接点名、主题核心等更强关系，降低泛行业关联噪音。",
+      "仅展示直接提及、主题核心等更强关系，降低泛行业关联噪音。",
       "前端新增 AI 主题识别/规则兜底状态，并展示关系类型和匹配度。",
       "飞书推送同步展示关联关系类型和匹配度，延续弱关联与非投资建议口径。"
     ]
@@ -3371,7 +3385,7 @@ const APP_RELEASES = [
     date: "2026-05-29",
     title: "热点关联标的与飞书推送",
     permissions: ["hotspot", "market", "admin-api"],
-    summary: "热点追踪新增关联标的召回能力，并在后台新增飞书推送配置，用于把热点关联标的雷达推送到飞书群。",
+    summary: "热点追踪新增关联观察池能力，并在后台新增飞书推送配置，用于把热点雷达推送到飞书群。",
     items: [
       "热点页新增关联标的按钮，可基于最近 2 小时热搜和 AI 热点总览生成候选股票。",
       "新增 /api/hotspot/related-stocks，先从 TuShare 股票基础库召回候选，再只对前排候选补充行情。",

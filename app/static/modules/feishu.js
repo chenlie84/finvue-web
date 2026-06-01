@@ -12,7 +12,7 @@
           <div class="feishu-toggle-row">
             <div>
               <div style="font-weight:700;">启用定时推送</div>
-              <div class="muted" style="font-size:12px;">到达间隔后自动推送热点关联标的雷达</div>
+              <div class="muted" style="font-size:12px;">到达间隔后自动推送热点板块雷达</div>
             </div>
             <input id="feishuEnabled" type="checkbox">
           </div>
@@ -26,8 +26,8 @@
           </div>
           <div class="feishu-toggle-row">
             <div>
-              <div style="font-weight:700;">包含关联标的</div>
-              <div class="muted" style="font-size:12px;">推送热点、主题和候选股票，附行情涨跌幅</div>
+              <div style="font-weight:700;">包含股票观察池</div>
+              <div class="muted" style="font-size:12px;">推送热点板块、主题依据和观察股票，附行情涨跌幅</div>
             </div>
             <input id="feishuPushStocks" type="checkbox" checked>
           </div>
@@ -40,7 +40,7 @@
       </section>
       <aside class="feishu-side-card">
         <h4>推送内容</h4>
-        <p>每次推送前会先按热点追踪配置刷新平台数据，再从最近 2 小时热搜中提取重点新闻，并结合 TuShare 股票基础库召回关联标的候选。</p>
+        <p>每次推送前会先按热点追踪配置刷新平台数据，再从最近 2 小时热搜中提取重点新闻，由 AI 识别热度板块，并结合 TuShare 股票基础库生成观察池。</p>
         <div class="admin-divider"></div>
         <h4>合规边界</h4>
         <p>飞书消息会明确标注“弱关联，不代表投资建议”，用于直播选题和盘前准备，不作为买卖依据。</p>

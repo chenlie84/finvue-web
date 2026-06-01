@@ -585,7 +585,7 @@ async def related_stocks(
     request: Request,
     session: dict = Depends(security.require_permission("hotspot"))
 ) -> dict:
-    """根据最近热搜与 AI 热点总览，从 TuShare 股票基础库里召回关联标的。"""
+    """根据最近热搜与 AI 热点总览，先识别热度板块，再生成股票观察池。"""
     body = await request.json()
     return hotspot_stock_matcher.match_related_stocks(
         body if isinstance(body, dict) else {},
