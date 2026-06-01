@@ -582,7 +582,7 @@ async function analyzeHotspotRelatedStocks() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ summary: latestHotspotSummaryText(), limit: 18, quoteLimit: 12, useAi: true })
+      body: JSON.stringify({ summary: latestHotspotSummaryText(), limit: 18, quoteLimit: 0, useAi: true })
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.ok === false) throw new Error(data.error || data.detail || '板块雷达生成失败');

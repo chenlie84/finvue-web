@@ -2121,7 +2121,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.21</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.23</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2259,7 +2259,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.21</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.23</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3322,8 +3322,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.22";
+const APP_VERSION = "0.1.23";
 const APP_RELEASES = [
+  {
+    version: "0.1.23",
+    date: "2026-06-01",
+    title: "板块雷达请求稳定性",
+    permissions: ["hotspot", "market"],
+    summary: "优化热点板块雷达按钮请求，避免 AI 或行情接口耗时过长导致浏览器显示 Failed to fetch。",
+    items: [
+      "热点页板块雷达按钮不再同步补 TuShare 行情，先快速返回板块结果。",
+      "AI 板块识别增加 25 秒单次超时，超时后自动走规则兜底。",
+      "关联接口增加 JSON 错误兜底，后端异常时前端能展示具体错误。",
+      "AI 路由支持单次 timeoutSeconds 覆盖，方便高延迟任务按场景限时。",
+      "飞书推送保留少量行情补充，避免定时任务过度请求行情接口。"
+    ]
+  },
   {
     version: "0.1.22",
     date: "2026-06-01",

@@ -193,7 +193,7 @@ def build_message(settings: dict[str, Any] | None = None, refresh_result: dict[s
     cfg = settings or get_settings()
     hotspots = _recent_hotspots()
     related = (
-        hotspot_stock_matcher.match_related_stocks({"limit": 12, "quoteLimit": 8})
+        hotspot_stock_matcher.match_related_stocks({"limit": 12, "quoteLimit": 4})
         if cfg.get("pushRelatedStocks", True)
         else {"items": [], "themes": []}
     )

@@ -239,6 +239,7 @@ def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: st
 
 def _routes_from_payload(payload: dict[str, Any], settings: dict[str, Any]) -> list[dict[str, Any]]:
     routes = []
+    timeout_override = payload.get("timeoutSeconds")
     
     # 检查 payload 中的 model 是否是提供商 ID
     model_param = payload.get("model", "")
@@ -247,7 +248,7 @@ def _routes_from_payload(payload: dict[str, Any], settings: dict[str, Any]) -> l
         for route in settings.get("aiProviders") or []:
             if isinstance(route, dict) and route.get("id") == model_param:
                 if route.get("enabled", True):
-                    routes.append(route)
+                    routes.append({**route, "timeoutSeconds": timeout_override} if timeout_override else route)
                     break
     
     # 如果没有找到匹配的提供商，检查 inline 配置
@@ -260,6 +261,7 @@ def _routes_from_payload(payload: dict[str, Any], settings: dict[str, Any]) -> l
             "model": payload.get("model"),
             "enabled": bool(payload.get("apiKey") and payload.get("model") and not model_param.startswith("provider-")),
             "priority": 0,
+            "timeoutSeconds": timeout_override,
         }
         if inline["enabled"]:
             routes.append(inline)
@@ -268,7 +270,7 @@ def _routes_from_payload(payload: dict[str, Any], settings: dict[str, Any]) -> l
     if not routes:
         for route in settings.get("aiProviders") or []:
             if isinstance(route, dict) and route.get("enabled", True):
-                routes.append(route)
+                routes.append({**route, "timeoutSeconds": timeout_override} if timeout_override else route)
     
     return sorted(routes, key=lambda item: int(item.get("priority") or 999))
 

@@ -586,11 +586,21 @@ async def related_stocks(
     session: dict = Depends(security.require_permission("hotspot"))
 ) -> dict:
     """根据最近热搜与 AI 热点总览，先识别热度板块，再生成股票观察池。"""
-    body = await request.json()
-    return hotspot_stock_matcher.match_related_stocks(
-        body if isinstance(body, dict) else {},
-        username=str(session.get("username") or ""),
-    )
+    try:
+        body = await request.json()
+        return hotspot_stock_matcher.match_related_stocks(
+            body if isinstance(body, dict) else {},
+            username=str(session.get("username") or ""),
+        )
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": f"板块雷达生成失败：{exc}",
+            "items": [],
+            "sectors": [],
+            "themes": [],
+            "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        }
 
 
 # ============================================

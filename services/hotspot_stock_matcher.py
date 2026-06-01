@@ -152,6 +152,7 @@ def _ai_theme_context(summary_text: str, hotspots: list[dict[str, Any]], usernam
         {
             "systemPrompt": "你是财经新闻结构化分析助手，只识别热搜对应的市场板块和产业主题，不识别个股，不做荐股。",
             "userPrompt": prompt,
+            "timeoutSeconds": 25,
         },
         username=username,
     )
