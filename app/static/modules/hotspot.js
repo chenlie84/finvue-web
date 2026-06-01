@@ -458,7 +458,7 @@ function renderHotspotStocks(data) {
   const generated = data.generatedAt ? new Date(data.generatedAt).toLocaleString("zh-CN") : new Date().toLocaleString("zh-CN");
   document.getElementById('hotspotStockPanel').style.display = 'block';
   document.getElementById('hotspotStockMeta').textContent =
-    `生成于 ${generated} · ${data.aiUsed ? "AI 板块识别" : "规则兜底"} · 识别 ${sectors.length || themes.length} 个板块 · 覆盖 ${fmt(data.hotspotCount || 0)} 条热搜`;
+    `生成于 ${generated} · ${data.aiUsed ? "AI 板块识别" : "规则兜底"} · 识别 ${sectors.length || themes.length} 个板块 · 依据 ${fmt(data.sourceHotspotCount || data.hotspotCount || 0)} 条财经/总览消息`;
 
   if (!sectors.length && !items.length) {
     document.getElementById('hotspotStockContent').innerHTML = '<div class="hotspot-stock-empty">暂未从本轮热点中识别到明确板块。可先刷新热搜或生成 AI 总览后再试。</div>';

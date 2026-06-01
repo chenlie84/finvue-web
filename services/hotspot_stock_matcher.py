@@ -56,6 +56,8 @@ THEME_RULES = [
     },
 ]
 
+PROFESSIONAL_PLATFORMS = {"cls", "wallstreetcn"}
+
 
 def _recent_hotspots(limit: int = 120) -> list[dict[str, Any]]:
     return db.fetch_all(
@@ -100,6 +102,46 @@ def _theme_hits(text_blob: str) -> list[dict[str, Any]]:
     return hits
 
 
+def _summary_terms(summary_text: str) -> list[str]:
+    text = _text(summary_text)
+    if not text:
+        return []
+    terms: list[str] = []
+    for line in text.splitlines():
+        clean = re.sub(r"^[#>\-\s*\d.、]+", "", line).strip()
+        clean = re.sub(r"\*\*(.*?)\*\*", r"\1", clean)
+        clean = clean.replace("`", "").strip()
+        if not clean or len(clean) < 4:
+            continue
+        if any(word in clean for word in ("可忽略噪音", "风险", "合规", "严禁")):
+            continue
+        terms.append(clean[:32])
+    return terms[:30]
+
+
+def _analysis_hotspots(summary_text: str, hotspots: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    terms = _summary_terms(summary_text)
+    selected: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in hotspots:
+        title = _text(item.get("title"))
+        platform = _text(item.get("platform"))
+        title_lower = title.lower()
+        is_professional = platform in PROFESSIONAL_PLATFORMS
+        is_summary_hit = bool(title) and any(
+            (term and (term in title or title in term or term.lower() in title_lower))
+            for term in terms
+        )
+        if not is_professional and not is_summary_hit:
+            continue
+        key = f"{platform}:{title}"
+        if key in seen:
+            continue
+        selected.append(item)
+        seen.add(key)
+    return selected[:80] or hotspots[:30]
+
+
 def _json_from_ai(text: str) -> dict[str, Any]:
     raw = _text(text)
     fenced = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw, re.I)
@@ -113,18 +155,42 @@ def _json_from_ai(text: str) -> dict[str, Any]:
     return store.safe_object(parsed)
 
 
-def _ai_theme_context(summary_text: str, hotspots: list[dict[str, Any]], username: str = "") -> dict[str, Any]:
+def _stock_pool_industry_catalog(stocks: list[dict[str, Any]], limit: int = 90) -> str:
+    counts: dict[str, int] = {}
+    examples: dict[str, list[str]] = {}
+    for stock in stocks:
+        industry = _text(stock.get("industry") or "未分类")
+        if not industry:
+            continue
+        counts[industry] = counts.get(industry, 0) + 1
+        name = _text(stock.get("name"))
+        if name:
+            examples.setdefault(industry, [])
+            if len(examples[industry]) < 2:
+                examples[industry].append(name)
+    rows = sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:limit]
+    return "\n".join(
+        f"- {industry}：{count}只" + (f"｜样例：{'、'.join(examples.get(industry, []))}" if examples.get(industry) else "")
+        for industry, count in rows
+    )
+
+
+def _ai_theme_context(summary_text: str, hotspots: list[dict[str, Any]], stocks: list[dict[str, Any]], username: str = "") -> dict[str, Any]:
     lines = []
     for item in hotspots[:80]:
         rank = item.get("rank") or "-"
         hot = f"｜热度 {item.get('hot_value')}" if item.get("hot_value") else ""
         lines.append(f"- [{item.get('platform')} #{rank}] {_text(item.get('title'))}{hot}")
-    prompt = f"""下面是本轮热搜和已有 AI 总览。请只判断哪些内容对应 A 股市场里的高热度板块/产业主题。
+    industry_catalog = _stock_pool_industry_catalog(stocks)
+    prompt = f"""下面是本轮已过滤的 AI 热点总览，以及少量专业财经热搜补充。请只判断哪些内容对应 A 股市场里的高热度板块/产业主题。
 
-已有 AI 总览：
+AI 热点总览（主依据，优先从这里判断）：
 {summary_text or "无"}
 
-热搜列表：
+当前 TuShare 股票池行业目录（industries 字段必须优先从这里选择，最多选 6 个）：
+{industry_catalog or "股票池为空"}
+
+专业财经热搜补充（只作证据补充，不要从娱乐/社会热点泛化）：
 {chr(10).join(lines)}
 
 只输出 JSON，不要输出 Markdown，不要输出解释文字。字段格式：
@@ -144,10 +210,11 @@ def _ai_theme_context(summary_text: str, hotspots: list[dict[str, Any]], usernam
 }}
 
 要求：
-1. 只能抽取热搜中有事实依据的主题，不要为了凑数扩展到泛行业。
-2. 不要识别或输出具体公司、品牌、股票名称，只识别板块/产业主题。
-3. 没有明确关联时 themes 可以少于 5 条。
-4. 不要输出任何股票买卖建议、涨跌预测或收益暗示。"""
+1. 以“AI 热点总览”为主依据，只能抽取总览或专业财经热搜中有事实依据的主题，不要为了凑数扩展到泛行业。
+2. industries 必须优先使用“当前 TuShare 股票池行业目录”里的原始行业名；没有匹配行业时宁可少填，不要自造行业名。
+3. 不要识别或输出具体公司、品牌、股票名称，只识别板块/产业主题。
+4. 没有明确关联时 themes 可以少于 5 条。
+5. 不要输出任何股票买卖建议、涨跌预测或收益暗示。"""
     result = ai_router.generate(
         {
             "systemPrompt": "你是财经新闻结构化分析助手，只识别热搜对应的市场板块和产业主题，不识别个股，不做荐股。",
@@ -157,6 +224,11 @@ def _ai_theme_context(summary_text: str, hotspots: list[dict[str, Any]], usernam
         username=username,
     )
     data = _json_from_ai(result.get("markdown") or "")
+    valid_industries = set()
+    for stock in stocks:
+        industry = _text(stock.get("industry") or "未分类")
+        if industry:
+            valid_industries.add(industry)
     themes = data.get("themes") if isinstance(data.get("themes"), list) else []
     cleaned = []
     for item in themes[:8]:
@@ -170,7 +242,11 @@ def _ai_theme_context(summary_text: str, hotspots: list[dict[str, Any]], usernam
             {
                 "theme": theme,
                 "keywords": keywords[:8],
-                "industries": [_text(word) for word in (item.get("industries") or []) if _text(word)][:6],
+                "industries": [
+                    _text(word)
+                    for word in (item.get("industries") or [])
+                    if _text(word) and (not valid_industries or _text(word) in valid_industries)
+                ][:6],
                 "excludeKeywords": [_text(word) for word in (item.get("excludeKeywords") or []) if _text(word)][:8],
                 "reason": _text(item.get("reason")),
                 "heatLevel": _text(item.get("heatLevel") or item.get("heat_level")),
@@ -352,18 +428,23 @@ def _stock_candidate_for_theme(
     score = 0
     reasons: list[str] = []
     relation_type = ""
-    if name and name in text_blob:
-        score += 95
-        relation_type = "直接提及"
-        reasons.append(f"热搜直接提到「{name}」")
+    thematic_matched = False
     if code in leader_codes:
         score += 50
+        thematic_matched = True
         relation_type = relation_type or "板块代表"
         reasons.append(f"{theme['theme']}代表观察标的")
     if _industry_matches(industry, theme.get("industries") or []):
         score += 44 if theme.get("source") == "ai" else 12
+        thematic_matched = True
         relation_type = relation_type or "行业映射"
         reasons.append(f"行业「{industry or '未分类'}」映射到{theme['theme']}")
+    if not thematic_matched:
+        return None
+    if name and name in text_blob:
+        score += 18
+        relation_type = "直接提及" if relation_type == "行业映射" else relation_type
+        reasons.append(f"热搜直接提到「{name}」")
     if score < 40:
         return None
     if theme.get("reason"):
@@ -396,6 +477,7 @@ def _build_sector_radar(
     sectors: list[dict[str, Any]] = []
     flattened: dict[str, dict[str, Any]] = {}
     remaining_quotes = quote_limit
+    assigned_codes: set[str] = set()
 
     for theme in themes[:8]:
         if not theme.get("theme"):
@@ -432,8 +514,13 @@ def _build_sector_radar(
             )
             existing_codes.add(code)
 
-        candidates = sorted(candidates, key=lambda item: (-item["score"], item["code"]))[:6]
+        candidates = [
+            item
+            for item in sorted(candidates, key=lambda item: (-item["score"], item["code"]))
+            if item["code"] not in assigned_codes
+        ][:6]
         for item in candidates:
+            assigned_codes.add(item["code"])
             item["evidence"] = _evidence_for(item, theme, hotspots)
             if remaining_quotes > 0:
                 quote = _latest_quote(settings, item["code"], item["name"])
@@ -478,21 +565,22 @@ def match_related_stocks(payload: dict[str, Any] | None = None, username: str = 
     hotspots = _recent_hotspots()
     if not hotspots and not summary_text:
         return {"ok": True, "items": [], "themes": [], "hotspotCount": 0, "universeCount": 0, "generatedAt": datetime.now().isoformat()}
+    stocks = _stock_universe(settings)
+    source_hotspots = _analysis_hotspots(summary_text, hotspots)
 
-    title_blob = "\n".join(_text(item.get("title")) for item in hotspots)
+    title_blob = "\n".join(_text(item.get("title")) for item in source_hotspots)
     text_blob = f"{summary_text}\n{title_blob}"
     ai_context: dict[str, Any] = {}
     ai_error = ""
     if use_ai:
         try:
-            ai_context = _ai_theme_context(summary_text, hotspots, username)
+            ai_context = _ai_theme_context(summary_text, source_hotspots, stocks, username)
         except Exception as exc:
             ai_error = str(exc)
     ai_themes = ai_context.get("themes") if isinstance(ai_context.get("themes"), list) else []
     themes = ai_themes or _theme_hits(text_blob)
     rule_themes = _theme_hits(text_blob)
-    stocks = _stock_universe(settings)
-    sectors, ranked = _build_sector_radar(themes, rule_themes, stocks, hotspots, settings, text_blob, quote_limit)
+    sectors, ranked = _build_sector_radar(themes, rule_themes, stocks, source_hotspots, settings, text_blob, quote_limit)
     ranked = ranked[:limit]
     return {
         "ok": True,
@@ -518,6 +606,7 @@ def match_related_stocks(payload: dict[str, Any] | None = None, username: str = 
         "aiError": ai_error,
         "aiMeta": ai_context.get("aiMeta"),
         "hotspotCount": len(hotspots),
+        "sourceHotspotCount": len(source_hotspots),
         "universeCount": len(stocks),
         "generatedAt": datetime.now().isoformat(),
         "hasToken": bool(settings.get("token")),

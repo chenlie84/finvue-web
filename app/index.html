@@ -2121,7 +2121,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.23</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.24</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2259,7 +2259,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.23</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.24</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3322,8 +3322,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.23";
+const APP_VERSION = "0.1.24";
 const APP_RELEASES = [
+  {
+    version: "0.1.24",
+    date: "2026-06-01",
+    title: "板块雷达财经源过滤",
+    permissions: ["hotspot", "market"],
+    summary: "热点板块雷达改为以 AI 热点总览为主依据，并只用专业财经热搜补充证据，减少社会和娱乐热点干扰。",
+    items: [
+      "板块识别优先读取 AI 热点总览中命中的消息，避免直接用完整热搜池泛化。",
+      "专业财经热搜仅保留财联社和华尔街见闻作为证据补充。",
+      "AI 提示词明确 AI 总览是主依据，专业财经热搜只作补充。",
+      "规则兜底也只使用过滤后的财经/总览消息，不再扫描完整 120 条热搜。",
+      "前端文案改为展示依据的财经/总览消息数量。"
+    ]
+  },
   {
     version: "0.1.23",
     date: "2026-06-01",
