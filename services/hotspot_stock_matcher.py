@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import json
+import re
 from datetime import datetime, timedelta
 from typing import Any
 
+import ai_router
 import db
 import store
 from services import tushare_market
@@ -18,8 +21,8 @@ THEME_RULES = [
     {
         "theme": "新能源车/智能驾驶",
         "keywords": ["电车", "新能源车", "新能源汽车", "智能驾驶", "比亚迪", "养路费", "电池", "锂电", "充电桩"],
-        "industries": ["汽车", "电气设备", "电池", "小金属", "汽车配件"],
-        "leaders": ["300750.SZ", "002594.SZ", "601012.SH", "002466.SZ", "002460.SZ", "002452.SZ"],
+        "industries": ["汽车", "电池", "小金属", "汽车配件"],
+        "leaders": ["300750.SZ", "002594.SZ", "601012.SH", "002466.SZ", "002460.SZ"],
     },
     {
         "theme": "城市更新/基建",
@@ -97,6 +100,92 @@ def _theme_hits(text_blob: str) -> list[dict[str, Any]]:
     return hits
 
 
+def _json_from_ai(text: str) -> dict[str, Any]:
+    raw = _text(text)
+    fenced = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw, re.I)
+    if fenced:
+        raw = fenced.group(1).strip()
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start >= 0 and end > start:
+        raw = raw[start : end + 1]
+    parsed = json.loads(raw)
+    return store.safe_object(parsed)
+
+
+def _ai_theme_context(summary_text: str, hotspots: list[dict[str, Any]], username: str = "") -> dict[str, Any]:
+    lines = []
+    for item in hotspots[:80]:
+        rank = item.get("rank") or "-"
+        hot = f"｜热度 {item.get('hot_value')}" if item.get("hot_value") else ""
+        lines.append(f"- [{item.get('platform')} #{rank}] {_text(item.get('title'))}{hot}")
+    prompt = f"""下面是本轮热搜和已有 AI 总览。请先判断哪些内容和 A 股股票库可能有关联，再抽取结构化主题。
+
+已有 AI 总览：
+{summary_text or "无"}
+
+热搜列表：
+{chr(10).join(lines)}
+
+只输出 JSON，不要输出 Markdown，不要输出解释文字。字段格式：
+{{
+  "themes": [
+    {{
+      "theme": "主题名称，8字以内",
+      "keywords": ["能代表事件/产业链的关键词，不要泛化"],
+      "industries": ["可能关联的 TuShare 行业名或上级行业，少而准"],
+      "directCompanies": ["热搜明确提到的公司名或品牌名"],
+      "excludeKeywords": ["容易误伤、需要排除的关键词"],
+      "reason": "为什么这个主题值得关注，30字以内",
+      "confidence": 0-100
+    }}
+  ],
+  "explicitCompanies": ["热搜明确提到的公司/品牌"],
+  "noiseKeywords": ["娱乐、体育、社会趣闻等应忽略关键词"]
+}}
+
+要求：
+1. 只能抽取热搜中有事实依据的主题，不要为了凑数扩展到泛行业。
+2. 没有明确关联时 themes 可以少于 5 条。
+3. 不要输出任何股票买卖建议、涨跌预测或收益暗示。"""
+    result = ai_router.generate(
+        {
+            "systemPrompt": "你是财经新闻结构化分析助手，只做信息抽取和产业链主题识别，不做荐股。",
+            "userPrompt": prompt,
+        },
+        username=username,
+    )
+    data = _json_from_ai(result.get("markdown") or "")
+    themes = data.get("themes") if isinstance(data.get("themes"), list) else []
+    cleaned = []
+    for item in themes[:8]:
+        if not isinstance(item, dict):
+            continue
+        theme = _text(item.get("theme"))
+        keywords = [_text(word) for word in (item.get("keywords") or []) if _text(word)]
+        if not theme or not keywords:
+            continue
+        cleaned.append(
+            {
+                "theme": theme,
+                "keywords": keywords[:8],
+                "industries": [_text(word) for word in (item.get("industries") or []) if _text(word)][:6],
+                "directCompanies": [_text(word) for word in (item.get("directCompanies") or []) if _text(word)][:8],
+                "excludeKeywords": [_text(word) for word in (item.get("excludeKeywords") or []) if _text(word)][:8],
+                "reason": _text(item.get("reason")),
+                "confidence": min(100, max(0, store.to_int(item.get("confidence"), 70) or 70)),
+                "source": "ai",
+                "matchedKeywords": keywords[:8],
+            }
+        )
+    return {
+        "themes": cleaned,
+        "explicitCompanies": [_text(word) for word in (data.get("explicitCompanies") or []) if _text(word)][:20],
+        "noiseKeywords": [_text(word) for word in (data.get("noiseKeywords") or []) if _text(word)][:20],
+        "aiMeta": result.get("aiMeta"),
+    }
+
+
 def _industry_matches(industry: str, industries: list[str]) -> bool:
     blob = _text(industry)
     return any(word and word in blob for word in industries)
@@ -137,9 +226,16 @@ def _latest_quote(settings: dict[str, Any], code: str, name: str) -> dict[str, A
     return rows[-1] if rows else None
 
 
-def match_related_stocks(payload: dict[str, Any] | None = None) -> dict[str, Any]:
+def _stock_name_hit(name: str, words: list[str], text_blob: str) -> bool:
+    if name and name in text_blob:
+        return True
+    return any(word and (word in name or name in word) for word in words if len(word) >= 2)
+
+
+def match_related_stocks(payload: dict[str, Any] | None = None, username: str = "") -> dict[str, Any]:
     body = store.safe_object(payload)
     summary_text = _text(body.get("summary") or body.get("analysis"))
+    use_ai = body.get("useAi", True) is not False
     limit = min(30, max(8, store.to_int(body.get("limit"), 18) or 18))
     quote_limit = min(18, max(0, store.to_int(body.get("quoteLimit"), 12) or 12))
     settings = tushare_market.get_settings()
@@ -149,10 +245,19 @@ def match_related_stocks(payload: dict[str, Any] | None = None) -> dict[str, Any
 
     title_blob = "\n".join(_text(item.get("title")) for item in hotspots)
     text_blob = f"{summary_text}\n{title_blob}"
-    themes = _theme_hits(text_blob)
-    leader_codes = {code for theme in themes for code in theme.get("leaders", [])}
+    ai_context: dict[str, Any] = {}
+    ai_error = ""
+    if use_ai:
+        try:
+            ai_context = _ai_theme_context(summary_text, hotspots, username)
+        except Exception as exc:
+            ai_error = str(exc)
+    ai_themes = ai_context.get("themes") if isinstance(ai_context.get("themes"), list) else []
+    themes = ai_themes or _theme_hits(text_blob)
+    rule_themes = _theme_hits(text_blob)
     stocks = _stock_universe(settings)
     by_code: dict[str, dict[str, Any]] = {}
+    explicit_companies = [_text(word) for word in (ai_context.get("explicitCompanies") or []) if _text(word)]
 
     for stock in stocks:
         code = _text(stock.get("code")).upper()
@@ -163,19 +268,29 @@ def match_related_stocks(payload: dict[str, Any] | None = None) -> dict[str, Any
         score = 0
         reasons: list[str] = []
         matched_theme = None
-        if name and name in text_blob:
-            score += 90
+        relation_type = ""
+        if _stock_name_hit(name, explicit_companies, text_blob):
+            score += 95
+            relation_type = "直接提及"
             reasons.append(f"热搜直接提到「{name}」")
         for theme in themes:
-            if code in theme.get("leaders", []):
-                score += 42
+            direct_companies = [_text(word) for word in (theme.get("directCompanies") or []) if _text(word)]
+            if _stock_name_hit(name, direct_companies, ""):
+                score += 80
                 matched_theme = matched_theme or theme
-                reasons.append(f"{theme['theme']}核心/常用观察标的")
+                relation_type = relation_type or "AI直接点名"
+                reasons.append(f"AI 从热搜中识别到「{name}」")
+            elif code in theme.get("leaders", []):
+                score += 50
+                matched_theme = matched_theme or theme
+                if not relation_type:
+                    relation_type = "主题核心"
+                reasons.append(f"{theme['theme']}核心观察标的")
             elif _industry_matches(industry, theme.get("industries") or []):
-                score += 22
+                score += 12 if theme.get("source") == "ai" else 8
                 matched_theme = matched_theme or theme
-                reasons.append(f"行业「{industry or '未分类'}」命中{theme['theme']}")
-        if not score:
+                reasons.append(f"行业「{industry or '未分类'}」弱关联{theme['theme']}")
+        if score < 40:
             continue
         by_code[code] = {
             "code": code,
@@ -184,13 +299,24 @@ def match_related_stocks(payload: dict[str, Any] | None = None) -> dict[str, Any
             "area": stock.get("area") or "",
             "theme": (matched_theme or {}).get("theme") or "直接命中",
             "score": score,
-            "confidence": min(95, 38 + score),
+            "confidence": min(95, 30 + score),
+            "relationType": relation_type or "行业弱关联",
             "reasons": list(dict.fromkeys(reasons))[:3],
             "evidence": _evidence_for(stock, matched_theme, hotspots),
         }
 
     for theme in themes:
-        for code in theme.get("leaders", []):
+        fallback_codes = list(theme.get("leaders") or [])
+        if not fallback_codes and theme.get("source") == "ai":
+            matched_rule = next(
+                (
+                    rule for rule in rule_themes
+                    if theme.get("theme") in rule.get("theme", "") or rule.get("theme", "") in theme.get("theme", "")
+                ),
+                None,
+            )
+            fallback_codes = list((matched_rule or {}).get("leaders") or [])
+        for code in fallback_codes:
             if code in by_code:
                 continue
             name = tushare_market.get_stock_name_map().get(code, code)
@@ -200,9 +326,10 @@ def match_related_stocks(payload: dict[str, Any] | None = None) -> dict[str, Any
                 "industry": "主题龙头",
                 "area": "",
                 "theme": theme.get("theme"),
-                "score": 36,
-                "confidence": 74,
-                "reasons": [f"{theme['theme']}常用观察标的"],
+                "score": 45,
+                "confidence": 75,
+                "relationType": "主题核心",
+                "reasons": [f"{theme['theme']}核心观察标的"],
                 "evidence": _evidence_for({"code": code, "name": name}, theme, hotspots),
             }
 
@@ -215,6 +342,9 @@ def match_related_stocks(payload: dict[str, Any] | None = None) -> dict[str, Any
         "ok": True,
         "items": ranked,
         "themes": [{"theme": item["theme"], "keywords": item.get("matchedKeywords", [])} for item in themes],
+        "aiUsed": bool(ai_themes),
+        "aiError": ai_error,
+        "aiMeta": ai_context.get("aiMeta"),
         "hotspotCount": len(hotspots),
         "universeCount": len(stocks),
         "generatedAt": datetime.now().isoformat(),

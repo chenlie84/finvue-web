@@ -583,11 +583,14 @@ async def analyze_hotspot_summary(
 @router.post("/api/hotspot/related-stocks")
 async def related_stocks(
     request: Request,
-    _: dict = Depends(security.require_permission("hotspot"))
+    session: dict = Depends(security.require_permission("hotspot"))
 ) -> dict:
     """根据最近热搜与 AI 热点总览，从 TuShare 股票基础库里召回关联标的。"""
     body = await request.json()
-    return hotspot_stock_matcher.match_related_stocks(body if isinstance(body, dict) else {})
+    return hotspot_stock_matcher.match_related_stocks(
+        body if isinstance(body, dict) else {},
+        username=str(session.get("username") or ""),
+    )
 
 
 # ============================================

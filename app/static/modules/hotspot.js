@@ -425,7 +425,7 @@ function renderHotspotStocks(data) {
   const generated = data.generatedAt ? new Date(data.generatedAt).toLocaleString("zh-CN") : new Date().toLocaleString("zh-CN");
   document.getElementById('hotspotStockPanel').style.display = 'block';
   document.getElementById('hotspotStockMeta').textContent =
-    `生成于 ${generated} · 扫描 ${fmt(data.universeCount || 0)} 只股票 · 命中 ${items.length} 个候选 · 覆盖 ${fmt(data.hotspotCount || 0)} 条热搜`;
+    `生成于 ${generated} · ${data.aiUsed ? "AI 主题识别" : "规则兜底"} · 扫描 ${fmt(data.universeCount || 0)} 只股票 · 命中 ${items.length} 个候选 · 覆盖 ${fmt(data.hotspotCount || 0)} 条热搜`;
 
   if (!items.length) {
     document.getElementById('hotspotStockContent').innerHTML = '<div class="hotspot-stock-empty">暂未从本轮热点中匹配到明确标的。可先刷新热搜或生成 AI 总览后再试。</div>';
@@ -444,13 +444,14 @@ function renderHotspotStocks(data) {
         const quote = item.quote || {};
         const pct = quote.pctChange;
         const hasQuote = pct !== undefined && pct !== null && pct !== "";
+        const relationType = item.relationType || "主题关联";
         return `<article class="hotspot-stock-card ${index < 3 ? "is-top" : ""}">
           <div class="hotspot-stock-card-head">
             <div>
               <div class="hotspot-stock-name">${escapeHtml(item.name)} <span>${escapeHtml(item.code)}</span></div>
-              <div class="hotspot-stock-industry">${escapeHtml(item.theme || item.industry || "关联观察")}</div>
+              <div class="hotspot-stock-industry"><span>${escapeHtml(relationType)}</span>${escapeHtml(item.theme || item.industry || "关联观察")}</div>
             </div>
-            <div class="hotspot-stock-confidence">${fmt(item.confidence || 0)}<small>%</small></div>
+            <div class="hotspot-stock-confidence"><small>匹配</small>${fmt(item.confidence || 0)}<small>%</small></div>
           </div>
           <div class="hotspot-stock-quote">
             <span>${hasQuote ? escapeHtml(String(quote.close ?? "--")) : "未取行情"}</span>
@@ -460,7 +461,7 @@ function renderHotspotStocks(data) {
             ${(item.reasons || []).slice(0, 3).map(reason => `<span>${escapeHtml(reason)}</span>`).join("")}
           </div>
           <div class="hotspot-stock-evidence">
-            ${(item.evidence || []).slice(0, 2).map(hit => `<div>来自热搜：${escapeHtml(hit.title || "")}</div>`).join("") || '<div>基于主题词与行业映射召回</div>'}
+            ${(item.evidence || []).slice(0, 2).map(hit => `<div>来自热搜：${escapeHtml(hit.title || "")}</div>`).join("") || '<div>规则召回，请结合公告与基本面人工复核</div>'}
           </div>
         </article>`;
       }).join("")}
@@ -471,11 +472,11 @@ function renderHotspotStocks(data) {
 
 function setHotspotStocksLoading() {
   document.getElementById('hotspotStockPanel').style.display = 'block';
-  document.getElementById('hotspotStockMeta').textContent = '正在从股票基础库中召回候选...';
+  document.getElementById('hotspotStockMeta').textContent = 'AI 正在读取热搜主题，然后结合股票基础库召回候选...';
   document.getElementById('hotspotStockContent').innerHTML = `
     <div class="hotspot-stock-loading">
       <span class="spinner" style="width:14px;height:14px;border-width:1px;"></span>
-      <span>正在扫描股票名称、行业与主题关键词，并补充候选行情...</span>
+      <span>先抽取明确公司、产业链和排除项，再匹配股票名称/行业并补充候选行情...</span>
     </div>
   `;
 }
@@ -492,7 +493,7 @@ async function analyzeHotspotRelatedStocks() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ summary: latestHotspotSummaryText(), limit: 18, quoteLimit: 12 })
+      body: JSON.stringify({ summary: latestHotspotSummaryText(), limit: 18, quoteLimit: 12, useAi: true })
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.ok === false) throw new Error(data.error || data.detail || '关联标的匹配失败');

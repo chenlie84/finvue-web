@@ -125,8 +125,9 @@ def build_message() -> dict[str, Any]:
     if items:
         for index, item in enumerate(items[:8], 1):
             reasons = "；".join((item.get("reasons") or [])[:2]) or "基于主题/行业弱关联"
+            relation = item.get("relationType") or "主题关联"
             lines.append(
-                f"{index}. {item.get('name')}({item.get('code')})｜{item.get('theme')}｜{_format_quote(item)}｜置信度 {item.get('confidence', 0)}%｜{reasons}"
+                f"{index}. {item.get('name')}({item.get('code')})｜{item.get('theme')}｜{relation}｜{_format_quote(item)}｜匹配度 {item.get('confidence', 0)}%｜{reasons}"
             )
     else:
         lines.append("暂未匹配到明确候选标的。")
