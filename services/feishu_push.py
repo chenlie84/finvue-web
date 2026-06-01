@@ -124,6 +124,37 @@ def _format_quote(item: dict[str, Any]) -> str:
         return str(pct)
 
 
+def _format_ai_insights(related: dict[str, Any]) -> list[str]:
+    insights = store.safe_object(related.get("aiInsights"))
+    themes = insights.get("themes") if isinstance(insights.get("themes"), list) else []
+    if themes:
+        lines = []
+        for index, item in enumerate(themes[:5], 1):
+            theme = store.text(item.get("theme") or "未命名主题")
+            keywords = "、".join(store.text(word) for word in (item.get("keywords") or [])[:4] if store.text(word))
+            companies = "、".join(store.text(word) for word in (item.get("directCompanies") or [])[:4] if store.text(word))
+            reason = store.text(item.get("reason"))
+            parts = [theme]
+            if keywords:
+                parts.append(f"关键词：{keywords}")
+            if companies:
+                parts.append(f"直接公司：{companies}")
+            if reason:
+                parts.append(f"AI判断：{reason}")
+            lines.append(f"{index}. " + "｜".join(parts))
+        noise = "、".join(store.text(word) for word in (insights.get("noiseKeywords") or [])[:8] if store.text(word))
+        if noise:
+            lines.append(f"已降权噪音：{noise}")
+        return lines
+
+    themes = related.get("themes") if isinstance(related.get("themes"), list) else []
+    if themes:
+        return ["、".join(str(item.get("theme") or "") for item in themes[:6] if item.get("theme"))]
+    if related.get("aiError"):
+        return [f"AI主题识别失败，已使用规则兜底：{related.get('aiError')}"]
+    return ["暂未识别出明确主题。"]
+
+
 def build_message(settings: dict[str, Any] | None = None, refresh_result: dict[str, Any] | None = None) -> dict[str, Any]:
     cfg = settings or get_settings()
     hotspots = _recent_hotspots()
@@ -134,10 +165,12 @@ def build_message(settings: dict[str, Any] | None = None, refresh_result: dict[s
     )
     items = related.get("items") or []
     themes = related.get("themes") or []
+    ai_used = bool(related.get("aiUsed"))
     lines = [
         "FinVue 热点关联标的雷达",
         f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}",
         _format_refresh_line(refresh_result),
+        f"分析方式：{'AI 先分析热搜，再匹配股票库' if ai_used else '规则兜底匹配'}",
         "",
         "一、重点热搜",
     ]
@@ -150,11 +183,8 @@ def build_message(settings: dict[str, Any] | None = None, refresh_result: dict[s
         lines.append("暂无最近 2 小时热搜数据。")
 
     lines.append("")
-    lines.append("二、关联主题")
-    if themes:
-        lines.append("、".join(str(item.get("theme") or "") for item in themes[:6] if item.get("theme")))
-    else:
-        lines.append("暂未识别出明确主题。")
+    lines.append("二、AI 先分析热搜")
+    lines.extend(_format_ai_insights(related))
 
     lines.append("")
     lines.append("三、关联标的候选")
@@ -162,9 +192,12 @@ def build_message(settings: dict[str, Any] | None = None, refresh_result: dict[s
         for index, item in enumerate(items[:8], 1):
             reasons = "；".join((item.get("reasons") or [])[:2]) or "基于主题/行业弱关联"
             relation = item.get("relationType") or "主题关联"
+            ai_reason = store.text(item.get("aiReason"))
             lines.append(
                 f"{index}. {item.get('name')}({item.get('code')})｜{item.get('theme')}｜{relation}｜{_format_quote(item)}｜匹配度 {item.get('confidence', 0)}%｜{reasons}"
             )
+            if ai_reason:
+                lines.append(f"   AI依据：{ai_reason}")
     else:
         lines.append("暂未匹配到明确候选标的。")
 

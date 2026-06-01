@@ -419,6 +419,38 @@ function quoteText(value) {
   return `${num >= 0 ? "+" : ""}${num.toFixed(2)}%`;
 }
 
+function renderHotspotStockAiInsights(data) {
+  if (!data.aiUsed) return "";
+  const insights = data.aiInsights || {};
+  const themes = Array.isArray(insights.themes) ? insights.themes : [];
+  if (!themes.length) return "";
+  return `<section class="hotspot-stock-ai">
+    <div class="hotspot-stock-ai-head">
+      <div>
+        <div class="hotspot-stock-ai-kicker">AI 先分析热搜</div>
+        <h4>本轮识别出的产业主题与直接公司</h4>
+      </div>
+      <span>${themes.length} 个主题</span>
+    </div>
+    <div class="hotspot-stock-ai-grid">
+      ${themes.slice(0, 6).map(item => `
+        <article class="hotspot-stock-ai-card">
+          <div class="hotspot-stock-ai-title">
+            <strong>${escapeHtml(item.theme || "未命名主题")}</strong>
+            ${item.confidence ? `<span>${fmt(item.confidence)}%</span>` : ""}
+          </div>
+          ${item.reason ? `<p>${escapeHtml(item.reason)}</p>` : ""}
+          <div class="hotspot-stock-ai-tags">
+            ${(item.keywords || []).slice(0, 4).map(word => `<em>${escapeHtml(word)}</em>`).join("")}
+          </div>
+          ${(item.directCompanies || []).length ? `<div class="hotspot-stock-ai-companies">直接公司：${escapeHtml(item.directCompanies.slice(0, 5).join("、"))}</div>` : ""}
+        </article>
+      `).join("")}
+    </div>
+    ${(insights.noiseKeywords || []).length ? `<div class="hotspot-stock-ai-noise">AI 已降权噪音：${escapeHtml(insights.noiseKeywords.slice(0, 8).join("、"))}</div>` : ""}
+  </section>`;
+}
+
 function renderHotspotStocks(data) {
   const items = data.items || [];
   const themes = data.themes || [];
@@ -438,6 +470,7 @@ function renderHotspotStocks(data) {
     </div>` : "";
 
   document.getElementById('hotspotStockContent').innerHTML = `
+    ${renderHotspotStockAiInsights(data)}
     ${themeHtml}
     <div class="hotspot-stock-grid">
       ${items.map((item, index) => {
@@ -460,6 +493,7 @@ function renderHotspotStocks(data) {
           <div class="hotspot-stock-reasons">
             ${(item.reasons || []).slice(0, 3).map(reason => `<span>${escapeHtml(reason)}</span>`).join("")}
           </div>
+          ${item.aiReason ? `<div class="hotspot-stock-ai-reason">AI依据：${escapeHtml(item.aiReason)}</div>` : ""}
           <div class="hotspot-stock-evidence">
             ${(item.evidence || []).slice(0, 2).map(hit => `<div>来自热搜：${escapeHtml(hit.title || "")}</div>`).join("") || '<div>规则召回，请结合公告与基本面人工复核</div>'}
           </div>

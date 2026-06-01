@@ -292,6 +292,8 @@ def match_related_stocks(payload: dict[str, Any] | None = None, username: str = 
                 reasons.append(f"行业「{industry or '未分类'}」弱关联{theme['theme']}")
         if score < 40:
             continue
+        if matched_theme and matched_theme.get("source") == "ai" and matched_theme.get("reason"):
+            reasons.append(f"AI判断：{matched_theme.get('reason')}")
         by_code[code] = {
             "code": code,
             "name": name,
@@ -301,6 +303,8 @@ def match_related_stocks(payload: dict[str, Any] | None = None, username: str = 
             "score": score,
             "confidence": min(95, 30 + score),
             "relationType": relation_type or "行业弱关联",
+            "aiReason": (matched_theme or {}).get("reason") or "",
+            "aiThemeConfidence": (matched_theme or {}).get("confidence"),
             "reasons": list(dict.fromkeys(reasons))[:3],
             "evidence": _evidence_for(stock, matched_theme, hotspots),
         }
@@ -329,7 +333,9 @@ def match_related_stocks(payload: dict[str, Any] | None = None, username: str = 
                 "score": 45,
                 "confidence": 75,
                 "relationType": "主题核心",
-                "reasons": [f"{theme['theme']}核心观察标的"],
+                "aiReason": theme.get("reason") or "",
+                "aiThemeConfidence": theme.get("confidence"),
+                "reasons": [item for item in [f"{theme['theme']}核心观察标的", theme.get("reason") and f"AI判断：{theme.get('reason')}"] if item],
                 "evidence": _evidence_for({"code": code, "name": name}, theme, hotspots),
             }
 
@@ -342,6 +348,22 @@ def match_related_stocks(payload: dict[str, Any] | None = None, username: str = 
         "ok": True,
         "items": ranked,
         "themes": [{"theme": item["theme"], "keywords": item.get("matchedKeywords", [])} for item in themes],
+        "aiInsights": {
+            "themes": [
+                {
+                    "theme": item.get("theme"),
+                    "keywords": item.get("keywords") or item.get("matchedKeywords") or [],
+                    "industries": item.get("industries") or [],
+                    "directCompanies": item.get("directCompanies") or [],
+                    "excludeKeywords": item.get("excludeKeywords") or [],
+                    "reason": item.get("reason") or "",
+                    "confidence": item.get("confidence"),
+                }
+                for item in ai_themes
+            ],
+            "explicitCompanies": explicit_companies,
+            "noiseKeywords": ai_context.get("noiseKeywords") or [],
+        },
         "aiUsed": bool(ai_themes),
         "aiError": ai_error,
         "aiMeta": ai_context.get("aiMeta"),

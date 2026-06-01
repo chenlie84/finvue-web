@@ -2121,7 +2121,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.20</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.21</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2259,7 +2259,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.20</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.21</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3322,8 +3322,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.20";
+const APP_VERSION = "0.1.21";
 const APP_RELEASES = [
+  {
+    version: "0.1.21",
+    date: "2026-06-01",
+    title: "飞书 AI 热点分析结果",
+    permissions: ["hotspot", "admin-api"],
+    summary: "飞书热点推送新增 AI 先分析热搜的结构化结果，让推送内容先呈现主题判断，再展示关联标的候选。",
+    items: [
+      "飞书正文新增 AI 识别主题、关键词、直接公司/品牌和判断理由。",
+      "飞书消息会展示已降权噪音，说明哪些热搜不进入标的匹配重点。",
+      "关联标的候选追加 AI 依据，帮助判断为什么被召回。",
+      "关联标的接口返回 aiInsights，飞书推送和热点页面共用同一份 AI 分析结果。",
+      "热点页面新增 AI 先分析热搜展示区，与飞书推送内容保持一致。"
+    ]
+  },
   {
     version: "0.1.20",
     date: "2026-06-01",
