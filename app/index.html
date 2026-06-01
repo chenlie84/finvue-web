@@ -2121,7 +2121,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.19</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.20</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2259,7 +2259,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.19</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.20</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3322,8 +3322,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.19";
+const APP_VERSION = "0.1.20";
 const APP_RELEASES = [
+  {
+    version: "0.1.20",
+    date: "2026-06-01",
+    title: "飞书推送前刷新热搜",
+    permissions: ["hotspot", "admin-api"],
+    summary: "飞书热点推送会在发送前先按热点追踪配置刷新平台数据，避免长期只推缓存里的旧热搜。",
+    items: [
+      "飞书推送前会读取热点追踪启用平台配置，并主动抓取最新热搜。",
+      "热搜刷新失败时不会中断飞书推送，会在消息中标注刷新失败并继续使用现有缓存。",
+      "测试推送和定时推送共用刷新逻辑，后台状态会记录已刷新或缓存兜底。",
+      "包含关联标的开关现在会真正生效，关闭后不再生成候选股票。",
+      "后台飞书配置说明更新为推送前先刷新平台数据。"
+    ]
+  },
   {
     version: "0.1.19",
     date: "2026-06-01",

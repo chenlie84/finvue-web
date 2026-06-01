@@ -40,7 +40,7 @@
       </section>
       <aside class="feishu-side-card">
         <h4>推送内容</h4>
-        <p>每次推送会从最近 2 小时热搜中提取重点新闻，再结合 TuShare 股票基础库召回关联标的候选。系统只对候选标的补行情，避免拖慢服务器。</p>
+        <p>每次推送前会先按热点追踪配置刷新平台数据，再从最近 2 小时热搜中提取重点新闻，并结合 TuShare 股票基础库召回关联标的候选。</p>
         <div class="admin-divider"></div>
         <h4>合规边界</h4>
         <p>飞书消息会明确标注“弱关联，不代表投资建议”，用于直播选题和盘前准备，不作为买卖依据。</p>
@@ -123,7 +123,7 @@
     const status = document.getElementById("feishuAdminStatus");
     try {
       await save();
-      if (status) status.textContent = "正在发送测试推送...";
+      if (status) status.textContent = "正在刷新热搜并发送测试推送...";
       const res = await fetch("/api/admin/feishu/test", {
         method: "POST",
         credentials: "include",

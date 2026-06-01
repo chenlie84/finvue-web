@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -7,7 +8,7 @@ import requests
 
 import db
 import store
-from services import hotspot_stock_matcher
+from services import hotspot_fetcher, hotspot_stock_matcher
 
 
 SETTINGS_KEY = "feishu-hotspot-push-settings"
@@ -64,6 +65,35 @@ def save_settings(payload: dict[str, Any], username: str = "") -> dict[str, Any]
     return store.set_kv(SETTINGS_KEY, value)
 
 
+def _configured_hotspot_platforms() -> list[str]:
+    row = db.fetch_one("SELECT enabled_platforms FROM finvue_hotspot_settings WHERE id = 'default'")
+    if row and row.get("enabled_platforms"):
+        try:
+            platforms = json.loads(str(row.get("enabled_platforms") or "[]"))
+            if isinstance(platforms, list):
+                cleaned = [store.text(item) for item in platforms if store.text(item)]
+                if cleaned:
+                    return cleaned
+        except Exception:
+            pass
+    return ["weibo", "zhihu", "baidu", "douyin", "bilibili", "toutiao", "cls", "wallstreetcn"]
+
+
+def refresh_hotspots_before_push() -> dict[str, Any]:
+    platforms = _configured_hotspot_platforms()
+    try:
+        return hotspot_fetcher.fetch_all_platforms(platforms)
+    except Exception as exc:
+        return {
+            "ok": False,
+            "error": str(exc),
+            "totalItems": 0,
+            "successPlatforms": [],
+            "failedPlatforms": [{"platform": "all", "error": str(exc)}],
+            "timestamp": _now_iso(),
+        }
+
+
 def _recent_hotspots(limit: int = 8) -> list[dict[str, Any]]:
     try:
         return db.fetch_all(
@@ -94,14 +124,20 @@ def _format_quote(item: dict[str, Any]) -> str:
         return str(pct)
 
 
-def build_message() -> dict[str, Any]:
+def build_message(settings: dict[str, Any] | None = None, refresh_result: dict[str, Any] | None = None) -> dict[str, Any]:
+    cfg = settings or get_settings()
     hotspots = _recent_hotspots()
-    related = hotspot_stock_matcher.match_related_stocks({"limit": 12, "quoteLimit": 8})
+    related = (
+        hotspot_stock_matcher.match_related_stocks({"limit": 12, "quoteLimit": 8})
+        if cfg.get("pushRelatedStocks", True)
+        else {"items": [], "themes": []}
+    )
     items = related.get("items") or []
     themes = related.get("themes") or []
     lines = [
         "FinVue 热点关联标的雷达",
         f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}",
+        _format_refresh_line(refresh_result),
         "",
         "一、重点热搜",
     ]
@@ -139,7 +175,19 @@ def build_message() -> dict[str, Any]:
         "hotspotCount": len(hotspots),
         "stockCount": len(items),
         "themeCount": len(themes),
+        "refresh": refresh_result or {},
     }
+
+
+def _format_refresh_line(refresh_result: dict[str, Any] | None) -> str:
+    result = store.safe_object(refresh_result)
+    if not result:
+        return "刷新状态：未触发热搜刷新"
+    if result.get("ok"):
+        success = len(result.get("successPlatforms") or [])
+        failed = len(result.get("failedPlatforms") or [])
+        return f"刷新状态：已先刷新热搜，获取 {result.get('totalItems') or 0} 条，成功 {success} 个平台{f'，失败 {failed} 个平台' if failed else ''}"
+    return f"刷新状态：热搜刷新失败，已使用现有缓存继续推送（{result.get('error') or '未知错误'}）"
 
 
 def send_text(webhook_url: str, text: str) -> dict[str, Any]:
@@ -160,12 +208,14 @@ def send_text(webhook_url: str, text: str) -> dict[str, Any]:
 
 def push_now(settings: dict[str, Any] | None = None) -> dict[str, Any]:
     cfg = settings or get_settings()
-    message = build_message()
+    refresh_result = refresh_hotspots_before_push()
+    message = build_message(cfg, refresh_result)
     result = send_text(store.text(cfg.get("webhookUrl")), message["text"])
+    refresh_label = "已刷新热搜" if refresh_result.get("ok") else "刷新失败使用缓存"
     next_settings = {
         **cfg,
         "lastPushedAt": _now_iso(),
-        "lastStatus": f"成功推送：{message['stockCount']} 个候选标的",
+        "lastStatus": f"成功推送：{message['stockCount']} 个候选标的，{refresh_label}",
     }
     store.set_kv(SETTINGS_KEY, next_settings)
     return {"ok": True, "message": next_settings["lastStatus"], "feishu": result, "payload": message}
