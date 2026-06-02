@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -12,6 +13,7 @@ from services import hotspot_fetcher, hotspot_stock_matcher
 
 
 SETTINGS_KEY = "feishu-hotspot-push-settings"
+logger = logging.getLogger(__name__)
 
 
 def _now_iso() -> str:
@@ -25,8 +27,11 @@ def get_settings() -> dict[str, Any]:
         "webhookUrl": store.text(saved.get("webhookUrl")),
         "intervalMinutes": max(15, store.to_int(saved.get("intervalMinutes"), 120) or 120),
         "pushRelatedStocks": saved.get("pushRelatedStocks", True) is not False,
+        "notifyRegistrations": saved.get("notifyRegistrations", True) is not False,
         "lastPushedAt": store.text(saved.get("lastPushedAt")),
         "lastStatus": store.text(saved.get("lastStatus")),
+        "lastRegistrationNotifiedAt": store.text(saved.get("lastRegistrationNotifiedAt")),
+        "lastRegistrationStatus": store.text(saved.get("lastRegistrationStatus")),
         "updatedAt": store.text(saved.get("updatedAt")),
         "updatedBy": store.text(saved.get("updatedBy")),
     }
@@ -59,6 +64,7 @@ def save_settings(payload: dict[str, Any], username: str = "") -> dict[str, Any]
         "webhookUrl": webhook,
         "intervalMinutes": max(15, store.to_int(incoming.get("intervalMinutes"), current.get("intervalMinutes", 120)) or 120),
         "pushRelatedStocks": incoming.get("pushRelatedStocks", current.get("pushRelatedStocks", True)) is not False,
+        "notifyRegistrations": incoming.get("notifyRegistrations", current.get("notifyRegistrations", True)) is not False,
         "updatedAt": _now_iso(),
         "updatedBy": store.text(username),
     }
@@ -259,6 +265,56 @@ def send_text(webhook_url: str, text: str) -> dict[str, Any]:
     if code not in (None, 0):
         raise RuntimeError(payload.get("msg") or payload.get("StatusMessage") or f"飞书返回错误：{code}")
     return payload
+
+
+def build_registration_message(user: dict[str, Any], request_ip: str = "") -> str:
+    username = store.text(user.get("username")) or "未知用户"
+    role = store.text(user.get("role")) or "user"
+    permissions = store.safe_object(user.get("permissions"))
+    enabled_permissions = [key for key, value in permissions.items() if value is True]
+    permission_text = "、".join(enabled_permissions[:6]) if enabled_permissions else "默认用户权限"
+    return "\n".join([
+        "FinVue 新用户注册",
+        f"时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        f"账号：{username}",
+        f"角色：{role}",
+        f"来源 IP：{store.text(request_ip) or '未知'}",
+        f"初始权限：{permission_text}",
+    ])
+
+
+def notify_registration(user: dict[str, Any], request_ip: str = "") -> dict[str, Any]:
+    cfg = get_settings()
+    webhook_url = store.text(cfg.get("webhookUrl"))
+    if not webhook_url:
+        return {"ok": False, "skipped": True, "reason": "飞书 webhook 未配置"}
+    if cfg.get("notifyRegistrations") is False:
+        return {"ok": False, "skipped": True, "reason": "注册通知未启用"}
+    result = send_text(webhook_url, build_registration_message(user, request_ip))
+    next_settings = {
+        **cfg,
+        "lastRegistrationNotifiedAt": _now_iso(),
+        "lastRegistrationStatus": f"已通知新用户注册：{store.text(user.get('username')) or '未知用户'}",
+    }
+    store.set_kv(SETTINGS_KEY, next_settings)
+    return {"ok": True, "feishu": result, "message": next_settings["lastRegistrationStatus"]}
+
+
+def notify_registration_safe(user: dict[str, Any], request_ip: str = "") -> dict[str, Any]:
+    try:
+        return notify_registration(user, request_ip)
+    except Exception as exc:
+        logger.exception("[feishu] registration notification failed username=%s", user.get("username"))
+        try:
+            cfg = get_settings()
+            store.set_kv(SETTINGS_KEY, {
+                **cfg,
+                "lastRegistrationNotifiedAt": _now_iso(),
+                "lastRegistrationStatus": f"注册通知失败：{_short_text(str(exc), 40)}",
+            })
+        except Exception:
+            logger.exception("[feishu] failed to persist registration notification error")
+        return {"ok": False, "error": str(exc)}
 
 
 def push_now(settings: dict[str, Any] | None = None) -> dict[str, Any]:

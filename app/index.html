@@ -2121,7 +2121,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.27</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.28</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2259,7 +2259,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.27</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.28</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3322,8 +3322,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.27";
+const APP_VERSION = "0.1.28";
 const APP_RELEASES = [
+  {
+    version: "0.1.28",
+    date: "2026-06-02",
+    title: "新用户注册飞书通知",
+    permissions: ["admin", "notify"],
+    summary: "网站注册成功后可自动发送飞书通知，方便管理员及时知道新账号创建情况。",
+    items: [
+      "注册成功后通过后台任务发送飞书通知，不阻塞用户注册流程。",
+      "飞书通知包含注册时间、账号、角色、来源 IP 和初始权限，不包含密码等敏感信息。",
+      "后台飞书配置页新增新用户注册通知开关，并展示最近注册通知状态。",
+      "飞书发送失败只记录状态，不影响用户完成注册。"
+    ]
+  },
   {
     version: "0.1.27",
     date: "2026-06-02",

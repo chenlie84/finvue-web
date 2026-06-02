@@ -31,6 +31,13 @@
             </div>
             <input id="feishuPushStocks" type="checkbox" checked>
           </div>
+          <div class="feishu-toggle-row">
+            <div>
+              <div style="font-weight:700;">新用户注册通知</div>
+              <div class="muted" style="font-size:12px;">有人通过网站注册成功后，立即发送飞书提醒</div>
+            </div>
+            <input id="feishuNotifyRegistrations" type="checkbox" checked>
+          </div>
           <div class="feishu-actions">
             <button class="btn btn-gold" id="feishuSaveBtn" type="button">保存配置</button>
             <button class="btn btn-outline" id="feishuTestBtn" type="button">测试推送</button>
@@ -40,7 +47,7 @@
       </section>
       <aside class="feishu-side-card">
         <h4>推送内容</h4>
-        <p>每次推送前会先按热点追踪配置刷新平台数据，再从最近 2 小时热搜中提取重点新闻，由 AI 识别热度板块，并结合 TuShare 股票基础库生成观察池。</p>
+        <p>定时推送会先按热点追踪配置刷新平台数据，再从最近 2 小时热搜中提取重点新闻，由 AI 识别热度板块，并结合 TuShare 股票基础库生成观察池。注册通知会在新用户注册成功后单独发送。</p>
         <div class="admin-divider"></div>
         <h4>合规边界</h4>
         <p>飞书消息会明确标注“弱关联，不代表投资建议”，用于直播选题和盘前准备，不作为买卖依据。</p>
@@ -56,6 +63,7 @@
       webhookUrl: document.getElementById("feishuWebhookUrl")?.value?.trim() || "",
       intervalMinutes: Number(document.getElementById("feishuIntervalMinutes")?.value || 120),
       pushRelatedStocks: Boolean(document.getElementById("feishuPushStocks")?.checked),
+      notifyRegistrations: Boolean(document.getElementById("feishuNotifyRegistrations")?.checked),
     };
   }
 
@@ -64,6 +72,7 @@
     document.getElementById("feishuWebhookUrl").value = settings.webhookUrl || "";
     document.getElementById("feishuIntervalMinutes").value = settings.intervalMinutes || 120;
     document.getElementById("feishuPushStocks").checked = settings.pushRelatedStocks !== false;
+    document.getElementById("feishuNotifyRegistrations").checked = settings.notifyRegistrations !== false;
     const badge = document.getElementById("feishuStatusBadge");
     if (badge) {
       badge.textContent = settings.configured ? (settings.schedulerEnabled ? "已启用" : "已配置·未启用") : "未配置";
@@ -72,7 +81,8 @@
     const meta = document.getElementById("feishuLastMeta");
     if (meta) {
       const last = settings.lastPushedAt ? new Date(settings.lastPushedAt).toLocaleString("zh-CN") : "暂无";
-      meta.textContent = `最近推送：${last}${settings.lastStatus ? ` · ${settings.lastStatus}` : ""}${settings.webhookPreview ? ` · ${settings.webhookPreview}` : ""}`;
+      const registerLast = settings.lastRegistrationNotifiedAt ? new Date(settings.lastRegistrationNotifiedAt).toLocaleString("zh-CN") : "暂无";
+      meta.textContent = `最近热点推送：${last}${settings.lastStatus ? ` · ${settings.lastStatus}` : ""}｜最近注册通知：${registerLast}${settings.lastRegistrationStatus ? ` · ${settings.lastRegistrationStatus}` : ""}${settings.webhookPreview ? ` · ${settings.webhookPreview}` : ""}`;
     }
   }
 

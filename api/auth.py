@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 
 import config
 import security
 import store
 import logger
+from services import feishu_push
 
 
 router = APIRouter()
@@ -56,7 +57,7 @@ async def login(request: Request, response: Response) -> dict:
 
 
 @router.post("/api/register")
-async def register(request: Request, response: Response) -> dict:
+async def register(request: Request, response: Response, background_tasks: BackgroundTasks) -> dict:
     body = await request.json()
     users = store.list_users()
     access = store.get_access_settings(config.ALLOW_OPEN_REGISTRATION)
@@ -93,6 +94,7 @@ async def register(request: Request, response: Response) -> dict:
         user_id=user.get("id"),
         request_ip=ip,
     )
+    background_tasks.add_task(feishu_push.notify_registration_safe, sanitized, ip)
     
     return {"ok": True, "user": sanitized}
 
