@@ -2,6 +2,8 @@
 
 FinVue Web 是一个面向财经直播复盘、主播运营、客户画像、AI 分析和热点追踪的一体化 Web 系统。
 
+它适合用于投顾内容团队、财经直播运营团队和私域客户服务场景：把主播资料、直播记录、市场行情、热点追踪、AI 消息面分析、合规提醒和报告导出放在同一个工作台里，帮助团队更快完成选题发现、观点复盘、客户跟进和内容资产沉淀。
+
 当前项目采用 **FastAPI + Jinja2 + 原生 CSS/JavaScript + MySQL**。运行时不依赖前端构建步骤，`app/` 下的页面由 FastAPI 直接渲染，静态资源从 `/static` 提供。
 
 ## 技术栈
@@ -325,3 +327,7 @@ http://localhost:8080/
 - `config.py` 不再内置真实数据库或对象存储凭据，生产环境必须通过环境变量注入完整配置。
 - all-in-one 镜像仍带有演示用默认账号，生产环境请显式设置 `MYSQL_PASSWORD`、`AUTH_SECRET` 和 `ADMIN_PASSWORD`。
 - 如果发布多架构镜像，请使用 `docker buildx build --platform linux/amd64,linux/arm64 --push`。
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
