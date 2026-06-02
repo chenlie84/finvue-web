@@ -2121,7 +2121,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.26</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.27</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2259,7 +2259,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.26</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.27</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3322,8 +3322,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.26";
+const APP_VERSION = "0.1.27";
 const APP_RELEASES = [
+  {
+    version: "0.1.27",
+    date: "2026-06-02",
+    title: "热搜源直连优化",
+    permissions: ["hotspot", "market"],
+    summary: "热点追踪改为优先直连专业财经源和主流热榜，聚合源仅作兜底，进一步减少旧缓存热搜误刷新。",
+    items: [
+      "微博、百度、抖音和华尔街见闻新增直连公开数据源。",
+      "原有知乎、B站、头条直连保留，聚合源只在直连失败或暂未支持时兜底。",
+      "热搜源自带发布时间或更新时间超过 6 小时时会判定为疑似旧缓存并跳过写入。",
+      "抓取链路继续返回有效写入、实际抓取和旧缓存平台信息，便于页面与飞书准确提示。"
+    ]
+  },
   {
     version: "0.1.26",
     date: "2026-06-02",

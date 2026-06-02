@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import re
+from urllib.parse import quote
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -17,6 +18,10 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+def _url_quote(value: Any) -> str:
+    return quote(str(value or "").strip(), safe="")
 
 # 热点 API 基础地址（可通过环境变量 HOTSPOT_API_URL 配置）
 HOTSPOT_API_BASE = config.HOTSPOT_API_URL
@@ -53,6 +58,51 @@ PLATFORM_CATEGORY_MAP = {
 
 # 支持直接爬取的平台（公开 API，无需 Cookie）
 DIRECT_FETCH_PLATFORMS = {
+    "weibo": {
+        "url": "https://weibo.com/ajax/side/hotSearch",
+        "headers": {
+            "Referer": "https://weibo.com/",
+            "Accept": "application/json",
+        },
+        "parse": lambda data: [
+            {
+                "title": item.get("word", ""),
+                "url": f"https://s.weibo.com/weibo?q={_url_quote(item.get('word_scheme') or ('#' + item.get('word', '') + '#'))}&t=31&band_rank=1&Refer=top",
+                "hot": str(item.get("num", "")),
+                "sourceId": item.get("mid") or "",
+            }
+            for item in data.get("data", {}).get("realtime", [])
+            if item.get("word")
+        ],
+    },
+    "baidu": {
+        "url": "https://top.baidu.com/api/board?platform=wise&tab=realtime",
+        "parse": lambda data: [
+            {
+                "title": item.get("word", ""),
+                "url": item.get("url") or f"https://www.baidu.com/s?wd={_url_quote(item.get('word', ''))}",
+                "hot": str(item.get("hotScore", "") or item.get("hotIndex", "")),
+                "sourceId": str(item.get("index", "")),
+            }
+            for card in data.get("data", {}).get("cards", [])
+            for block in (card.get("content") or [])
+            for item in (block.get("content") if isinstance(block, dict) and isinstance(block.get("content"), list) else [block])
+            if isinstance(item, dict) and item.get("word")
+        ],
+    },
+    "douyin": {
+        "url": "https://aweme.snssdk.com/aweme/v1/hot/search/list/",
+        "parse": lambda data: [
+            {
+                "title": item.get("word", ""),
+                "url": f"https://www.douyin.com/hot/{item.get('sentence_id') or ''}",
+                "hot": str(item.get("hot_value", "")),
+                "sourceId": item.get("group_id") or item.get("sentence_id") or "",
+            }
+            for item in data.get("data", {}).get("word_list", [])
+            if item.get("word")
+        ],
+    },
     "zhihu": {
         "url": "https://www.zhihu.com/api/v3/feed/topstory/hot-list-web?limit=20&desktop=true",
         "method": "api",
@@ -125,8 +175,47 @@ def _extract_keywords(title: str) -> list[str]:
     return keywords[:5]
 
 
+def _epoch_to_datetime(value: Any) -> datetime | None:
+    try:
+        number = float(value)
+    except Exception:
+        return None
+    if number <= 0:
+        return None
+    if number > 10_000_000_000:
+        number = number / 1000
+    try:
+        return datetime.fromtimestamp(number, timezone.utc)
+    except Exception:
+        return None
+
+
+def _datetime_iso(value: datetime | None) -> str:
+    if not value:
+        return ""
+    return value.astimezone(timezone.utc).isoformat()
+
+
+def _parse_iso_datetime(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
 def fetch_platform_hotspots(platform: str) -> dict:
     """抓取单个平台的热搜数据（优先直接爬取，失败则使用外部 API）"""
+    if platform == "wallstreetcn":
+        result = _fetch_wallstreetcn_direct()
+        if result.get("ok"):
+            return result
+        logger.warning("[hotspot] wallstreetcn direct fetch failed error=%s", result.get("error"))
+
     # 优先使用直接爬取（无需代理）
     if platform in DIRECT_FETCH_PLATFORMS:
         result = _fetch_direct(platform)
@@ -174,8 +263,8 @@ def _fetch_direct(platform: str) -> dict:
                 "url": item.get("url", ""),
                 "rank": idx + 1,
                 "hotValue": item.get("hot", ""),
-                "sourceId": "",
-                "sourceName": "",
+                "sourceId": item.get("sourceId", ""),
+                "sourceName": item.get("sourceName", ""),
             })
 
         logger.info("[hotspot] direct fetch success platform=%s count=%s", platform, len(items))
@@ -184,6 +273,61 @@ def _fetch_direct(platform: str) -> dict:
     except Exception as e:
         logger.exception("[hotspot] direct fetch exception platform=%s", platform)
         return {"ok": False, "platform": platform, "error": str(e)}
+
+
+def _fetch_wallstreetcn_direct() -> dict:
+    """Fetch Wallstreetcn hot articles from its own public JSON endpoint."""
+    import requests
+
+    url = "https://api-one-wscn.awtmt.com/apiv1/content/articles/hot?period=all"
+    try:
+        resp = requests.get(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Accept": "application/json, text/plain, */*",
+                "Referer": "https://wallstreetcn.com/",
+            },
+            timeout=15,
+        )
+        if resp.status_code != 200:
+            return {"ok": False, "platform": "wallstreetcn", "error": f"HTTP {resp.status_code}"}
+        data = resp.json()
+        payload = data.get("data") if isinstance(data, dict) else {}
+        raw_items = []
+        for key in ("day_items", "week_items", "month_items"):
+            value = payload.get(key)
+            if isinstance(value, list) and value:
+                raw_items = value
+                break
+        if not raw_items:
+            return {"ok": False, "platform": "wallstreetcn", "error": "华尔街见闻 API 无热文数据"}
+        items = []
+        for idx, article in enumerate(raw_items[:20]):
+            title = _clean_text(article.get("title"))
+            if not title:
+                continue
+            published_at = _epoch_to_datetime(article.get("display_time"))
+            items.append({
+                "id": _hash_title_platform(title, "wallstreetcn"),
+                "title": title,
+                "url": article.get("uri") or f"https://wallstreetcn.com/articles/{article.get('id')}",
+                "rank": idx + 1,
+                "hotValue": str(article.get("pageviews") or ""),
+                "sourceId": str(article.get("id") or ""),
+                "sourceName": "wallstreetcn",
+                "publishedAt": _datetime_iso(published_at),
+                "sourceUpdatedAt": _datetime_iso(published_at),
+            })
+        logger.info("[hotspot] wallstreetcn direct fetch success count=%s", len(items))
+        return {"ok": True, "platform": "wallstreetcn", "items": items, "count": len(items), "source": "wallstreetcn-direct"}
+    except Exception as exc:
+        logger.exception("[hotspot] wallstreetcn direct fetch exception")
+        return {"ok": False, "platform": "wallstreetcn", "error": str(exc)}
+
+
+def _clean_text(value: Any) -> str:
+    return str(value or "").strip()
 
 
 def _fetch_via_api(platform: str) -> dict:
@@ -227,6 +371,8 @@ def _fetch_via_api(platform: str) -> dict:
             # 或者旧格式: {"code": 200, "data": [...]}
             items = []
 
+            source_updated_at = _epoch_to_datetime(data.get("updatedTime")) if isinstance(data, dict) else None
+
             if isinstance(data, dict):
                 # 新 API 格式 - items 数组
                 if "items" in data and isinstance(data["items"], list):
@@ -234,6 +380,7 @@ def _fetch_via_api(platform: str) -> dict:
                         title = news.get("title") or ""
                         if not title:
                             continue
+                        published_at = _epoch_to_datetime(news.get("pubDate") or news.get("publishTime") or news.get("date"))
                         items.append({
                             "id": _hash_title_platform(title, platform),
                             "title": title.strip(),
@@ -242,6 +389,8 @@ def _fetch_via_api(platform: str) -> dict:
                             "hotValue": "",
                             "sourceId": news.get("id") or "",
                             "sourceName": "",
+                            "publishedAt": _datetime_iso(published_at),
+                            "sourceUpdatedAt": _datetime_iso(source_updated_at),
                         })
                 # 旧 API 格式 - code + data
                 elif data.get("code") == 200 and isinstance(data.get("data"), list):
@@ -249,6 +398,7 @@ def _fetch_via_api(platform: str) -> dict:
                         title = news.get("title") or ""
                         if not title:
                             continue
+                        published_at = _epoch_to_datetime(news.get("pubDate") or news.get("publishTime") or news.get("date"))
                         items.append({
                             "id": _hash_title_platform(title, platform),
                             "title": title.strip(),
@@ -257,6 +407,8 @@ def _fetch_via_api(platform: str) -> dict:
                             "hotValue": news.get("hotValue") or news.get("hot") or str(news.get("score") or ""),
                             "sourceId": news.get("sourceId") or news.get("id") or "",
                             "sourceName": news.get("sourceName") or "",
+                            "publishedAt": _datetime_iso(published_at),
+                            "sourceUpdatedAt": _datetime_iso(source_updated_at),
                         })
                 # 嵌套格式 - {id_value: {title: {ranks, url, mobileUrl}}}
                 elif newnow_id in data and isinstance(data[newnow_id], dict):
@@ -274,6 +426,7 @@ def _fetch_via_api(platform: str) -> dict:
                             "hotValue": "",
                             "sourceId": "",
                             "sourceName": "",
+                            "sourceUpdatedAt": _datetime_iso(source_updated_at),
                         })
                     items.sort(key=lambda x: x["rank"])
                 else:
@@ -285,6 +438,7 @@ def _fetch_via_api(platform: str) -> dict:
                     title = news.get("title") or ""
                     if not title:
                         continue
+                    published_at = _epoch_to_datetime(news.get("pubDate") or news.get("publishTime") or news.get("date"))
                     items.append({
                         "id": _hash_title_platform(title, platform),
                         "title": title.strip(),
@@ -293,6 +447,7 @@ def _fetch_via_api(platform: str) -> dict:
                         "hotValue": news.get("hotValue") or "",
                         "sourceId": news.get("id") or "",
                         "sourceName": "",
+                        "publishedAt": _datetime_iso(published_at),
                     })
             else:
                 last_error = "API 返回数据格式错误"
@@ -407,6 +562,21 @@ def _assess_platform_freshness(platform: str, items: list[dict], *, check_limit:
     top_items = [item for item in items[:check_limit] if (item.get("title") or "").strip()]
     if len(top_items) < 3:
         return {"stale": False, "checkedItems": len(top_items), "newItems": len(top_items), "reason": ""}
+
+    cutoff_aware = datetime.now(timezone.utc) - timedelta(hours=stale_after_hours)
+    source_times = [
+        parsed
+        for item in top_items
+        for parsed in (_parse_iso_datetime(item.get("publishedAt")) or _parse_iso_datetime(item.get("sourceUpdatedAt")),)
+        if parsed
+    ]
+    if len(source_times) >= min(3, len(top_items)) and max(source_times).astimezone(timezone.utc) < cutoff_aware:
+        return {
+            "stale": True,
+            "checkedItems": len(top_items),
+            "newItems": 0,
+            "reason": f"源更新时间超过 {stale_after_hours} 小时",
+        }
 
     ids = [item.get("id") or _hash_title_platform(item.get("title", ""), platform) for item in top_items]
     placeholders = ",".join(["%s"] * len(ids))
