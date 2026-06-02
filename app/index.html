@@ -2121,7 +2121,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.24</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.25</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2259,7 +2259,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.24</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.25</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3322,8 +3322,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.24";
+const APP_VERSION = "0.1.25";
 const APP_RELEASES = [
+  {
+    version: "0.1.25",
+    date: "2026-06-02",
+    title: "飞书板块雷达精简推送",
+    permissions: ["hotspot", "market"],
+    summary: "飞书热点推送改成更紧凑的板块雷达摘要，只保留 Top 3 板块、核心看点、财经依据和可选观察池。",
+    items: [
+      "飞书推送不再铺满重点热搜、板块和股票明细，改为标题、刷新状态、分析方式和 Top 3 热点板块。",
+      "每个板块只保留看点、代表依据和观察池摘要，降低消息长度和阅读负担。",
+      "后台关闭包含关联标的时仍会生成板块雷达，只隐藏观察池，不影响板块识别。",
+      "刷新状态文案改为短句展示，失败时使用缓存继续推送。"
+    ]
+  },
   {
     version: "0.1.24",
     date: "2026-06-01",

@@ -94,24 +94,6 @@ def refresh_hotspots_before_push() -> dict[str, Any]:
         }
 
 
-def _recent_hotspots(limit: int = 8) -> list[dict[str, Any]]:
-    try:
-        return db.fetch_all(
-            """
-            SELECT platform, title, `rank`, hot_value, last_seen_at
-            FROM finvue_hotspot_items
-            WHERE last_seen_at >= DATE_SUB(NOW(), INTERVAL 2 HOUR)
-            ORDER BY
-              CASE WHEN `rank` IS NULL OR `rank` = 0 THEN 999 ELSE `rank` END ASC,
-              last_seen_at DESC
-            LIMIT %s
-            """,
-            (limit,),
-        )
-    except Exception:
-        return []
-
-
 def _format_quote(item: dict[str, Any]) -> str:
     quote = store.safe_object(item.get("quote"))
     pct = quote.get("pctChange")
@@ -122,6 +104,13 @@ def _format_quote(item: dict[str, Any]) -> str:
         return f"{value:+.2f}%"
     except Exception:
         return str(pct)
+
+
+def _short_text(value: Any, limit: int = 56) -> str:
+    text = " ".join(store.text(value).split())
+    if len(text) <= limit:
+        return text
+    return text[: max(0, limit - 1)] + "…"
 
 
 def _format_ai_insights(related: dict[str, Any]) -> list[str]:
@@ -158,90 +147,78 @@ def _format_ai_insights(related: dict[str, Any]) -> list[str]:
     return ["暂未识别出明确主题。"]
 
 
-def _format_sector_radar(related: dict[str, Any]) -> list[str]:
+def _sector_observation_text(sector: dict[str, Any], include_stocks: bool) -> str:
+    if not include_stocks:
+        return "观察池：已关闭"
+    stocks = sector.get("stocks") if isinstance(sector.get("stocks"), list) else []
+    names = []
+    for item in stocks[:3]:
+        name = store.text(item.get("name"))
+        code = store.text(item.get("code"))
+        if not name:
+            continue
+        code_part = f" {code}" if code else ""
+        names.append(f"{name}{code_part} {_format_quote(item)}")
+    return "观察池：" + ("、".join(names) if names else "暂无明确标的")
+
+
+def _sector_evidence_text(sector: dict[str, Any]) -> str:
+    evidence = sector.get("evidence") if isinstance(sector.get("evidence"), list) else []
+    if not evidence:
+        reason = store.text(sector.get("reason"))
+        return f"依据：{_short_text(reason, 64)}" if reason else "依据：暂无明确财经证据"
+    first_hit = store.safe_object(evidence[0])
+    platform = store.text(first_hit.get("platform") or "source")
+    rank = first_hit.get("rank") or "-"
+    title = _short_text(first_hit.get("title"), 62)
+    return f"依据：[{platform} #{rank}] {title}"
+
+
+def _format_sector_digest(related: dict[str, Any], include_stocks: bool = True) -> list[str]:
     sectors = related.get("sectors") if isinstance(related.get("sectors"), list) else []
     if not sectors:
         return _format_ai_insights(related)
     lines = []
-    for index, sector in enumerate(sectors[:6], 1):
+    for index, sector in enumerate(sectors[:3], 1):
         theme = store.text(sector.get("theme") or "未命名板块")
         score = store.to_int(sector.get("heatScore"), 0) or 0
         reason = store.text(sector.get("reason"))
         keywords = "、".join(store.text(word) for word in (sector.get("keywords") or [])[:5] if store.text(word))
-        evidence = sector.get("evidence") if isinstance(sector.get("evidence"), list) else []
-        stocks = sector.get("stocks") if isinstance(sector.get("stocks"), list) else []
-        first_hit = store.safe_object(evidence[0]) if evidence else {}
-        stock_names = "、".join(
-            f"{store.text(item.get('name'))}({_format_quote(item)})"
-            for item in stocks[:3]
-            if store.text(item.get("name"))
-        )
-        parts = [f"{index}. {theme}", f"热度分 {score}"]
-        if keywords:
-            parts.append(f"关键词：{keywords}")
-        if reason:
-            parts.append(f"AI判断：{reason}")
-        if first_hit:
-            parts.append(f"代表热搜：[{first_hit.get('platform')} #{first_hit.get('rank') or '-'}] {first_hit.get('title')}")
-        if stock_names:
-            parts.append(f"观察池：{stock_names}")
-        lines.append("｜".join(parts))
+        lines.append(f"{index}. {theme}｜{score}分")
+        focus = reason or (f"关键词：{keywords}" if keywords else "")
+        if focus:
+            lines.append(f"   看点：{_short_text(focus, 62)}")
+        lines.append(f"   {_sector_evidence_text(sector)}")
+        lines.append(f"   {_sector_observation_text(sector, include_stocks)}")
     return lines
 
 
 def build_message(settings: dict[str, Any] | None = None, refresh_result: dict[str, Any] | None = None) -> dict[str, Any]:
     cfg = settings or get_settings()
-    hotspots = _recent_hotspots()
-    related = (
-        hotspot_stock_matcher.match_related_stocks({"limit": 12, "quoteLimit": 4})
-        if cfg.get("pushRelatedStocks", True)
-        else {"items": [], "themes": []}
-    )
-    items = related.get("items") or []
+    include_stocks = cfg.get("pushRelatedStocks", True) is not False
+    related = hotspot_stock_matcher.match_related_stocks({"limit": 12, "quoteLimit": 4 if include_stocks else 0})
+    items = related.get("items") if isinstance(related.get("items"), list) else []
     sectors = related.get("sectors") or []
     themes = related.get("themes") or []
     ai_used = bool(related.get("aiUsed"))
+    source_count = related.get("sourceHotspotCount") or 0
     lines = [
         "FinVue 热点板块雷达",
-        f"生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}",
-        _format_refresh_line(refresh_result),
-        f"分析方式：{'AI 先识别热度板块，再生成观察池' if ai_used else '规则兜底识别板块'}",
+        f"{datetime.now().strftime('%Y-%m-%d %H:%M')}｜{_format_refresh_line(refresh_result)}",
+        f"分析：{'AI识别板块' if ai_used else '规则兜底'}｜依据 {source_count or '若干'} 条财经/总览消息",
         "",
-        "一、重点热搜",
+        f"Top 3 热点板块{'（含观察池）' if include_stocks else ''}",
     ]
-    if hotspots:
-        for index, item in enumerate(hotspots[:6], 1):
-            rank = item.get("rank") or "-"
-            hot = f"｜{item.get('hot_value')}" if item.get("hot_value") else ""
-            lines.append(f"{index}. [{item.get('platform')} #{rank}] {item.get('title')}{hot}")
-    else:
-        lines.append("暂无最近 2 小时热搜数据。")
+    lines.extend(_format_sector_digest(related, include_stocks))
+    lines.extend([
+        "",
+        "合规提示：以上为热点与板块/行业的弱关联观察，不构成因果判断、买卖建议或收益承诺。",
+    ])
 
-    lines.append("")
-    lines.append("二、热点板块雷达")
-    lines.extend(_format_sector_radar(related))
-
-    lines.append("")
-    lines.append("三、股票观察池（仅作板块下补充）")
-    if items:
-        for index, item in enumerate(items[:6], 1):
-            reasons = "；".join((item.get("reasons") or [])[:2]) or "基于主题/行业弱关联"
-            relation = item.get("relationType") or "主题关联"
-            ai_reason = store.text(item.get("aiReason"))
-            lines.append(
-                f"{index}. {item.get('name')}({item.get('code')})｜{item.get('theme')}｜{relation}｜{_format_quote(item)}｜匹配度 {item.get('confidence', 0)}%｜{reasons}"
-            )
-            if ai_reason:
-                lines.append(f"   AI依据：{ai_reason}")
-    else:
-        lines.append("暂未匹配到明确候选标的。")
-
-    lines.append("")
-    lines.append("合规提示：以上仅为热点与板块/行业的弱关联识别，股票为观察池补充，不代表因果关系、买卖建议或收益承诺。")
     return {
         "text": "\n".join(lines),
-        "hotspotCount": len(hotspots),
-        "stockCount": len(items),
+        "hotspotCount": int(source_count or 0),
+        "stockCount": len(items) if include_stocks else 0,
         "sectorCount": len(sectors),
         "themeCount": len(themes),
         "refresh": refresh_result or {},
@@ -251,12 +228,13 @@ def build_message(settings: dict[str, Any] | None = None, refresh_result: dict[s
 def _format_refresh_line(refresh_result: dict[str, Any] | None) -> str:
     result = store.safe_object(refresh_result)
     if not result:
-        return "刷新状态：未触发热搜刷新"
+        return "未触发刷新"
     if result.get("ok"):
         success = len(result.get("successPlatforms") or [])
         failed = len(result.get("failedPlatforms") or [])
-        return f"刷新状态：已先刷新热搜，获取 {result.get('totalItems') or 0} 条，成功 {success} 个平台{f'，失败 {failed} 个平台' if failed else ''}"
-    return f"刷新状态：热搜刷新失败，已使用现有缓存继续推送（{result.get('error') or '未知错误'}）"
+        suffix = f"，失败 {failed}" if failed else ""
+        return f"已刷新 {result.get('totalItems') or 0} 条 / {success} 平台{suffix}"
+    return f"刷新失败，使用缓存（{_short_text(result.get('error') or '未知错误', 28)}）"
 
 
 def send_text(webhook_url: str, text: str) -> dict[str, Any]:
