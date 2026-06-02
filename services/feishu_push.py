@@ -231,9 +231,17 @@ def _format_refresh_line(refresh_result: dict[str, Any] | None) -> str:
         return "未触发刷新"
     if result.get("ok"):
         success = len(result.get("successPlatforms") or [])
+        stale = len(result.get("stalePlatforms") or [])
         failed = len(result.get("failedPlatforms") or [])
-        suffix = f"，失败 {failed}" if failed else ""
-        return f"已刷新 {result.get('totalItems') or 0} 条 / {success} 平台{suffix}"
+        suffix_parts = []
+        if stale:
+            suffix_parts.append(f"{stale} 平台旧缓存未写入")
+        if failed:
+            suffix_parts.append(f"{failed} 平台失败")
+        suffix = "，" + "，".join(suffix_parts) if suffix_parts else ""
+        fetched = result.get("fetchedItems") or result.get("totalItems") or 0
+        saved = result.get("totalItems") or 0
+        return f"有效 {saved} 条 / 抓取 {fetched} 条 / {success} 平台{suffix}"
     return f"刷新失败，使用缓存（{_short_text(result.get('error') or '未知错误', 28)}）"
 
 
@@ -258,7 +266,11 @@ def push_now(settings: dict[str, Any] | None = None) -> dict[str, Any]:
     refresh_result = refresh_hotspots_before_push()
     message = build_message(cfg, refresh_result)
     result = send_text(store.text(cfg.get("webhookUrl")), message["text"])
-    refresh_label = "已刷新热搜" if refresh_result.get("ok") else "刷新失败使用缓存"
+    if refresh_result.get("ok"):
+        stale_count = len(refresh_result.get("stalePlatforms") or [])
+        refresh_label = f"已刷新热搜{f'，{stale_count} 个平台旧缓存未写入' if stale_count else ''}"
+    else:
+        refresh_label = "刷新失败使用缓存"
     next_settings = {
         **cfg,
         "lastPushedAt": _now_iso(),

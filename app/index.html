@@ -2121,7 +2121,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.25</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.26</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2259,7 +2259,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.25</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.26</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3322,8 +3322,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.25";
+const APP_VERSION = "0.1.26";
 const APP_RELEASES = [
+  {
+    version: "0.1.26",
+    date: "2026-06-02",
+    title: "热搜旧缓存防刷新",
+    permissions: ["hotspot", "market"],
+    summary: "热点刷新新增旧缓存榜单识别，避免上游返回旧热搜时把旧标题刷新成刚刚更新。",
+    items: [
+      "热搜抓取会检查平台 Top 10 是否长期没有新标题，疑似旧缓存时跳过写入。",
+      "刷新结果区分有效写入数量、实际抓取数量和疑似旧缓存平台。",
+      "热点页刷新提示改为展示有效更新、抓取条数、旧缓存平台和失败平台。",
+      "飞书推送刷新状态同步展示有效条数、抓取条数和旧缓存平台数量。"
+    ]
+  },
   {
     version: "0.1.25",
     date: "2026-06-02",

@@ -670,7 +670,12 @@ async function fetchHotspotsMain() {
       throw new Error(data.error || result.error || failed || '抓取失败');
     }
     const failedCount = (result.failedPlatforms || []).length;
-    showToast(`热搜已更新：${fmt(result.totalItems || 0)} 条${failedCount ? `，${failedCount}个平台失败` : ''}`);
+    const staleCount = (result.stalePlatforms || []).length;
+    const savedCount = Number(result.totalItems || 0);
+    const fetchedCount = Number(result.fetchedItems || savedCount || 0);
+    const staleText = staleCount ? `，${staleCount}个平台疑似旧缓存未写入` : '';
+    const failedText = failedCount ? `，${failedCount}个平台失败` : '';
+    showToast(`热搜有效更新：${fmt(savedCount)} 条${fetchedCount && fetchedCount !== savedCount ? `（抓取${fmt(fetchedCount)}条）` : ''}${staleText}${failedText}`);
     await loadHotspotMain();
     analyzeHotspotSummaryMain({ silent: true, message: "热搜已更新，正在生成 AI 总览..." });
   } catch(e) { showToast('抓取失败: '+e.message); }

@@ -6,7 +6,7 @@ import json
 import logging
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import config
@@ -341,16 +341,30 @@ def fetch_all_platforms(platforms: list[str] | None = None) -> dict:
                 results.append({"ok": False, "platform": platform, "error": str(exc)})
 
     total_items = 0
+    fetched_items = 0
     success_platforms = []
     failed_platforms = []
+    stale_platforms = []
 
     for result in results:
         if result.get("ok"):
             platform = result["platform"]
+            items = result.get("items", [])
+            fetched_items += result.get("count", len(items))
+            freshness = _assess_platform_freshness(platform, items)
+            if freshness.get("stale"):
+                stale_platforms.append({
+                    "platform": platform,
+                    "reason": freshness.get("reason") or "疑似旧缓存",
+                    "checkedItems": freshness.get("checkedItems", 0),
+                    "newItems": freshness.get("newItems", 0),
+                })
+                logger.warning("[hotspot] stale platform skipped platform=%s freshness=%s", platform, freshness)
+                continue
             try:
-                saved_count = save_hotspot_items(platform, result.get("items", []))
+                saved_count = save_hotspot_items(platform, items)
                 success_platforms.append(platform)
-                total_items += result.get("count", 0)
+                total_items += saved_count
                 logger.info("[hotspot] saved platform=%s fetched=%s saved=%s", platform, result.get("count", 0), saved_count)
             except Exception as exc:
                 logger.exception("[hotspot] save failed platform=%s", platform)
@@ -361,15 +375,81 @@ def fetch_all_platforms(platforms: list[str] | None = None) -> dict:
                 "error": result.get("error")
             })
 
-    ok = bool(success_platforms)
-    logger.info("[hotspot] fetch finished ok=%s total=%s success=%s failed=%s", ok, total_items, success_platforms, failed_platforms)
+    ok = bool(success_platforms or stale_platforms)
+    logger.info(
+        "[hotspot] fetch finished ok=%s saved=%s fetched=%s success=%s stale=%s failed=%s",
+        ok,
+        total_items,
+        fetched_items,
+        success_platforms,
+        stale_platforms,
+        failed_platforms,
+    )
     return {
         "ok": ok,
         "totalItems": total_items,
+        "fetchedItems": fetched_items,
         "successPlatforms": success_platforms,
+        "stalePlatforms": stale_platforms,
         "failedPlatforms": failed_platforms,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+
+
+def _assess_platform_freshness(platform: str, items: list[dict], *, check_limit: int = 10, stale_after_hours: int = 6) -> dict:
+    """Return whether a fetched platform list appears to be an old cached board.
+
+    Some upstream hot-list APIs can keep returning an old board while every fetch
+    still updates `last_seen_at`. If all leading titles are already known and no
+    new title has appeared for hours, skip saving so the UI does not show stale
+    titles as "刚刚".
+    """
+    top_items = [item for item in items[:check_limit] if (item.get("title") or "").strip()]
+    if len(top_items) < 3:
+        return {"stale": False, "checkedItems": len(top_items), "newItems": len(top_items), "reason": ""}
+
+    ids = [item.get("id") or _hash_title_platform(item.get("title", ""), platform) for item in top_items]
+    placeholders = ",".join(["%s"] * len(ids))
+    try:
+        rows = db.fetch_all(
+            f"""
+            SELECT id, first_seen_at
+            FROM finvue_hotspot_items
+            WHERE platform = %s AND id IN ({placeholders})
+            """,
+            tuple([platform] + ids),
+        )
+    except Exception as exc:
+        logger.warning("[hotspot] freshness check skipped platform=%s error=%s", platform, exc)
+        return {"stale": False, "checkedItems": len(top_items), "newItems": len(top_items), "reason": ""}
+
+    existing = {row.get("id"): row for row in rows}
+    new_count = len([item_id for item_id in ids if item_id not in existing])
+    if new_count:
+        return {"stale": False, "checkedItems": len(top_items), "newItems": new_count, "reason": ""}
+
+    first_seen_values = []
+    for row in existing.values():
+        first_seen_at = row.get("first_seen_at")
+        if not isinstance(first_seen_at, datetime):
+            continue
+        if first_seen_at.tzinfo is not None:
+            first_seen_at = first_seen_at.astimezone(timezone.utc).replace(tzinfo=None)
+        first_seen_values.append(first_seen_at)
+    if not first_seen_values:
+        return {"stale": False, "checkedItems": len(top_items), "newItems": 0, "reason": ""}
+
+    newest_first_seen = max(first_seen_values)
+    cutoff = datetime.now() - timedelta(hours=stale_after_hours)
+    if newest_first_seen < cutoff:
+        return {
+            "stale": True,
+            "checkedItems": len(top_items),
+            "newItems": 0,
+            "reason": f"Top {len(top_items)} 已超过 {stale_after_hours} 小时没有新标题",
+        }
+
+    return {"stale": False, "checkedItems": len(top_items), "newItems": 0, "reason": ""}
 
 
 def save_hotspot_items(platform: str, items: list[dict]) -> int:
