@@ -1,6 +1,7 @@
 """Server-side AI route manager with fallback support."""
 from __future__ import annotations
 
+import json
 from urllib.parse import urlparse
 from typing import Any
 
@@ -55,10 +56,41 @@ def _is_anthropic_endpoint(url: str) -> bool:
     return "/v1/messages" in url
 
 
-def _build_request(provider: dict[str, Any], system_prompt: str, user_prompt: str) -> tuple[str, dict[str, Any], dict[str, str]]:
-    base_url = _text(provider.get("baseUrl") or provider.get("url")).rstrip("/")
+def normalize_provider_url(base_url: str, api_format: str = "") -> str:
+    """Normalize provider base URL to a concrete generation endpoint."""
+    url = _text(base_url).rstrip("/")
+    fmt = _text(api_format or "finvue")
+    if not url:
+        return ""
+    lower = url.lower()
+    if fmt == "openai":
+        if lower.endswith("/chat/completions"):
+            return url
+        if lower.endswith(("/v1", "/v2", "/api/v1", "/api/v2", "/openai/v1")):
+            return f"{url}/chat/completions"
+        return f"{url}/v1/chat/completions"
+    if fmt == "anthropic":
+        if lower.endswith("/v1/messages"):
+            return url
+        if lower.endswith("/anthropic"):
+            return f"{url}/v1/messages"
+    return url
+
+
+def is_openai_protocol_url(url: str, api_format: str = "") -> bool:
+    normalized = normalize_provider_url(url, api_format)
+    return _text(api_format) == "openai" or normalized.endswith("/chat/completions")
+
+
+def build_provider_request(provider: dict[str, Any], system_prompt: str, user_prompt: str, *, max_tokens: int = 4096) -> tuple[str, dict[str, Any], dict[str, str]]:
+    return _build_request(provider, system_prompt, user_prompt, max_tokens=max_tokens)
+
+
+def _build_request(provider: dict[str, Any], system_prompt: str, user_prompt: str, *, max_tokens: int = 4096) -> tuple[str, dict[str, Any], dict[str, str]]:
+    raw_base_url = _text(provider.get("baseUrl") or provider.get("url"))
     model = _text(provider.get("model"))
     api_format = _text(provider.get("apiFormat") or "finvue")
+    base_url = normalize_provider_url(raw_base_url, api_format)
     if not base_url:
         raise ValueError("AI 路由缺少 baseUrl")
     if not model:
@@ -68,14 +100,14 @@ def _build_request(provider: dict[str, Any], system_prompt: str, user_prompt: st
 
     # 根据 apiFormat 设置或 URL 自动判断使用哪种协议
     use_anthropic = api_format == "anthropic" or _is_anthropic_endpoint(base_url)
-    use_openai = api_format == "openai" or base_url.endswith("/chat/completions")
+    use_openai = is_openai_protocol_url(base_url, api_format)
 
     # Anthropic 协议（Claude）
     if use_anthropic:
         headers["anthropic-version"] = "2023-06-01"
         payload = {
             "model": model,
-            "max_tokens": 4096,
+            "max_tokens": max_tokens,
             "stream": False,  # 禁用流式响应
             "system": system_prompt,
             "messages": [
@@ -125,8 +157,20 @@ def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: st
     proxy = (config.HTTPS_PROXY or config.HTTP_PROXY) if _should_use_proxy(provider, url) else None
     proxies = {"http": proxy, "https": proxy} if proxy else None
     response = requests.post(url, headers=headers, json=payload, timeout=timeout, proxies=proxies)
+    content_type = response.headers.get("content-type", "")
+    if "text/html" in content_type:
+        public_host = urlparse(config.PUBLIC_BASE_URL).netloc
+        route_host = urlparse(url).netloc
+        if public_host and route_host == public_host:
+            raise RuntimeError(
+                f"{response.status_code}: AI 路由地址返回了 FinVue 站点 HTML 页面。"
+                "当前模型 Base URL 可能配置成了本应用域名，请改为真实模型网关地址。"
+            )
+        raise RuntimeError(
+            f"{response.status_code}: AI 路由地址返回 HTML 页面，可能不是有效模型接口。"
+            "如果填写的是 OpenAI 兼容 Base URL，请选择 OpenAI 格式，系统会自动补齐 /chat/completions。"
+        )
     if response.status_code >= 400:
-        content_type = response.headers.get("content-type", "")
         error_detail = response.text[:500]
         # 尝试解析 JSON 错误信息
         try:
@@ -137,17 +181,6 @@ def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: st
                 error_detail = error_json.get("message")
         except Exception:
             pass
-
-        if "text/html" in content_type:
-            public_host = urlparse(config.PUBLIC_BASE_URL).netloc
-            route_host = urlparse(url).netloc
-            if public_host and route_host == public_host:
-                raise RuntimeError(
-                    f"{response.status_code}: AI 路由地址返回了 FinVue 站点 HTML 页面。"
-                    "当前模型 Base URL 可能配置成了本应用域名，请改为真实模型网关地址。"
-                )
-            raise RuntimeError(f"{response.status_code}: AI 路由地址返回 HTML 页面，可能不是有效的模型接口")
-
         # 提供更详细的错误提示
         hint = ""
         if response.status_code == 404:
@@ -259,6 +292,9 @@ def _routes_from_payload(payload: dict[str, Any], settings: dict[str, Any]) -> l
             "baseUrl": payload.get("baseUrl") or payload.get("apiBaseUrl"),
             "apiKey": payload.get("apiKey"),
             "model": payload.get("model"),
+            "apiFormat": payload.get("apiFormat") or payload.get("format") or "finvue",
+            "apiKeyPlacement": payload.get("apiKeyPlacement") or "header",
+            "useProxy": payload.get("useProxy", True),
             "enabled": bool(payload.get("apiKey") and payload.get("model") and not model_param.startswith("provider-")),
             "priority": 0,
             "timeoutSeconds": timeout_override,

@@ -17,10 +17,23 @@ from services import object_storage
 router = APIRouter()
 
 
+MASKED_API_KEY = "********"
+
+
+def _resolve_saved_provider_api_key(provider_id: str, session: dict) -> str:
+    if not provider_id:
+        return ""
+    settings = store.get_settings() if session.get("role") == "admin" else store.get_effective_settings(session.get("username"))
+    for provider in settings.get("aiProviders") or []:
+        if isinstance(provider, dict) and str(provider.get("id") or "") == str(provider_id):
+            return str(provider.get("apiKey") or "").strip()
+    return ""
+
+
 # ══════════════ 兼容 API 端点 ══════════════
 
 @router.post("/v1/chat/completions")
-async def openai_compatible_chat(request: Request) -> Dict[str, Any]:
+async def openai_compatible_chat(request: Request, session: dict = Depends(security.require_auth)) -> Dict[str, Any]:
     """OpenAI 兼容的 Chat Completions API"""
     body = await request.json()
 
@@ -55,9 +68,12 @@ async def openai_compatible_chat(request: Request) -> Dict[str, Any]:
         payload["apiKey"] = body.get("apiKey")
     if body.get("baseUrl"):
         payload["baseUrl"] = body.get("baseUrl")
+    for key in ("apiFormat", "apiKeyPlacement", "useProxy"):
+        if key in body:
+            payload[key] = body.get(key)
 
     try:
-        result = ai_router.generate(payload)
+        result = ai_router.generate(payload, username=session.get("username"))
         return {
             "id": f"chatcmpl-{hash(user_prompt) % 1000000}",
             "object": "chat.completion",
@@ -84,7 +100,7 @@ async def openai_compatible_chat(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/v1/messages")
-async def anthropic_compatible_messages(request: Request) -> Dict[str, Any]:
+async def anthropic_compatible_messages(request: Request, session: dict = Depends(security.require_auth)) -> Dict[str, Any]:
     """Anthropic 兼容的 Messages API"""
     body = await request.json()
 
@@ -126,12 +142,15 @@ async def anthropic_compatible_messages(request: Request) -> Dict[str, Any]:
         payload["apiKey"] = body.get("api_key")
     if body.get("base_url"):
         payload["baseUrl"] = body.get("base_url")
+    for key in ("apiFormat", "apiKeyPlacement", "useProxy"):
+        if key in body:
+            payload[key] = body.get(key)
 
     # Anthropic 需要 max_tokens
     max_tokens = body.get("max_tokens", 4096)
 
     try:
-        result = ai_router.generate(payload)
+        result = ai_router.generate(payload, username=session.get("username"))
         markdown = result.get("markdown", "")
 
         return {
@@ -158,7 +177,7 @@ async def anthropic_compatible_messages(request: Request) -> Dict[str, Any]:
 # ══════════════ 测试 AI 路由接口 ══════════════
 
 @router.post("/api/test-ai-provider")
-async def test_ai_provider(request: Request, session: dict = Depends(security.require_permission("live"))) -> Dict[str, Any]:
+async def test_ai_provider(request: Request, session: dict = Depends(security.require_any_permission("admin-api", "live", "ai-chat"))) -> Dict[str, Any]:
     """测试 AI 路由连接"""
     body = await request.json()
 
@@ -172,40 +191,33 @@ async def test_ai_provider(request: Request, session: dict = Depends(security.re
 
     if not base_url:
         return {"success": False, "error": "请填写上游地址"}
+    if api_key == MASKED_API_KEY:
+        api_key = _resolve_saved_provider_api_key(str(body.get("id") or ""), session)
+
     if not api_key:
         return {"success": False, "error": "请填写 API Key"}
     if not model:
         return {"success": False, "error": "请填写模型名"}
 
-    # 构造测试请求
-    headers = {"Content-Type": "application/json"}
-    test_prompt = "你好，请回复" + "。" if api_format == "anthropic" else ""
-
-    if api_format == "anthropic" or "/v1/messages" in base_url:
-        headers["anthropic-version"] = "2023-06-01"
-        payload = {
-            "model": model,
-            "max_tokens": 50,
-            "messages": [{"role": "user", "content": test_prompt}],
-        }
-    elif api_format == "openai" or "/chat/completions" in base_url:
-        payload = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": "你是助手"},
-                {"role": "user", "content": test_prompt}
-            ],
-            "stream": False,
-        }
-    else:
-        # FinVue 格式
-        payload = {
-            "model": model,
-            "input": [
-                {"role": "user", "content": test_prompt}
-            ],
-            "stream": False,
-        }
+    # 构造测试请求，与真实生成共用同一套 endpoint 规范化逻辑。
+    test_prompt = "你好，请只回复：连接成功"
+    provider = {
+        **body,
+        "baseUrl": base_url,
+        "apiKey": api_key,
+        "model": model,
+        "apiFormat": api_format,
+        "apiKeyPlacement": api_key_placement,
+    }
+    try:
+        request_url, payload, headers = ai_router.build_provider_request(
+            provider,
+            "你是连接测试助手。",
+            test_prompt,
+            max_tokens=50,
+        )
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
 
     if api_key_placement == "body":
         payload["api_key"] = api_key
@@ -221,7 +233,16 @@ async def test_ai_provider(request: Request, session: dict = Depends(security.re
     proxies = {"http": proxy, "https": proxy} if proxy else None
 
     try:
-        response = req.post(base_url, headers=headers, json=payload, timeout=30, proxies=proxies)
+        response = req.post(request_url, headers=headers, json=payload, timeout=30, proxies=proxies)
+        content_type = response.headers.get("content-type", "")
+        if "text/html" in content_type:
+            return {
+                "success": False,
+                "error": (
+                    f"{response.status_code}: 上游返回 HTML 页面，不是模型 JSON 接口。"
+                    f"实际请求地址：{request_url}"
+                ),
+            }
 
         if response.status_code >= 400:
             # 尝试解析错误信息
@@ -233,11 +254,11 @@ async def test_ai_provider(request: Request, session: dict = Depends(security.re
 
             hint = ""
             if response.status_code == 401:
-                hint = "（API Key 可能不正确）"
+                hint = f"（API Key、鉴权方式或套餐权限可能不正确；实际请求地址：{request_url}）"
             elif response.status_code == 403:
                 hint = "（API Key 无权限或余额不足）"
             elif response.status_code == 404:
-                hint = "（请检查上游地址和模型名称）"
+                hint = f"（请检查上游地址和模型名称；实际请求地址：{request_url}）"
 
             return {"success": False, "error": f"{response.status_code}: {error_msg}{hint}"}
 
@@ -278,14 +299,14 @@ async def test_ai_provider(request: Request, session: dict = Depends(security.re
         try:
             data = response.json()
             # 检查是否有有效内容
-            if api_format == "anthropic" or "/v1/messages" in base_url:
+            if api_format == "anthropic" or "/v1/messages" in request_url:
                 if isinstance(data.get("content"), list) and data["content"]:
                     return {"success": True, "message": "连接成功"}
-            elif api_format == "openai" or "/chat/completions" in base_url:
+            elif ai_router.is_openai_protocol_url(request_url, api_format):
                 if data.get("choices"):
-                    return {"success": True, "message": "连接成功"}
+                    return {"success": True, "message": f"连接成功（{request_url}）"}
             elif data.get("output_text") or data.get("output"):
-                return {"success": True, "message": "连接成功"}
+                return {"success": True, "message": f"连接成功（{request_url}）"}
 
             # 如果没有匹配到常见格式，但有响应数据，也视为成功
             if data:

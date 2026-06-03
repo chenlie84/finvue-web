@@ -2121,7 +2121,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.29</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.30</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2259,7 +2259,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.29</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.30</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3322,8 +3322,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.29";
+const APP_VERSION = "0.1.30";
 const APP_RELEASES = [
+  {
+    version: "0.1.30",
+    date: "2026-06-03",
+    title: "AI 路由兼容与安全修复",
+    permissions: ["admin-api", "ai-chat", "live"],
+    summary: "修复 API Key 掩码测试、OpenAI 兼容配置和兼容端点鉴权问题，让测试连接与真实调用保持一致。",
+    items: [
+      "保存过的 AI 路由使用掩码 API Key 测试时，会回查真实 Key，避免误报 401。",
+      "OpenAI 兼容内联配置补齐 apiFormat、apiKeyPlacement 和 useProxy 等字段。",
+      "OpenAI/Anthropic 兼容端点增加登录校验，并按当前用户读取有效 AI 路由。",
+      "测试连接复用真实调用的 URL 规范化逻辑，避免重复补路径或请求体格式不一致。"
+    ]
+  },
   {
     version: "0.1.29",
     date: "2026-06-03",
@@ -6671,7 +6684,7 @@ function renderAdminAiProviders() {
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
         <select class="sel" data-ai-provider-format="${item.id}">
           <option value="finvue" ${item.apiFormat !== "openai" && item.apiFormat !== "anthropic" ? "selected" : ""}>FinVue 格式</option>
-          <option value="openai" ${item.apiFormat === "openai" ? "selected" : ""}>OpenAI (/v1/chat/completions)</option>
+          <option value="openai" ${item.apiFormat === "openai" ? "selected" : ""}>OpenAI 兼容（自动补 /chat/completions）</option>
           <option value="anthropic" ${item.apiFormat === "anthropic" ? "selected" : ""}>Anthropic (/v1/messages)</option>
         </select>
         <select class="sel" data-ai-provider-key-placement="${item.id}">
@@ -13128,7 +13141,7 @@ els.adminAiProviders?.addEventListener("click", async (event) => {
       const result = await response.json();
 
       if (result.success) {
-        resultSpan.textContent = "✓ 连接成功";
+        resultSpan.textContent = "✓ " + (result.message || "连接成功");
         resultSpan.style.color = "#10b981";
       } else {
         resultSpan.textContent = "✗ " + (result.error || "连接失败");
