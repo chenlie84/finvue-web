@@ -2121,7 +2121,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.28</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.29</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2259,7 +2259,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.28</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.29</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -2383,7 +2383,7 @@
 
       <div class="asec" id="asec-feishu">
         <div class="page-title">飞书推送配置</div>
-        <div class="page-sub">把热点板块雷达推送到飞书群机器人，支持手动测试和后台定时推送。</div>
+        <div class="page-sub">把热点板块雷达推送到飞书群机器人，支持手动测试和每天固定时间自动推送。</div>
         <div id="feishuAdminMount"></div>
       </div>
 
@@ -3322,8 +3322,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.28";
+const APP_VERSION = "0.1.29";
 const APP_RELEASES = [
+  {
+    version: "0.1.29",
+    date: "2026-06-03",
+    title: "飞书每日固定时间推送",
+    permissions: ["admin", "notify", "hotspot"],
+    summary: "飞书热点板块雷达定时推送改为每天按北京时间固定时间执行一次。",
+    items: [
+      "后台飞书配置从推送间隔分钟改为每日推送时间。",
+      "调度器每分钟检查一次，到达设置时间后当天只推送一次。",
+      "服务如果在当天推送时间之后启动，会自动补推当天一次。",
+      "手动测试推送不受每日推送限制，可随时触发。"
+    ]
+  },
   {
     version: "0.1.28",
     date: "2026-06-02",

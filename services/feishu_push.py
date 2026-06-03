@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -14,10 +15,22 @@ from services import hotspot_fetcher, hotspot_stock_matcher
 
 SETTINGS_KEY = "feishu-hotspot-push-settings"
 logger = logging.getLogger(__name__)
+LOCAL_TZ = timezone(timedelta(hours=8), "Asia/Shanghai")
+DEFAULT_DAILY_PUSH_TIME = "09:00"
 
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _normalize_daily_push_time(value: Any) -> str:
+    text = store.text(value) or DEFAULT_DAILY_PUSH_TIME
+    match = re.match(r"^(\d{1,2}):(\d{2})$", text)
+    if not match:
+        return DEFAULT_DAILY_PUSH_TIME
+    hour = max(0, min(23, int(match.group(1))))
+    minute = max(0, min(59, int(match.group(2))))
+    return f"{hour:02d}:{minute:02d}"
 
 
 def get_settings() -> dict[str, Any]:
@@ -26,6 +39,7 @@ def get_settings() -> dict[str, Any]:
         "enabled": bool(saved.get("enabled", False)),
         "webhookUrl": store.text(saved.get("webhookUrl")),
         "intervalMinutes": max(15, store.to_int(saved.get("intervalMinutes"), 120) or 120),
+        "dailyPushTime": _normalize_daily_push_time(saved.get("dailyPushTime")),
         "pushRelatedStocks": saved.get("pushRelatedStocks", True) is not False,
         "notifyRegistrations": saved.get("notifyRegistrations", True) is not False,
         "lastPushedAt": store.text(saved.get("lastPushedAt")),
@@ -63,6 +77,7 @@ def save_settings(payload: dict[str, Any], username: str = "") -> dict[str, Any]
         "enabled": bool(incoming.get("enabled", current.get("enabled", False))),
         "webhookUrl": webhook,
         "intervalMinutes": max(15, store.to_int(incoming.get("intervalMinutes"), current.get("intervalMinutes", 120)) or 120),
+        "dailyPushTime": _normalize_daily_push_time(incoming.get("dailyPushTime", current.get("dailyPushTime"))),
         "pushRelatedStocks": incoming.get("pushRelatedStocks", current.get("pushRelatedStocks", True)) is not False,
         "notifyRegistrations": incoming.get("notifyRegistrations", current.get("notifyRegistrations", True)) is not False,
         "updatedAt": _now_iso(),
@@ -340,11 +355,16 @@ def due_to_push(settings: dict[str, Any] | None = None) -> bool:
     cfg = settings or get_settings()
     if not cfg.get("enabled") or not cfg.get("webhookUrl"):
         return False
+    local_now = datetime.now(LOCAL_TZ)
+    hour_text, minute_text = _normalize_daily_push_time(cfg.get("dailyPushTime")).split(":")
+    scheduled = local_now.replace(hour=int(hour_text), minute=int(minute_text), second=0, microsecond=0)
+    if local_now < scheduled:
+        return False
     last = store.text(cfg.get("lastPushedAt"))
     if not last:
         return True
     try:
-        parsed = datetime.fromisoformat(last.replace("Z", "+00:00")).astimezone(timezone.utc)
+        parsed = datetime.fromisoformat(last.replace("Z", "+00:00")).astimezone(LOCAL_TZ)
     except Exception:
         return True
-    return datetime.now(timezone.utc) - parsed >= timedelta(minutes=int(cfg.get("intervalMinutes") or 120))
+    return parsed.date() < local_now.date()

@@ -12,7 +12,7 @@
           <div class="feishu-toggle-row">
             <div>
               <div style="font-weight:700;">启用定时推送</div>
-              <div class="muted" style="font-size:12px;">到达间隔后自动推送热点板块雷达</div>
+              <div class="muted" style="font-size:12px;">每天到达指定时间后自动推送一次热点板块雷达</div>
             </div>
             <input id="feishuEnabled" type="checkbox">
           </div>
@@ -21,8 +21,8 @@
             <input class="inp" id="feishuWebhookUrl" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/...">
           </div>
           <div class="feishu-field">
-            <label>推送间隔（分钟，最小 15）</label>
-            <input class="inp" id="feishuIntervalMinutes" type="number" min="15" step="15" value="120">
+            <label>每日推送时间（北京时间）</label>
+            <input class="inp" id="feishuDailyPushTime" type="time" value="09:00">
           </div>
           <div class="feishu-toggle-row">
             <div>
@@ -61,7 +61,7 @@
     return {
       enabled: Boolean(document.getElementById("feishuEnabled")?.checked),
       webhookUrl: document.getElementById("feishuWebhookUrl")?.value?.trim() || "",
-      intervalMinutes: Number(document.getElementById("feishuIntervalMinutes")?.value || 120),
+      dailyPushTime: document.getElementById("feishuDailyPushTime")?.value || "09:00",
       pushRelatedStocks: Boolean(document.getElementById("feishuPushStocks")?.checked),
       notifyRegistrations: Boolean(document.getElementById("feishuNotifyRegistrations")?.checked),
     };
@@ -70,7 +70,7 @@
   function render(settings = {}) {
     document.getElementById("feishuEnabled").checked = !!settings.enabled;
     document.getElementById("feishuWebhookUrl").value = settings.webhookUrl || "";
-    document.getElementById("feishuIntervalMinutes").value = settings.intervalMinutes || 120;
+    document.getElementById("feishuDailyPushTime").value = settings.dailyPushTime || "09:00";
     document.getElementById("feishuPushStocks").checked = settings.pushRelatedStocks !== false;
     document.getElementById("feishuNotifyRegistrations").checked = settings.notifyRegistrations !== false;
     const badge = document.getElementById("feishuStatusBadge");
