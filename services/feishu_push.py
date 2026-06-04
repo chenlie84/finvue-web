@@ -8,6 +8,7 @@ from typing import Any
 
 import requests
 
+import ai_router
 import db
 import store
 from services import hotspot_fetcher, hotspot_stock_matcher
@@ -17,6 +18,19 @@ SETTINGS_KEY = "feishu-hotspot-push-settings"
 logger = logging.getLogger(__name__)
 LOCAL_TZ = timezone(timedelta(hours=8), "Asia/Shanghai")
 DEFAULT_DAILY_PUSH_TIME = "09:00"
+PLATFORM_NAMES = {
+    "weibo": "微博",
+    "zhihu": "知乎",
+    "baidu": "百度",
+    "douyin": "抖音",
+    "bilibili": "B站",
+    "toutiao": "头条",
+    "cls": "财联社",
+    "wallstreetcn": "华尔街见闻",
+    "ifeng": "凤凰网",
+    "pengpai": "澎湃新闻",
+    "tieba": "贴吧",
+}
 
 
 def _now_iso() -> str:
@@ -134,6 +148,165 @@ def _short_text(value: Any, limit: int = 56) -> str:
     return text[: max(0, limit - 1)] + "…"
 
 
+def _clean_markdown_inline(value: Any) -> str:
+    text = store.text(value)
+    text = re.sub(r"^#+\s*", "", text)
+    text = re.sub(r"\*\*(.*?)\*\*", r"\1", text)
+    text = re.sub(r"`([^`]+)`", r"\1", text)
+    return " ".join(text.strip(" -•\t").split())
+
+
+def _recent_summary_hotspots(top_per_platform: int = 8) -> tuple[list[dict[str, Any]], dict[str, list[dict[str, Any]]]]:
+    rows = db.fetch_all(
+        """
+        SELECT platform, title, url, `rank`, hot_value, last_seen_at
+        FROM finvue_hotspot_items
+        WHERE last_seen_at >= DATE_SUB(NOW(), INTERVAL 2 HOUR)
+        ORDER BY platform ASC, `rank` ASC
+        LIMIT 240
+        """
+    )
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        platform = store.text(row.get("platform"))
+        title = store.text(row.get("title"))
+        if not platform or not title:
+            continue
+        items = grouped.setdefault(platform, [])
+        if len(items) >= top_per_platform:
+            continue
+        items.append({
+            "platform": platform,
+            "title": title,
+            "rank": row.get("rank") or 0,
+            "hotValue": store.text(row.get("hot_value")),
+            "url": store.text(row.get("url")),
+        })
+    items = [item for platform_items in grouped.values() for item in platform_items if item.get("title")]
+    return items, grouped
+
+
+def _hotspot_lines_for_summary(items: list[dict[str, Any]], top_per_platform: int) -> list[str]:
+    lines = []
+    for item in items:
+        platform_label = PLATFORM_NAMES.get(store.text(item.get("platform")), store.text(item.get("platform")))
+        hot = f"｜热度 {item['hotValue']}" if item.get("hotValue") else ""
+        lines.append(f"- [{platform_label} #{item.get('rank') or '-'}] {item.get('title')}{hot}")
+    return lines
+
+
+def _generate_push_summary() -> dict[str, Any]:
+    top_per_platform = 8
+    items, grouped = _recent_summary_hotspots(top_per_platform)
+    if not items:
+        return {"analysis": "", "itemCount": 0, "platforms": [], "error": "暂无可分析的热搜数据"}
+
+    system_prompt = """你是财经直播内容主编和投顾合规助手。你需要从全网热搜中筛出真正重要、适合投顾团队关注的新闻，并转化为直播选题。
+要求：
+1. 优先关注财经、宏观政策、产业链、上市公司、科技、消费、监管、地缘风险等与投资相关的话题。
+2. 对纯娱乐、低价值八卦、重复话题要降权或忽略。
+3. 不编造具体股票买卖建议，不承诺收益，不输出荐股结论。
+4. 输出必须简洁，适合飞书推送和后台顶部展示。"""
+
+    user_prompt = f"""下面是最近一轮热搜数据，每个平台取前 {top_per_platform} 条：
+
+{chr(10).join(_hotspot_lines_for_summary(items, top_per_platform))}
+
+请输出 Markdown，总长度控制在 800 字以内，结构如下：
+
+# 今日热搜总览
+
+## 最值得关注的 5 条
+用编号列表输出，每条包含：事件、为什么重要、可能影响的行业/方向。
+
+## 直播可用选题
+给出 3-4 个适合财经直播展开的话题角度。
+
+## 风险与合规提醒
+列出 2-3 条讨论时需要避开的表达边界。
+
+## 可忽略噪音
+用一句话概括本轮哪些类型热搜价值较低。"""
+
+    try:
+        ai_result = ai_router.generate({"systemPrompt": system_prompt, "userPrompt": user_prompt}, username="")
+        analysis = store.text(ai_result.get("markdown"))
+        return {
+            "analysis": analysis,
+            "itemCount": len(items),
+            "platforms": sorted(grouped.keys()),
+            "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "aiMeta": ai_result.get("aiMeta"),
+        }
+    except Exception as exc:
+        logger.exception("[feishu] failed to generate hotspot summary for push")
+        return {
+            "analysis": "",
+            "itemCount": len(items),
+            "platforms": sorted(grouped.keys()),
+            "error": str(exc),
+        }
+
+
+def _extract_markdown_section(markdown: str, heading_keywords: list[str]) -> str:
+    if not markdown:
+        return ""
+    pattern = re.compile(r"^##\s*(.+?)\s*$", re.M)
+    matches = list(pattern.finditer(markdown))
+    for index, match in enumerate(matches):
+        title = match.group(1)
+        if not any(keyword in title for keyword in heading_keywords):
+            continue
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(markdown)
+        return markdown[start:end].strip()
+    return ""
+
+
+def _extract_numbered_items(section: str, limit: int) -> list[str]:
+    if not section:
+        return []
+    items: list[str] = []
+    current: list[str] = []
+    for raw_line in section.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if re.match(r"^(\d+[\.\、)]|[-*•])\s+", line):
+            if current:
+                items.append(_clean_markdown_inline(" ".join(current)))
+            current = [re.sub(r"^(\d+[\.\、)]|[-*•])\s+", "", line)]
+        elif current:
+            current.append(line)
+    if current:
+        items.append(_clean_markdown_inline(" ".join(current)))
+    return [item for item in items if item][:limit]
+
+
+def _fallback_focus_items(limit: int = 5) -> list[str]:
+    preferred = {"cls", "wallstreetcn", "toutiao", "baidu"}
+    items, _ = _recent_summary_hotspots(10)
+    ranked = sorted(
+        items,
+        key=lambda item: (0 if item.get("platform") in preferred else 1, int(item.get("rank") or 999)),
+    )
+    lines = []
+    for item in ranked[:limit]:
+        platform = PLATFORM_NAMES.get(store.text(item.get("platform")), store.text(item.get("platform")))
+        lines.append(f"[{platform} #{item.get('rank') or '-'}] {item.get('title')}")
+    return lines
+
+
+def _summary_focus_items(summary_text: str, limit: int = 5) -> list[str]:
+    section = _extract_markdown_section(summary_text, ["最值得关注", "值得盯", "重点新闻"])
+    return _extract_numbered_items(section, limit) or _fallback_focus_items(limit)
+
+
+def _summary_live_topics(summary_text: str, limit: int = 3) -> list[str]:
+    section = _extract_markdown_section(summary_text, ["直播可用", "直播选题", "可用选题"])
+    return _extract_numbered_items(section, limit)
+
+
 def _format_ai_insights(related: dict[str, Any]) -> list[str]:
     insights = store.safe_object(related.get("aiInsights"))
     themes = insights.get("themes") if isinstance(insights.get("themes"), list) else []
@@ -214,10 +387,94 @@ def _format_sector_digest(related: dict[str, Any], include_stocks: bool = True) 
     return lines
 
 
+def _format_focus_digest(summary_text: str, limit: int = 5) -> list[str]:
+    return [f"{index}. {_short_text(item, 88)}" for index, item in enumerate(_summary_focus_items(summary_text, limit), 1)]
+
+
+def _format_live_topic_digest(summary_text: str, limit: int = 3) -> list[str]:
+    topics = _summary_live_topics(summary_text, limit)
+    return [f"{index}. {_short_text(item, 82)}" for index, item in enumerate(topics, 1)]
+
+
+def _card_text(content: str, tag: str = "lark_md") -> dict[str, Any]:
+    return {"tag": tag, "content": content}
+
+
+def _card_div(content: str, tag: str = "lark_md") -> dict[str, Any]:
+    return {"tag": "div", "text": _card_text(content, tag)}
+
+
+def _format_sector_card_block(related: dict[str, Any], include_stocks: bool = True) -> str:
+    sectors = related.get("sectors") if isinstance(related.get("sectors"), list) else []
+    if not sectors:
+        return "\n".join(_format_ai_insights(related)[:3])
+    blocks = []
+    for index, sector in enumerate(sectors[:3], 1):
+        theme = store.text(sector.get("theme") or "未命名板块")
+        score = store.to_int(sector.get("heatScore"), 0) or 0
+        keywords = "、".join(store.text(word) for word in (sector.get("keywords") or [])[:5] if store.text(word))
+        evidence = _sector_evidence_text(sector).replace("依据：", "")
+        observation = _sector_observation_text(sector, include_stocks).replace("观察池：", "")
+        lines = [
+            f"**{index}. {theme}｜{score}分**",
+            f"触发：{_short_text(evidence, 86)}",
+        ]
+        if keywords:
+            lines.append(f"关键词：{keywords}")
+        if include_stocks:
+            lines.append(f"观察池：{_short_text(observation, 96)}")
+        blocks.append("\n".join(lines))
+    return "\n\n".join(blocks)
+
+
+def _build_feishu_card(
+    *,
+    summary_text: str,
+    related: dict[str, Any],
+    include_stocks: bool,
+    refresh_result: dict[str, Any] | None,
+    ai_used: bool,
+    source_count: int,
+) -> dict[str, Any]:
+    focus_lines = _format_focus_digest(summary_text)
+    topic_lines = _format_live_topic_digest(summary_text)
+    generated_at = datetime.now(LOCAL_TZ).strftime("%Y-%m-%d %H:%M")
+    method = "AI总览 + AI板块识别" if ai_used else "AI总览 + 规则兜底"
+    if not summary_text:
+        method = "规则兜底"
+    elements: list[dict[str, Any]] = [
+        _card_div(f"**{generated_at}**｜{_format_refresh_line(refresh_result)}\n分析：{method}｜依据 {source_count or '若干'} 条财经/总览消息"),
+        {"tag": "hr"},
+        _card_div("**本轮最值得盯的 5 条**\n" + ("\n".join(focus_lines) if focus_lines else "暂无可用总览，已使用板块雷达兜底。")),
+        {"tag": "hr"},
+        _card_div("**Top 3 热点板块" + ("（含观察池）" if include_stocks else "") + "**\n" + _format_sector_card_block(related, include_stocks)),
+    ]
+    if topic_lines:
+        elements.extend([
+            {"tag": "hr"},
+            _card_div("**直播可用选题**\n" + "\n".join(topic_lines)),
+        ])
+    return {
+        "config": {"wide_screen_mode": True},
+        "header": {
+            "template": "blue",
+            "title": {"tag": "plain_text", "content": "FinVue 热点雷达"},
+        },
+        "elements": elements,
+    }
+
+
 def build_message(settings: dict[str, Any] | None = None, refresh_result: dict[str, Any] | None = None) -> dict[str, Any]:
     cfg = settings or get_settings()
     include_stocks = cfg.get("pushRelatedStocks", True) is not False
-    related = hotspot_stock_matcher.match_related_stocks({"limit": 12, "quoteLimit": 4 if include_stocks else 0})
+    summary = _generate_push_summary()
+    summary_text = store.text(summary.get("analysis"))
+    related = hotspot_stock_matcher.match_related_stocks({
+        "summary": summary_text,
+        "limit": 12,
+        "quoteLimit": 4 if include_stocks else 0,
+        "useAi": True,
+    })
     items = related.get("items") if isinstance(related.get("items"), list) else []
     sectors = related.get("sectors") or []
     themes = related.get("themes") or []
@@ -228,16 +485,29 @@ def build_message(settings: dict[str, Any] | None = None, refresh_result: dict[s
         f"{datetime.now().strftime('%Y-%m-%d %H:%M')}｜{_format_refresh_line(refresh_result)}",
         f"分析：{'AI识别板块' if ai_used else '规则兜底'}｜依据 {source_count or '若干'} 条财经/总览消息",
         "",
-        f"Top 3 热点板块{'（含观察池）' if include_stocks else ''}",
+        "一、本轮最值得盯的 5 条",
     ]
-    lines.extend(_format_sector_digest(related, include_stocks))
+    lines.extend(_format_focus_digest(summary_text))
     lines.extend([
         "",
-        "合规提示：以上为热点与板块/行业的弱关联观察，不构成因果判断、买卖建议或收益承诺。",
+        f"Top 3 热点板块{'（含观察池）' if include_stocks else ''}",
     ])
+    lines.extend(_format_sector_digest(related, include_stocks))
+    topic_lines = _format_live_topic_digest(summary_text)
+    if topic_lines:
+        lines.extend(["", "三、直播可用选题", *topic_lines])
 
     return {
         "text": "\n".join(lines),
+        "card": _build_feishu_card(
+            summary_text=summary_text,
+            related=related,
+            include_stocks=include_stocks,
+            refresh_result=refresh_result,
+            ai_used=ai_used,
+            source_count=int(source_count or 0),
+        ),
+        "summary": summary,
         "hotspotCount": int(source_count or 0),
         "stockCount": len(items) if include_stocks else 0,
         "sectorCount": len(sectors),
@@ -266,12 +536,12 @@ def _format_refresh_line(refresh_result: dict[str, Any] | None) -> str:
     return f"刷新失败，使用缓存（{_short_text(result.get('error') or '未知错误', 28)}）"
 
 
-def send_text(webhook_url: str, text: str) -> dict[str, Any]:
+def _send_payload(webhook_url: str, payload: dict[str, Any]) -> dict[str, Any]:
     if not webhook_url:
         raise RuntimeError("飞书 webhook 未配置")
     response = requests.post(
         webhook_url,
-        json={"msg_type": "text", "content": {"text": text}},
+        json=payload,
         timeout=15,
     )
     response.raise_for_status()
@@ -280,6 +550,24 @@ def send_text(webhook_url: str, text: str) -> dict[str, Any]:
     if code not in (None, 0):
         raise RuntimeError(payload.get("msg") or payload.get("StatusMessage") or f"飞书返回错误：{code}")
     return payload
+
+
+def send_text(webhook_url: str, text: str) -> dict[str, Any]:
+    return _send_payload(webhook_url, {"msg_type": "text", "content": {"text": text}})
+
+
+def send_interactive_card(webhook_url: str, card: dict[str, Any]) -> dict[str, Any]:
+    return _send_payload(webhook_url, {"msg_type": "interactive", "card": card})
+
+
+def send_message(webhook_url: str, message: dict[str, Any]) -> dict[str, Any]:
+    card = store.safe_object(message.get("card"))
+    if card:
+        try:
+            return send_interactive_card(webhook_url, card)
+        except Exception:
+            logger.exception("[feishu] interactive card failed, fallback to text")
+    return send_text(webhook_url, store.text(message.get("text")))
 
 
 def build_registration_message(user: dict[str, Any], request_ip: str = "") -> str:
@@ -336,7 +624,7 @@ def push_now(settings: dict[str, Any] | None = None) -> dict[str, Any]:
     cfg = settings or get_settings()
     refresh_result = refresh_hotspots_before_push()
     message = build_message(cfg, refresh_result)
-    result = send_text(store.text(cfg.get("webhookUrl")), message["text"])
+    result = send_message(store.text(cfg.get("webhookUrl")), message)
     if refresh_result.get("ok"):
         stale_count = len(refresh_result.get("stalePlatforms") or [])
         refresh_label = f"已刷新热搜{f'，{stale_count} 个平台旧缓存未写入' if stale_count else ''}"

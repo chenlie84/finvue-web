@@ -2121,7 +2121,7 @@
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:var(--gold-dim);color:var(--gold);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.30</span>
+    <span class="badge gold" id="appVersionBadge">⚙ v0.1.31</span>
     <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
     <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
     <div class="account-chip">
@@ -2259,7 +2259,7 @@
         <div class="panel">
           <div class="panel-hd">
             <div><div class="panel-title">版本历史</div><div class="muted" style="font-size:12px;margin-top:4px;">用户登录时只会看到自己权限相关的未读更新。</div></div>
-            <span class="badge gold" id="adminReleaseCurrent">v0.1.30</span>
+            <span class="badge gold" id="adminReleaseCurrent">v0.1.31</span>
           </div>
           <div class="release-list" id="adminReleaseHistory"></div>
         </div>
@@ -3322,8 +3322,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.30";
+const APP_VERSION = "0.1.31";
 const APP_RELEASES = [
+  {
+    version: "0.1.31",
+    date: "2026-06-04",
+    title: "飞书热点雷达卡片推送",
+    permissions: ["notify", "hotspot", "market"],
+    summary: "飞书推送改为先生成 AI 热点总览，再输出卡片式热点雷达，让推送内容更贴近页面总览重点。",
+    items: [
+      "飞书推送会先生成与页面 AI 热点总览同口径的摘要，并传给板块雷达识别。",
+      "推送样式优先使用飞书 interactive card，展示刷新状态、5 条重点、Top 3 板块观察池和直播选题。",
+      "如果飞书机器人不支持卡片，会自动回退到新版纯文本推送。",
+      "移除末尾过长合规提示，减少信息噪音，突出本轮重点。"
+    ]
+  },
   {
     version: "0.1.30",
     date: "2026-06-03",
