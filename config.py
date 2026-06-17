@@ -49,6 +49,13 @@ MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "")
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", str(50 * 1024 * 1024)))
 OBJECT_STORAGE_DIR = Path(os.environ.get("OBJECT_STORAGE_DIR", str(BASE_DIR / ".objects")))
 ANCHOR_DASHBOARD_PYTHON = os.environ.get("ANCHOR_DASHBOARD_PYTHON", "/usr/bin/python3")
+DAILY_MARKET_REVIEW_ROOT = Path(os.environ.get("DAILY_MARKET_REVIEW_ROOT", str(OBJECT_STORAGE_DIR / "market-review")))
+DAILY_MARKET_REVIEW_OUTPUT_DIR = Path(
+    os.environ.get("DAILY_MARKET_REVIEW_OUTPUT_DIR", str(DAILY_MARKET_REVIEW_ROOT / "outputs" / "daily-market-review"))
+)
+DAILY_MARKET_REVIEW_SCRIPT = Path(
+    os.environ.get("DAILY_MARKET_REVIEW_SCRIPT", str(BASE_DIR / "scripts" / "generate_daily_market_review.py"))
+)
 
 
 def _proxy_url(value: str) -> str:
