@@ -3352,8 +3352,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.35";
+const APP_VERSION = "0.1.36";
 const APP_RELEASES = [
+  {
+    version: "0.1.36",
+    date: "2026-06-18",
+    title: "复盘 AI 分板块并发",
+    permissions: ["research", "market"],
+    summary: "将行情复盘的大型 AI 请求拆成分板块并发任务，避免长响应读取超时并支持局部结果保留。",
+    items: [
+      "复盘 AI 归因改为按板块拆分请求，最多同时执行 3 个任务。",
+      "移除代码内强制 120 秒超时，使用后台 AI 路由自身的超时配置。",
+      "单个板块失败时保留其他已完成结果，并显示 AI 归因部分完成。",
+      "仅在全部板块归因失败时回退，不再因单点异常丢失整份复盘结果。"
+    ]
+  },
   {
     version: "0.1.35",
     date: "2026-06-18",
