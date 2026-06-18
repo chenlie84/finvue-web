@@ -3352,8 +3352,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.34";
+const APP_VERSION = "0.1.35";
 const APP_RELEASES = [
+  {
+    version: "0.1.35",
+    date: "2026-06-18",
+    title: "复盘产业证据链增强",
+    permissions: ["research", "market", "hotspot"],
+    summary: "扩充行情复盘的产业链标的与新闻证据，并强化桑基图可读性和 AI 归因约束。",
+    items: [
+      "桑基图展示完整股票名，按节点数量自动增高并为右侧标的标签保留空间。",
+      "每个细分赛道扩充至 10 只代表标的，主线聚合 16 只，并新增行情景气、弹性和龙头评分。",
+      "接入热点数据库的产业新闻，最多展示 24 条线索与可访问的原文链接。",
+      "AI 上涨驱动改为事实、产业传导、验证条件三段证据链，并校验引用新闻索引。"
+    ]
+  },
   {
     version: "0.1.34",
     date: "2026-06-18",

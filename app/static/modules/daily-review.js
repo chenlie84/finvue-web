@@ -43,8 +43,9 @@
         <div><strong>${esc(stock.name)}</strong><span>${esc(stock.code)}</span></div>
         <b class="${tone(stock.pctChange)}">${pct(stock.pctChange)}</b>
       </div>
-      <div class="daily-review-stock-tags"><span class="role ${stock.role === "龙头" ? "leader" : stock.role === "弹性" ? "elastic" : ""}">${esc(stock.role || "跟踪")}</span><span>${esc(stock.industry || "未分类")}</span></div>
+      <div class="daily-review-stock-tags"><span class="role ${stock.role === "龙头" ? "leader" : stock.role === "弹性" ? "elastic" : stock.role === "景气" ? "prosperity" : ""}">${esc(stock.role || "跟踪")}</span><span>${esc(stock.industry || "未分类")}</span></div>
       <dl><div><dt>成交额</dt><dd>${num(stock.amount)} 亿</dd></div><div><dt>换手</dt><dd>${num(stock.turnoverRate)}%</dd></div><div><dt>市值</dt><dd>${num(stock.marketValue)} 亿</dd></div></dl>
+      <div class="daily-review-stock-scores"><span>行情景气 <b>${num(stock.prosperityScore, 1)}</b></span><span>弹性 <b>${num(stock.elasticityScore, 1)}</b></span></div>
       <p>${esc(stock.reason || "等待归因")}</p>
       <div class="daily-review-stock-risk">反证：${esc(stock.risk || "关注板块退潮与资金承接")}</div>
     </article>`;
@@ -59,6 +60,7 @@
     state.sectorId = sector.id;
     const analysis = sector.analysis || {};
     const stocks = sector.stocks || [];
+    const evidence = Array.isArray(analysis.driverEvidence) ? analysis.driverEvidence : [];
     mount.innerHTML = `
       <div class="daily-review-sector-tabs">${sectors.map((item) => `<button type="button" data-sector-id="${esc(item.id)}" class="${item.id === sector.id ? "active" : ""}"><span>${esc(item.name)}</span><b class="${tone(item.pctChange)}">${pct(item.pctChange)}</b></button>`).join("")}</div>
       <section class="daily-review-sector-head">
@@ -71,11 +73,12 @@
         <article class="risk"><span>下跌与退潮风险</span><p>${esc(analysis.fallRisk)}</p></article>
         <article><span>次日验证</span><p>${esc(analysis.outlook)}</p></article>
       </div>
+      ${evidence.length ? `<section class="daily-review-driver-evidence"><div class="daily-review-section-head"><div><span class="daily-review-eyebrow">Evidence chain</span><h3>上涨驱动证据链</h3></div><span>事实 → 传导 → 验证</span></div><div>${evidence.map((item) => `<article><b>${esc(item.type || "待核验")}</b><strong>${esc(item.fact)}</strong><p>${esc(item.transmission)}</p><small>验证：${esc(item.validation)}</small>${item.sourceUrl ? `<a href="${esc(item.sourceUrl)}" target="_blank" rel="noopener noreferrer">来源：${esc(item.sourceTitle || "产业新闻")}</a>` : ""}</article>`).join("")}</div></section>` : ""}
       <section class="daily-review-section">
         <div class="daily-review-section-head"><div><span class="daily-review-eyebrow">Industry chain</span><h3>细分赛道强度</h3></div><span>涨跌与成分股宽度</span></div>
         <div class="daily-review-subsector-table">
           <div class="head"><span>细分赛道</span><span>涨跌幅</span><span>代表标的</span><span>上涨 / 下跌</span><span>核心驱动</span></div>
-          ${(sector.subsectors || []).map((sub) => `<div class="row"><span><strong>${esc(sub.name)}</strong><small>${esc(sub.type)} · ${esc(sub.source)}</small></span><b class="${tone(sub.pctChange)}">${pct(sub.pctChange)}</b><span>${esc((sub.stocks || []).slice(0, 3).map((s) => s.name).join("、") || "--")}</span><span class="breadth"><i style="--up:${Math.max(1, sub.upCount || 0)};--down:${Math.max(1, sub.downCount || 0)}"></i>${sub.upCount || 0} / ${sub.downCount || 0}</span><span>${esc(sub.reason)}</span></div>`).join("")}
+          ${(sector.subsectors || []).map((sub) => `<div class="row"><span><strong>${esc(sub.name)}</strong><small>${esc(sub.chainStage || sub.type)} · ${esc(sub.source)}</small></span><b class="${tone(sub.pctChange)}">${pct(sub.pctChange)}</b><span>${esc((sub.stocks || []).slice(0, 6).map((s) => s.name).join("、") || "--")}</span><span class="breadth"><i style="--up:${Math.max(1, sub.upCount || 0)};--down:${Math.max(1, sub.downCount || 0)}"></i>${sub.upCount || 0} / ${sub.downCount || 0}</span><span>${esc(sub.reason)}</span></div>`).join("")}
         </div>
       </section>
       <section class="daily-review-section">
@@ -93,10 +96,12 @@
     const raw = state.data.sankey || { nodes: [], links: [] };
     const colors = { sector: "#E5B84A", subsector: "#4A90D9", stock: "#2DBD85" };
     const nodes = (raw.nodes || []).map((node) => ({ ...node, itemStyle: { color: colors[node.kind] || "#9B7FE8" } }));
+    chartEl.style.height = `${Math.min(980, Math.max(500, nodes.length * 11))}px`;
+    state.chart.resize();
     state.chart.setOption({
       backgroundColor: "transparent",
-      tooltip: { trigger: "item", backgroundColor: "#11131A", borderColor: "#2E3347", textStyle: { color: "#EAE6DD" }, formatter: (item) => item.dataType === "node" ? `${esc(item.name)}<br/>涨跌：${pct(item.data.pctChange)}` : `${esc(item.data.source)} → ${esc(item.data.target)}` },
-      series: [{ type: "sankey", left: 16, right: 28, top: 16, bottom: 16, nodeWidth: 10, nodeGap: 13, draggable: false, emphasis: { focus: "adjacency" }, data: nodes, links: raw.links || [], lineStyle: { color: "gradient", opacity: 0.32, curveness: 0.52 }, label: { color: "#C8C5C0", fontSize: 11, distance: 8 }, levels: [{ depth: 0, itemStyle: { borderWidth: 0 } }, { depth: 1, itemStyle: { borderWidth: 0 } }, { depth: 2, itemStyle: { borderWidth: 0 } }] }],
+      tooltip: { trigger: "item", backgroundColor: "#11131A", borderColor: "#2E3347", textStyle: { color: "#EAE6DD" }, formatter: (item) => item.dataType === "node" ? `${esc(item.data.displayName || item.name)}${item.data.code ? `<br/>${esc(item.data.code)} · ${esc(item.data.role)}` : ""}<br/>涨跌：${pct(item.data.pctChange)}` : `${esc(item.data.source)} → ${esc(item.data.target)}` },
+      series: [{ type: "sankey", left: 16, right: 132, top: 16, bottom: 16, nodeWidth: 10, nodeGap: 10, draggable: false, nodeAlign: "justify", emphasis: { focus: "adjacency" }, data: nodes, links: raw.links || [], lineStyle: { color: "gradient", opacity: 0.32, curveness: 0.52 }, label: { color: "#C8C5C0", fontSize: 11, distance: 7, formatter: ({ data }) => data.displayName || String(data.name || "").split("｜").slice(1).join("｜") || data.name }, levels: [{ depth: 0, itemStyle: { borderWidth: 0 } }, { depth: 1, itemStyle: { borderWidth: 0 } }, { depth: 2, itemStyle: { borderWidth: 0 }, label: { position: "right", width: 112, overflow: "truncate" } }] }],
     });
     state.chart.on("click", (params) => {
       if (params.dataType !== "node" || !String(params.name).startsWith("板块｜")) return;
@@ -131,7 +136,7 @@
       <div id="dailyReviewSectorDetail"></div>
       <section class="daily-review-section daily-review-news">
         <div class="daily-review-section-head"><div><span class="daily-review-eyebrow">Evidence</span><h3>当日产业新闻线索</h3></div><span>用于验证，不替代公告与财报</span></div>
-        <div>${(report.news || []).length ? report.news.map((item, index) => `<a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer"><b>${String(index + 1).padStart(2, "0")}</b><span>${esc(item.title)}</span><time>${esc(item.publishedAt || "")}</time></a>`).join("") : '<div class="daily-review-empty">当日暂无匹配的产业新闻。</div>'}</div>
+        <div>${(report.news || []).length ? report.news.map((item, index) => { const body = `<b>${String(index + 1).padStart(2, "0")}</b><span>${esc(item.title)}<small>${esc(item.platform || "产业新闻")}${item.relevance ? ` · 关联 ${num(item.relevance, 0)}` : ""}</small></span><time>${esc(item.publishedAt || "")}</time>`; return item.url ? `<a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${body}</a>` : `<div class="daily-review-news-item">${body}</div>`; }).join("") : '<div class="daily-review-empty">当日暂无匹配的产业新闻。</div>'}</div>
       </section>`;
     renderChart();
     renderSectorDetail();

@@ -430,7 +430,7 @@ def limit_up_label(row: pd.Series) -> str:
     return ""
 
 
-def leaders_for_board(pro, board_code: str, market: pd.DataFrame, basic: pd.DataFrame, max_rows: int = 6) -> pd.DataFrame:
+def leaders_for_board(pro, board_code: str, market: pd.DataFrame, basic: pd.DataFrame, max_rows: int = 16) -> pd.DataFrame:
     cons = board_constituents(pro, board_code)
     if cons.empty:
         board_name = ""
@@ -453,7 +453,19 @@ def leaders_for_board(pro, board_code: str, market: pd.DataFrame, basic: pd.Data
     if merged.empty:
         return merged
     merged["limit_tag"] = merged.apply(limit_up_label, axis=1)
-    return merged.sort_values(["pct_chg", "amount"], ascending=[False, False]).head(max_rows)
+    for column in ("pct_chg", "amount", "turnover_rate", "total_mv"):
+        merged[column] = pd.to_numeric(merged.get(column), errors="coerce").fillna(0)
+    pct_rank = merged["pct_chg"].rank(pct=True)
+    amount_rank = merged["amount"].rank(pct=True)
+    turnover_rank = merged["turnover_rate"].rank(pct=True)
+    mv_rank = merged["total_mv"].rank(pct=True)
+    small_mv_rank = merged["total_mv"].rank(pct=True, ascending=False)
+    merged["prosperity_score"] = (pct_rank * 40 + amount_rank * 30 + turnover_rank * 20 + mv_rank * 10).round(1)
+    merged["elasticity_score"] = (pct_rank * 45 + turnover_rank * 25 + small_mv_rank * 20 + amount_rank * 10).round(1)
+    merged["leadership_score"] = (amount_rank * 45 + mv_rank * 30 + pct_rank * 25).round(1)
+    positive = merged.sort_values(["prosperity_score", "pct_chg", "amount"], ascending=[False, False, False]).head(max_rows - 3)
+    laggards = merged.sort_values(["pct_chg", "amount"], ascending=[True, False]).head(3)
+    return pd.concat([positive, laggards], ignore_index=True).drop_duplicates("ts_code").head(max_rows)
 
 
 def infer_reason(board_name: str) -> str:
@@ -669,6 +681,23 @@ def board_theme(board_name: str) -> str:
 
 def compact_reason(board_name: str) -> str:
     return infer_reason(board_name).replace("。", "")
+
+
+def infer_chain_stage(theme: str, board_name: str) -> str:
+    name = f"{theme}/{board_name}"
+    rules = [
+        (["钨", "钼", "锗", "稀土", "小金属"], "上游资源与原料"),
+        (["玻纤", "铜箔", "覆铜板", "复合集流体", "材料"], "上游关键材料"),
+        (["设备", "光刻", "刻蚀", "检测"], "核心设备"),
+        (["芯片", "半导体", "分立器件", "碳化硅"], "核心器件与芯片"),
+        (["封测", "PCB", "元件", "MLCC", "电容"], "中游制造与封装"),
+        (["光模块", "光通信", "通信线缆", "CPO", "MPO"], "高速互联与模块"),
+        (["服务器", "数据中心", "机器人", "汽车", "消费电子"], "下游应用与终端"),
+    ]
+    for keywords, stage in rules:
+        if any(keyword in name for keyword in keywords):
+            return stage
+    return "产业链核心环节"
 
 
 def render_html(
@@ -968,7 +997,32 @@ def render_html(
 </html>"""
 
 
-def read_news(trade_date: str) -> pd.DataFrame:
+def read_news(trade_date: str, boards: pd.DataFrame | None = None) -> pd.DataFrame:
+    injected = os.getenv("DAILY_MARKET_REVIEW_NEWS_JSON", "").strip()
+    if injected:
+        try:
+            records = json.loads(injected)
+            frame = pd.DataFrame(records if isinstance(records, list) else [])
+            if not frame.empty:
+                frame = frame.rename(columns={"publishedAt": "published_at"})
+                for column in ("title", "url", "published_at", "platform", "analysis"):
+                    if column not in frame.columns:
+                        frame[column] = ""
+                terms: set[str] = {"AI", "算力", "芯片", "半导体", "服务器", "机器人", "新能源", "涨价", "订单", "产能", "政策", "业绩", "材料"}
+                if boards is not None and not boards.empty:
+                    for name in boards.get("board_name", pd.Series(dtype=str)).astype(str):
+                        clean = re.sub(r"(概念|板块|行业|及配套|设备)$", "", name).strip()
+                        if len(clean) >= 2:
+                            terms.add(clean)
+                        terms.update(token for token in re.split(r"[/、+\-]", board_theme(name)) if len(token) >= 2)
+                pattern = "|".join(re.escape(term) for term in sorted(terms, key=len, reverse=True))
+                frame["relevance"] = frame["title"].astype(str).str.count(pattern, flags=re.I)
+                frame["financePriority"] = frame["platform"].isin(["cls", "wallstreetcn"]).astype(int)
+                relevant = frame[frame["relevance"] > 0]
+                selected = relevant if not relevant.empty else frame[frame["financePriority"] > 0]
+                return selected.sort_values(["relevance", "financePriority", "published_at"], ascending=[False, False, False]).head(40)
+        except Exception as exc:
+            print(f"Injected finance news unavailable: {exc}")
     paths = [
         STOCK_PROJECT / "data" / "raw" / "news" / f"cls_news_{trade_date}.csv",
         STOCK_PROJECT / "data" / "raw" / "news" / "cls_news_latest.csv",
@@ -1044,6 +1098,7 @@ def build_native_report(
             "turnoverRate": clean_number(board.get("turnover_rate")),
             "amount": clean_number(board.get("amount") / 100000 if pd.notna(board.get("amount")) else None),
             "reason": infer_reason(name),
+            "chainStage": infer_chain_stage(theme, name),
             "source": str(board.get("source") or "TuShare/东方财富"),
             "upCount": int(leaders["pct_chg"].gt(0).sum()) if not leaders.empty else 0,
             "downCount": int(leaders["pct_chg"].lt(0).sum()) if not leaders.empty else 0,
@@ -1054,8 +1109,9 @@ def build_native_report(
             leader_index = int(leaders["amount"].fillna(0).idxmax()) if "amount" in leaders else 0
             elastic_order = leaders["pct_chg"].fillna(-999).sort_values(ascending=False).index.tolist()
             elastic_index = next((idx for idx in elastic_order if idx != leader_index), leader_index)
-            for idx, row in leaders.head(5).iterrows():
-                role = "龙头" if idx == leader_index else "弹性" if idx == elastic_index else "跟踪"
+            prosperity_index = int(leaders["prosperity_score"].fillna(0).idxmax()) if "prosperity_score" in leaders else leader_index
+            for idx, row in leaders.head(10).iterrows():
+                role = "龙头" if idx == leader_index else "弹性" if idx == elastic_index else "景气" if idx == prosperity_index else "跟踪"
                 stock_pct = clean_number(row.get("pct_chg")) or 0
                 stock = {
                     "code": str(row.get("ts_code") or ""),
@@ -1068,6 +1124,9 @@ def build_native_report(
                     "turnoverRate": clean_number(row.get("turnover_rate")),
                     "marketValue": clean_number(row.get("total_mv") / 10000 if pd.notna(row.get("total_mv")) else None),
                     "limitTag": str(row.get("limit_tag") or ""),
+                    "prosperityScore": clean_number(row.get("prosperity_score"), 1),
+                    "elasticityScore": clean_number(row.get("elasticity_score"), 1),
+                    "leadershipScore": clean_number(row.get("leadership_score"), 1),
                     "reason": (
                         f"随{name}板块共振上涨，当前强度主要来自板块资金聚集与成交放大。"
                         if stock_pct >= 0
@@ -1088,7 +1147,11 @@ def build_native_report(
     for sector in grouped.values():
         values = sector.pop("pctValues")
         sector["pctChange"] = round(sum(values) / len(values), 2) if values else 0
-        sector["stocks"] = sorted(sector["stocks"].values(), key=lambda item: item.get("pctChange") or 0, reverse=True)[:8]
+        sector["stocks"] = sorted(
+            sector["stocks"].values(),
+            key=lambda item: (item.get("prosperityScore") or 0, item.get("elasticityScore") or 0),
+            reverse=True,
+        )[:16]
         sectors.append(sector)
         sector_node = f"板块｜{sector['name']}"
         if sector_node not in seen_nodes:
@@ -1100,20 +1163,29 @@ def build_native_report(
                 sankey_nodes.append({"name": sub_node, "kind": "subsector", "pctChange": subsector["pctChange"]})
                 seen_nodes.add(sub_node)
             sankey_links.append({"source": sector_node, "target": sub_node, "value": max(1, abs(subsector["pctChange"]))})
-            for stock in subsector["stocks"][:3]:
-                stock_node = f"{stock['role']}｜{stock['name']}"
+            for stock in subsector["stocks"][:6]:
+                stock_node = f"标的｜{stock['code']}"
                 if stock_node not in seen_nodes:
-                    sankey_nodes.append({"name": stock_node, "kind": "stock", "pctChange": stock["pctChange"], "role": stock["role"]})
+                    sankey_nodes.append({
+                        "name": stock_node,
+                        "displayName": stock["name"],
+                        "kind": "stock",
+                        "pctChange": stock["pctChange"],
+                        "role": stock["role"],
+                        "code": stock["code"],
+                    })
                     seen_nodes.add(stock_node)
                 sankey_links.append({"source": sub_node, "target": stock_node, "value": max(0.8, abs(stock["pctChange"]))})
 
     sectors.sort(key=lambda item: item.get("pctChange") or 0, reverse=True)
     news_items = []
-    for _, row in news.head(12).iterrows():
+    for _, row in news.head(24).iterrows():
         news_items.append({
             "title": str(row.get("title") or ""),
             "url": str(row.get("url") or ""),
             "publishedAt": str(row.get("published_at") or ""),
+            "platform": str(row.get("platform") or ""),
+            "relevance": int(row.get("relevance") or 0),
         })
     return {
         "version": 2,
@@ -1186,7 +1258,7 @@ def main() -> None:
         lhb_hot = lhb[(lhb["pct_change"] > 0) | (lhb["net_amount"] > 0)].sort_values(
             ["pct_change", "net_amount"], ascending=[False, False]
         )
-    news = read_news(trade_date)
+    news = read_news(trade_date, hot_boards)
     html_text = render_html(trade_date, market, hot_boards, board_leaders, top_lhb, lhb_hot, news)
     native_report = build_native_report(trade_date, market, hot_boards, board_leaders, lhb_hot, news)
 
