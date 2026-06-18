@@ -8,6 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <script src="/static/modules/report-export.js"></script>
 <link rel="stylesheet" href="/static/modules/hotspot.css" />
 <link rel="stylesheet" href="/static/modules/market.css" />
@@ -1921,30 +1922,22 @@
           <div class="daily-review-header">
             <div>
               <div class="page-title">行情复盘</div>
-              <div class="page-sub">接入每日 A 股行情复盘 HTML，聚合热点主线、情绪池、龙虎榜和盘前观察清单。</div>
+              <div class="page-sub">从 TuShare 提取强势板块，沿产业链拆解细分赛道、龙头与弹性标的，并由 AI 解释涨跌驱动。</div>
             </div>
             <div class="daily-review-actions">
               <input class="inp" id="dailyReviewDateInput" type="date" title="指定交易日">
-              <input id="dailyReviewUploadInput" type="file" accept=".html,text/html" style="display:none;">
               <button class="btn btn-outline" id="dailyReviewRefreshBtn" type="button">刷新列表</button>
-              <button class="btn btn-outline" id="dailyReviewUploadBtn" type="button">上传 HTML</button>
               <button class="btn btn-gold" id="dailyReviewGenerateBtn" type="button">生成复盘</button>
-              <button class="btn btn-outline" id="dailyReviewOpenBtn" type="button" disabled>新窗口打开</button>
             </div>
           </div>
           <div class="daily-review-status" id="dailyReviewStatus">正在读取每日行情复盘...</div>
-          <div class="daily-review-layout">
-            <section class="panel">
-              <div class="panel-hd"><div class="panel-title">历史复盘</div><span class="panel-act" id="dailyReviewCount">0 份</span></div>
-              <div class="daily-review-list" id="dailyReviewList"></div>
-            </section>
-            <section class="daily-review-viewer">
-              <div class="daily-review-viewer-head">
-                <div class="daily-review-viewer-title" id="dailyReviewViewerTitle">未选择报告</div>
-                <span class="muted" style="font-size:12px;">自动生成 HTML 预览</span>
-              </div>
-              <iframe class="daily-review-frame" id="dailyReviewFrame" title="行情复盘报告"></iframe>
-            </section>
+          <div class="daily-review-historybar">
+            <span class="daily-review-history-label">历史交易日</span>
+            <div class="daily-review-list" id="dailyReviewList"></div>
+            <span class="muted" id="dailyReviewCount">0 份</span>
+          </div>
+          <div class="daily-review-native" id="dailyReviewNative">
+            <div class="daily-review-empty">选择交易日或生成最新复盘。</div>
           </div>
         </div>
       </div>
@@ -3359,8 +3352,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.32";
+const APP_VERSION = "0.1.33";
 const APP_RELEASES = [
+  {
+    version: "0.1.33",
+    date: "2026-06-18",
+    title: "原生产业链行情复盘",
+    permissions: ["research", "market"],
+    summary: "行情复盘移除内嵌 HTML，改为 TuShare 板块数据驱动的原生页面，并加入产业链桑基图与 AI 涨跌归因。",
+    items: [
+      "优先读取 TuShare 同花顺行业与概念板块，接口不可用时自动降级到东方财富板块行情。",
+      "生成器同步保存结构化 JSON，页面直接渲染市场温度、板块强度、细分赛道和历史交易日。",
+      "新增板块到细分赛道再到龙头与弹性标的的桑基图，支持点击主线切换详细分析。",
+      "AI 路由补充产业链传导、上涨驱动、退潮风险、次日验证以及个股涨跌原因。"
+    ]
+  },
   {
     version: "0.1.32",
     date: "2026-06-17",

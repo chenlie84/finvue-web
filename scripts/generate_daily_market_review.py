@@ -290,10 +290,41 @@ def request_get(url: str, params: dict[str, Any]) -> requests.Response:
     raise RuntimeError(f"Eastmoney request failed after retries: {last_error}")
 
 
-def fetch_boards_for_date(trade_date: str, limit_each_type: int = 120, use_cache: bool = True) -> pd.DataFrame:
+def fetch_tushare_boards(pro, trade_date: str) -> pd.DataFrame:
+    """Read rising THS sectors from TuShare before using a public fallback."""
+    try:
+        daily = pro.ths_daily(
+            trade_date=trade_date,
+            fields="ts_code,trade_date,close,pct_change,turnover_rate,total_mv,float_mv",
+        )
+        indexes = pro.ths_index(fields="ts_code,name,count,exchange,list_date,type")
+        if daily is None or daily.empty or indexes is None or indexes.empty:
+            return pd.DataFrame()
+        frame = daily.merge(indexes[["ts_code", "name", "type"]], on="ts_code", how="left")
+        typed = frame["type"].astype(str).str.upper()
+        if typed.isin(["N", "I"]).any():
+            frame = frame[typed.isin(["N", "I"])]
+        frame = frame.rename(columns={"ts_code": "board_code", "name": "board_name", "type": "board_type", "pct_change": "pct_chg"})
+        frame["amount"] = 0.0
+        frame["source"] = "TuShare同花顺"
+        frame["board_type"] = frame["board_type"].map({"N": "概念", "I": "行业"}).fillna(frame["board_type"]).fillna("概念")
+        frame = frame[frame["pct_chg"].notna() & frame["board_name"].notna()]
+        frame = frame[~frame["board_name"].astype(str).str.contains(BOARD_EXCLUDE_PATTERNS, na=False)]
+        return frame.sort_values(["pct_chg", "turnover_rate"], ascending=[False, False]).reset_index(drop=True)
+    except Exception as exc:
+        print(f"TuShare sector fallback: {exc}")
+        return pd.DataFrame()
+
+
+def fetch_boards_for_date(pro, trade_date: str, limit_each_type: int = 120, use_cache: bool = True) -> pd.DataFrame:
     cache = DATA_DIR / f"hot_boards_all_{trade_date}.csv"
     if use_cache and cache.exists():
         return pd.read_csv(cache)
+    tushare_boards = fetch_tushare_boards(pro, trade_date)
+    if not tushare_boards.empty:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        tushare_boards.to_csv(cache, index=False)
+        return tushare_boards
     frames = []
     for board_type, fs in [("概念", "m:90+t:3"), ("行业", "m:90+t:2")]:
         if limit_each_type <= 0:
@@ -316,6 +347,7 @@ def fetch_boards_for_date(trade_date: str, limit_each_type: int = 120, use_cache
                 k = board_kline_on_date(str(row["board_code"]), trade_date)
                 if k:
                     k["board_type"] = board_type
+                    k["source"] = "东方财富降级源"
                     rows.append(k)
             except Exception:
                 continue
@@ -341,7 +373,14 @@ def em_symbol_to_tscode(symbol: str) -> str | None:
     return None
 
 
-def board_constituents(board_code: str) -> pd.DataFrame:
+def board_constituents(pro, board_code: str) -> pd.DataFrame:
+    if board_code.endswith(".TI"):
+        try:
+            members = pro.ths_member(ts_code=board_code, fields="ts_code,con_code,con_name,weight,in_date,out_date,is_new")
+            if members is not None and not members.empty:
+                return members.rename(columns={"con_code": "ts_code", "con_name": "name"})[["ts_code", "name"]].drop_duplicates("ts_code")
+        except Exception as exc:
+            print(f"TuShare sector members fallback {board_code}: {exc}")
     try:
         df = eastmoney_clist(f"b:{board_code}", pz=600)
     except Exception:
@@ -365,8 +404,8 @@ def limit_up_label(row: pd.Series) -> str:
     return ""
 
 
-def leaders_for_board(board_code: str, market: pd.DataFrame, basic: pd.DataFrame, max_rows: int = 6) -> pd.DataFrame:
-    cons = board_constituents(board_code)
+def leaders_for_board(pro, board_code: str, market: pd.DataFrame, basic: pd.DataFrame, max_rows: int = 6) -> pd.DataFrame:
+    cons = board_constituents(pro, board_code)
     if cons.empty:
         board_name = ""
         seed = SEED_BOARDS[SEED_BOARDS["board_code"] == board_code]
@@ -598,7 +637,8 @@ def board_theme(board_name: str) -> str:
         return "光连接/CPO"
     if any(k in name for k in ["分立器件", "封测", "碳化硅", "半导体"]):
         return "半导体/功率"
-    return "其他强势主题"
+    clean = re.sub(r"(概念|指数|板块)$", "", name).strip()
+    return clean or "其他强势主题"
 
 
 def compact_reason(board_name: str) -> str:
@@ -919,6 +959,159 @@ def read_news(trade_date: str) -> pd.DataFrame:
     return pd.DataFrame(columns=["title", "url", "published_at"])
 
 
+def clean_number(value: Any, digits: int = 2) -> float | None:
+    try:
+        number = float(value)
+    except Exception:
+        return None
+    if math.isnan(number) or math.isinf(number):
+        return None
+    return round(number, digits)
+
+
+def build_native_report(
+    trade_date: str,
+    market: pd.DataFrame,
+    boards: pd.DataFrame,
+    board_leaders: dict[str, pd.DataFrame],
+    lhb_hot: pd.DataFrame,
+    news: pd.DataFrame,
+) -> dict[str, Any]:
+    """Build the structured payload consumed by FinVue's native review page."""
+    adv = int(market["pct_chg"].gt(0).sum())
+    dec = int(market["pct_chg"].lt(0).sum())
+    flat = int(len(market) - adv - dec)
+    amount = clean_number(market["amount"].fillna(0).sum() / 100000, 2) or 0
+    limit_up = int(market["pct_chg"].ge(9.7).sum())
+    limit_down = int(market["pct_chg"].le(-9.7).sum())
+    grouped: dict[str, dict[str, Any]] = {}
+
+    for _, board in boards.head(12).iterrows():
+        code = str(board.get("board_code") or "")
+        name = str(board.get("board_name") or code)
+        theme = board_theme(name)
+        sector = grouped.setdefault(
+            theme,
+            {
+                "id": re.sub(r"[^a-zA-Z0-9]+", "-", theme).strip("-") or f"sector-{len(grouped) + 1}",
+                "name": theme,
+                "pctValues": [],
+                "subsectors": [],
+                "stocks": {},
+                "analysis": {
+                    "summary": infer_reason(name),
+                    "chainLogic": "板块强度向产业链上下游扩散，需结合成交额、龙头承接与基本面证据确认持续性。",
+                    "riseReason": infer_reason(name),
+                    "fallRisk": "若核心标的放量滞涨、板块涨跌家数快速转弱或产业证据无法验证，行情可能退潮。",
+                    "outlook": "次日观察龙头承接、弹性标的换手以及细分赛道是否继续扩散。",
+                },
+            },
+        )
+        pct = clean_number(board.get("pct_chg")) or 0
+        sector["pctValues"].append(pct)
+        leaders = board_leaders.get(code, pd.DataFrame()).copy()
+        subsector = {
+            "id": code,
+            "name": name,
+            "type": str(board.get("board_type") or "板块"),
+            "pctChange": pct,
+            "turnoverRate": clean_number(board.get("turnover_rate")),
+            "amount": clean_number(board.get("amount") / 100000 if pd.notna(board.get("amount")) else None),
+            "reason": infer_reason(name),
+            "source": str(board.get("source") or "TuShare/东方财富"),
+            "upCount": int(leaders["pct_chg"].gt(0).sum()) if not leaders.empty else 0,
+            "downCount": int(leaders["pct_chg"].lt(0).sum()) if not leaders.empty else 0,
+            "stocks": [],
+        }
+        if not leaders.empty:
+            leaders = leaders.reset_index(drop=True)
+            leader_index = int(leaders["amount"].fillna(0).idxmax()) if "amount" in leaders else 0
+            elastic_order = leaders["pct_chg"].fillna(-999).sort_values(ascending=False).index.tolist()
+            elastic_index = next((idx for idx in elastic_order if idx != leader_index), leader_index)
+            for idx, row in leaders.head(5).iterrows():
+                role = "龙头" if idx == leader_index else "弹性" if idx == elastic_index else "跟踪"
+                stock_pct = clean_number(row.get("pct_chg")) or 0
+                stock = {
+                    "code": str(row.get("ts_code") or ""),
+                    "name": str(row.get("name") or row.get("ts_code") or ""),
+                    "industry": str(row.get("industry") or name),
+                    "role": role,
+                    "pctChange": stock_pct,
+                    "close": clean_number(row.get("close")),
+                    "amount": clean_number(row.get("amount") / 100000 if pd.notna(row.get("amount")) else None),
+                    "turnoverRate": clean_number(row.get("turnover_rate")),
+                    "marketValue": clean_number(row.get("total_mv") / 10000 if pd.notna(row.get("total_mv")) else None),
+                    "limitTag": str(row.get("limit_tag") or ""),
+                    "reason": (
+                        f"随{name}板块共振上涨，当前强度主要来自板块资金聚集与成交放大。"
+                        if stock_pct >= 0
+                        else f"板块走强但个股回落，可能受获利兑现、基本面分歧或资金承接不足影响。"
+                    ),
+                    "risk": "关注放量滞涨、板块退潮和公司公告反证。",
+                }
+                subsector["stocks"].append(stock)
+                current = sector["stocks"].get(stock["code"])
+                if current is None or abs(stock_pct) > abs(current.get("pctChange") or 0):
+                    sector["stocks"][stock["code"]] = stock
+        sector["subsectors"].append(subsector)
+
+    sectors: list[dict[str, Any]] = []
+    sankey_nodes: list[dict[str, Any]] = []
+    sankey_links: list[dict[str, Any]] = []
+    seen_nodes: set[str] = set()
+    for sector in grouped.values():
+        values = sector.pop("pctValues")
+        sector["pctChange"] = round(sum(values) / len(values), 2) if values else 0
+        sector["stocks"] = sorted(sector["stocks"].values(), key=lambda item: item.get("pctChange") or 0, reverse=True)[:8]
+        sectors.append(sector)
+        sector_node = f"板块｜{sector['name']}"
+        if sector_node not in seen_nodes:
+            sankey_nodes.append({"name": sector_node, "kind": "sector", "pctChange": sector["pctChange"]})
+            seen_nodes.add(sector_node)
+        for subsector in sector["subsectors"][:4]:
+            sub_node = f"赛道｜{subsector['name']}"
+            if sub_node not in seen_nodes:
+                sankey_nodes.append({"name": sub_node, "kind": "subsector", "pctChange": subsector["pctChange"]})
+                seen_nodes.add(sub_node)
+            sankey_links.append({"source": sector_node, "target": sub_node, "value": max(1, abs(subsector["pctChange"]))})
+            for stock in subsector["stocks"][:3]:
+                stock_node = f"{stock['role']}｜{stock['name']}"
+                if stock_node not in seen_nodes:
+                    sankey_nodes.append({"name": stock_node, "kind": "stock", "pctChange": stock["pctChange"], "role": stock["role"]})
+                    seen_nodes.add(stock_node)
+                sankey_links.append({"source": sub_node, "target": stock_node, "value": max(0.8, abs(stock["pctChange"]))})
+
+    sectors.sort(key=lambda item: item.get("pctChange") or 0, reverse=True)
+    news_items = []
+    for _, row in news.head(12).iterrows():
+        news_items.append({
+            "title": str(row.get("title") or ""),
+            "url": str(row.get("url") or ""),
+            "publishedAt": str(row.get("published_at") or ""),
+        })
+    return {
+        "version": 2,
+        "tradeDate": trade_date,
+        "generatedAt": datetime.now().isoformat(timespec="seconds"),
+        "source": "TuShare同花顺板块" if any(str(item.get("source", "")).startswith("TuShare") for _, item in boards.head(12).iterrows()) else "东方财富板块降级源",
+        "ai": {"status": "pending", "provider": "", "message": "等待 FinVue AI 路由生成归因"},
+        "overview": {
+            "advance": adv,
+            "decline": dec,
+            "flat": flat,
+            "advanceDeclineRatio": round(adv / dec, 2) if dec else None,
+            "amountYi": amount,
+            "limitUp": limit_up,
+            "limitDown": limit_down,
+            "lhbCount": int(lhb_hot["ts_code"].nunique()) if not lhb_hot.empty else 0,
+            "sentiment": "活跃" if adv > dec * 1.3 else "退潮" if dec > adv * 1.3 else "分歧",
+        },
+        "sectors": sectors[:6],
+        "sankey": {"nodes": sankey_nodes, "links": sankey_links},
+        "news": news_items,
+    }
+
+
 def save_frames(trade_date: str, boards: pd.DataFrame, top_lhb: pd.DataFrame, lhb_hot: pd.DataFrame) -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     boards.to_csv(DATA_DIR / f"hot_boards_{trade_date}.csv", index=False)
@@ -939,12 +1132,12 @@ def main() -> None:
     basic = load_stock_basic(pro)
     market = market.merge(basic[["ts_code", "name", "industry", "market"]], on="ts_code", how="left")
 
-    boards = fetch_boards_for_date(trade_date, limit_each_type=args.board_scan_limit)
+    boards = fetch_boards_for_date(pro, trade_date, limit_each_type=args.board_scan_limit)
     hot_boards = boards.head(max(args.top_boards, 12)).copy()
     board_leaders: dict[str, pd.DataFrame] = {}
     for code in hot_boards["board_code"].head(args.top_boards):
         try:
-            board_leaders[str(code)] = leaders_for_board(str(code), market, basic)
+            board_leaders[str(code)] = leaders_for_board(pro, str(code), market, basic)
         except Exception:
             board_leaders[str(code)] = pd.DataFrame()
         time.sleep(0.05)
@@ -957,12 +1150,15 @@ def main() -> None:
     )
     news = read_news(trade_date)
     html_text = render_html(trade_date, market, hot_boards, board_leaders, top_lhb, lhb_hot, news)
+    native_report = build_native_report(trade_date, market, hot_boards, board_leaders, lhb_hot, news)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     out = OUTPUT_DIR / f"a_share_daily_review_{trade_date}.html"
     out.write_text(html_text, encoding="utf-8")
+    data_out = OUTPUT_DIR / f"a_share_daily_review_{trade_date}.json"
+    data_out.write_text(json.dumps(native_report, ensure_ascii=False, indent=2), encoding="utf-8")
     save_frames(trade_date, hot_boards, top_lhb, lhb_hot)
-    print(json.dumps({"trade_date": trade_date, "html": str(out), "boards": len(hot_boards), "lhb": len(top_lhb)}, ensure_ascii=False, indent=2))
+    print(json.dumps({"trade_date": trade_date, "html": str(out), "json": str(data_out), "boards": len(hot_boards), "lhb": len(top_lhb)}, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
