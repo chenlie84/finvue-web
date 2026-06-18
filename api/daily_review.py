@@ -116,6 +116,16 @@ def _extract_json_object(value: str) -> dict[str, Any]:
     return parsed
 
 
+def _compact_process_error(stderr: str, stdout: str) -> str:
+    text = (stderr or stdout or "复盘生成失败").strip()
+    runtime_matches = re.findall(r"(?:RuntimeError|ValueError|FileNotFoundError):\s*([^\n]+)", text)
+    if runtime_matches:
+        return runtime_matches[-1].strip()
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    useful = [line for line in lines if not line.startswith(("File \"", "Traceback", "warnings.warn", "/usr/local/lib/"))]
+    return (useful[-1] if useful else lines[-1] if lines else "复盘生成失败")[-500:]
+
+
 def _enrich_report_with_ai(path: Path, username: str) -> dict[str, Any]:
     report = json.loads(path.read_text(encoding="utf-8"))
     compact = {
@@ -258,10 +268,10 @@ async def generate_daily_review(request: Request, session: dict = Depends(_revie
         raise HTTPException(status_code=504, detail="复盘生成超时，请稍后查看输出目录") from exc
 
     if result.returncode != 0:
-        error = (result.stderr or result.stdout or "复盘生成失败").strip()
-        raise HTTPException(status_code=500, detail=error[-1000:])
+        raise HTTPException(status_code=500, detail=_compact_process_error(result.stderr, result.stdout))
 
     generated_date = trade_date
+    stdout_payload: dict[str, Any] = {}
     try:
         stdout_payload = _extract_json_object(result.stdout or "")
         generated_date = store.text(stdout_payload.get("trade_date")) or generated_date
@@ -279,12 +289,17 @@ async def generate_daily_review(request: Request, session: dict = Depends(_revie
                 report["ai"] = {"status": "fallback", "provider": "", "message": ai_warning}
                 data_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     reports = _reports()
+    generated_report = next((item for item in reports if item.get("tradeDate") == generated_date), None)
+    date_fallback = bool(stdout_payload.get("date_fallback") or (trade_date and generated_date and trade_date != generated_date))
+    message = f"目标日期暂无收盘行情，已生成最近交易日 {generated_date} 的复盘" if date_fallback else "行情复盘已生成"
     return {
         "ok": True,
-        "message": "行情复盘已生成",
+        "message": message,
         "aiWarning": ai_warning,
+        "resolvedTradeDate": generated_date,
+        "dateFallback": date_fallback,
         "stdout": (result.stdout or "").strip()[-2000:],
-        "latest": reports[0] if reports else None,
+        "latest": generated_report or (reports[0] if reports else None),
         "reports": reports,
     }
 

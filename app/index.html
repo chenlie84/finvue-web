@@ -3352,8 +3352,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.33";
+const APP_VERSION = "0.1.34";
 const APP_RELEASES = [
+  {
+    version: "0.1.34",
+    date: "2026-06-18",
+    title: "行情复盘交易日回退",
+    permissions: ["research", "market"],
+    summary: "修复当日收盘数据尚未发布时复盘生成失败的问题，并提高龙虎榜缺失和依赖告警场景下的稳定性。",
+    items: [
+      "目标日期没有 TuShare 日线时，自动向前查找最近有行情的交易日并生成复盘。",
+      "龙虎榜数据为空或接口异常时继续生成主体复盘，不再让整份报告失败。",
+      "生成失败时仅返回简短有效错误，页面不再展示完整 Python traceback。",
+      "固定 urllib3 与 chardet 兼容版本，消除 RequestsDependencyWarning。"
+    ]
+  },
   {
     version: "0.1.33",
     date: "2026-06-18",

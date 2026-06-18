@@ -10,10 +10,13 @@ import math
 import os
 import re
 import time
+import warnings
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+
+warnings.filterwarnings("ignore", message=r"urllib3 .*doesn't match a supported version.*")
 
 import pandas as pd
 import requests
@@ -203,6 +206,29 @@ def load_market(pro, trade_date: str) -> pd.DataFrame:
         daily["pe_ttm"] = float("nan")
         daily["total_mv"] = float("nan")
     return daily
+
+
+def load_latest_available_market(pro, requested_date: str) -> tuple[str, pd.DataFrame]:
+    """Resolve an unpublished/current date to the latest open day with daily rows."""
+    requested = datetime.strptime(requested_date, "%Y%m%d")
+    start = (requested - timedelta(days=35)).strftime("%Y%m%d")
+    try:
+        calendar = pro.trade_cal(exchange="SSE", start_date=start, end_date=requested_date, is_open="1")
+        candidates = sorted({str(item) for item in calendar.get("cal_date", [])}, reverse=True)
+    except Exception:
+        candidates = [(requested - timedelta(days=offset)).strftime("%Y%m%d") for offset in range(36)]
+    if requested_date not in candidates:
+        candidates.insert(0, requested_date)
+    last_error: Exception | None = None
+    for candidate in candidates:
+        try:
+            market = load_market(pro, candidate)
+            if not market.empty:
+                return candidate, market
+        except Exception as exc:
+            last_error = exc
+    detail = f"：{last_error}" if last_error else ""
+    raise RuntimeError(f"目标日期 {requested_date} 及此前 35 天内没有可用的 TuShare 日线数据{detail}")
 
 
 def load_stock_basic(pro) -> pd.DataFrame:
@@ -1127,12 +1153,14 @@ def main() -> None:
     args = parser.parse_args()
 
     pro = pro_api()
-    trade_date = args.date or previous_open_date(pro)
-    market = load_market(pro, trade_date)
+    requested_date = args.date or previous_open_date(pro)
+    trade_date, market = load_latest_available_market(pro, requested_date)
     basic = load_stock_basic(pro)
     market = market.merge(basic[["ts_code", "name", "industry", "market"]], on="ts_code", how="left")
 
     boards = fetch_boards_for_date(pro, trade_date, limit_each_type=args.board_scan_limit)
+    if boards.empty or "board_code" not in boards.columns:
+        raise RuntimeError(f"{trade_date} 没有获取到可用的行业或概念板块数据")
     hot_boards = boards.head(max(args.top_boards, 12)).copy()
     board_leaders: dict[str, pd.DataFrame] = {}
     for code in hot_boards["board_code"].head(args.top_boards):
@@ -1142,12 +1170,22 @@ def main() -> None:
             board_leaders[str(code)] = pd.DataFrame()
         time.sleep(0.05)
 
-    top_lhb, inst = get_lhb(pro, trade_date)
-    seats = aggregate_seats(inst)
-    lhb = top_lhb.merge(seats, on="ts_code", how="left")
-    lhb_hot = lhb[(lhb["pct_change"] > 0) | (lhb["net_amount"] > 0)].sort_values(
-        ["pct_change", "net_amount"], ascending=[False, False]
-    )
+    try:
+        top_lhb, inst = get_lhb(pro, trade_date)
+    except Exception as exc:
+        print(f"TuShare LHB unavailable: {exc}")
+        top_lhb, inst = pd.DataFrame(), pd.DataFrame()
+    if top_lhb.empty:
+        lhb_hot = pd.DataFrame()
+    else:
+        seats = aggregate_seats(inst)
+        lhb = top_lhb.merge(seats, on="ts_code", how="left") if not seats.empty else top_lhb.copy()
+        for column in ("inst_net", "north_net", "top_buyer"):
+            if column not in lhb.columns:
+                lhb[column] = 0 if column != "top_buyer" else ""
+        lhb_hot = lhb[(lhb["pct_change"] > 0) | (lhb["net_amount"] > 0)].sort_values(
+            ["pct_change", "net_amount"], ascending=[False, False]
+        )
     news = read_news(trade_date)
     html_text = render_html(trade_date, market, hot_boards, board_leaders, top_lhb, lhb_hot, news)
     native_report = build_native_report(trade_date, market, hot_boards, board_leaders, lhb_hot, news)
@@ -1158,7 +1196,7 @@ def main() -> None:
     data_out = OUTPUT_DIR / f"a_share_daily_review_{trade_date}.json"
     data_out.write_text(json.dumps(native_report, ensure_ascii=False, indent=2), encoding="utf-8")
     save_frames(trade_date, hot_boards, top_lhb, lhb_hot)
-    print(json.dumps({"trade_date": trade_date, "html": str(out), "json": str(data_out), "boards": len(hot_boards), "lhb": len(top_lhb)}, ensure_ascii=False, indent=2))
+    print(json.dumps({"requested_date": requested_date, "trade_date": trade_date, "date_fallback": trade_date != requested_date, "html": str(out), "json": str(data_out), "boards": len(hot_boards), "lhb": len(top_lhb)}, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
