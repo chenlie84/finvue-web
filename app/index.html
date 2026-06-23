@@ -915,6 +915,11 @@
   <div class="app-body">
     <!-- SIDEBAR -->
     <nav class="sidebar">
+      <div class="s-section">市场数据</div>
+      <button class="nav-item" data-sec="market" data-permission="market" onclick="showSec('market',this)"><span class="ni">↗</span> 实时行情</button>
+      <button class="nav-item" data-sec="daily-review" data-permission="research" onclick="showSec('daily-review',this)"><span class="ni">▥</span> 行情复盘</button>
+      <button class="nav-item" data-sec="research" data-permission="research" onclick="showSec('research',this)"><span class="ni">≡</span> 研报库</button>
+      <button class="nav-item" data-sec="backtest" data-permission="backtest" onclick="showSec('backtest',this)"><span class="ni">◷</span> 历史回测</button>
       <div class="s-section">分析工具</div>
       <button class="nav-item active" data-sec="home" data-permission="home" onclick="showSec('home',this)"><span class="ni">◈</span> 工作台概览</button>
       <button class="nav-item" data-sec="ai-chat" data-permission="ai-chat" onclick="showSec('ai-chat',this)"><span class="ni">🤖</span> AI 对话</button>
@@ -929,11 +934,6 @@
       <button class="nav-item" data-sec="case-library" data-permission="case-library" onclick="showSec('case-library',this)"><span class="ni">✦</span> 案例库</button>
       <button class="nav-item" data-sec="portrait" data-permission="portrait" onclick="showSec('portrait',this)"><span class="ni">◎</span> 主播画像</button>
       <button class="nav-item" data-sec="hotspot" data-permission="hotspot" onclick="showSec('hotspot',this)"><span class="ni">⊞</span> 热点追踪</button>
-      <div class="s-section">市场数据</div>
-      <button class="nav-item" data-sec="market" data-permission="market" onclick="showSec('market',this)"><span class="ni">↗</span> 实时行情</button>
-      <button class="nav-item" data-sec="daily-review" data-permission="research" onclick="showSec('daily-review',this)"><span class="ni">▥</span> 行情复盘</button>
-      <button class="nav-item" data-sec="research" data-permission="research" onclick="showSec('research',this)"><span class="ni">≡</span> 研报库</button>
-      <button class="nav-item" data-sec="backtest" data-permission="backtest" onclick="showSec('backtest',this)"><span class="ni">◷</span> 历史回测</button>
       <div class="s-section">输出</div>
       <button class="nav-item" data-sec="export" data-permission="export" onclick="showSec('export',this)"><span class="ni">↓</span> 报告导出</button>
       <button class="nav-item" data-sec="notify" data-permission="notify" onclick="showSec('notify',this)"><span class="ni">✉</span> 通知中心 <span class="nav-badge red-b" id="notifyNavBadge">0</span></button>
@@ -3352,8 +3352,20 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.36";
+const APP_VERSION = "0.1.37";
 const APP_RELEASES = [
+  {
+    version: "0.1.37",
+    date: "2026-06-23",
+    title: "市场数据导航前置",
+    permissions: ["market", "research", "backtest"],
+    summary: "将侧边栏市场数据分组前置，让实时行情、行情复盘、研报库和历史回测入口更靠前。",
+    items: [
+      "侧边栏顺序调整为市场数据优先，再展示分析工具分组。",
+      "实时行情、行情复盘、研报库、历史回测保持原权限和页面入口不变。",
+      "仅调整导航展示顺序，不影响现有行情、复盘和回测功能逻辑。"
+    ]
+  },
   {
     version: "0.1.36",
     date: "2026-06-18",
