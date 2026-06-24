@@ -3352,8 +3352,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.37";
+const APP_VERSION = "0.1.38";
 const APP_RELEASES = [
+  {
+    version: "0.1.38",
+    date: "2026-06-24",
+    title: "复盘行情字段兼容",
+    permissions: ["research", "market"],
+    summary: "修复行情复盘生成时不同数据源字段名不一致导致 pct_chg 缺失的问题，避免线上继续展示旧报告。",
+    items: [
+      "行情数据统一兼容 pct_chg、pctChange、pct_change 等涨跌幅字段。",
+      "兼容 tradeDate/trade_date、code/ts_code 等日期与代码字段别名。",
+      "缺少涨跌幅但存在 close 与 pre_close 时自动补算涨跌幅。",
+      "板块缓存同步做字段归一，避免旧 CSV 缓存导致复盘生成失败。"
+    ]
+  },
   {
     version: "0.1.37",
     date: "2026-06-23",

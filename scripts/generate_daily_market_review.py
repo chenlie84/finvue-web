@@ -158,6 +158,93 @@ def iso_date(date_text: str | pd.Timestamp) -> str:
     return pd.Timestamp(date_text).strftime("%Y-%m-%d")
 
 
+def coalesce_alias_columns(frame: pd.DataFrame, aliases: dict[str, str]) -> pd.DataFrame:
+    out = frame.copy()
+    for source, target in aliases.items():
+        if source not in out.columns or source == target:
+            continue
+        if target in out.columns:
+            out[target] = out[target].combine_first(out[source])
+            out = out.drop(columns=[source])
+        else:
+            out = out.rename(columns={source: target})
+    return out
+
+
+def normalize_market_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    """Normalize quote cache/API aliases to the column names used by this script."""
+    if frame is None or frame.empty:
+        return pd.DataFrame()
+    aliases = {
+        "code": "ts_code",
+        "tradeDate": "trade_date",
+        "preClose": "pre_close",
+        "pctChange": "pct_chg",
+        "pct_change": "pct_chg",
+        "turnoverRate": "turnover_rate",
+        "totalMv": "total_mv",
+        "totalMV": "total_mv",
+        "marketValue": "total_mv",
+    }
+    out = coalesce_alias_columns(frame, aliases)
+    if "trade_date" in out.columns:
+        out["trade_date"] = pd.to_datetime(out["trade_date"].astype(str), errors="coerce").dt.strftime("%Y%m%d")
+        out["trade_date"] = out["trade_date"].fillna(frame.get("trade_date", out["trade_date"]).astype(str) if "trade_date" in frame else out["trade_date"])
+    for column in ("close", "pre_close", "change", "pct_chg", "amount", "turnover_rate", "pe_ttm", "total_mv"):
+        if column in out.columns:
+            out[column] = pd.to_numeric(out[column], errors="coerce")
+    if "pct_chg" not in out.columns:
+        if {"close", "pre_close"}.issubset(out.columns):
+            pre_close = out["pre_close"].replace(0, pd.NA)
+            out["pct_chg"] = (out["close"] - out["pre_close"]) / pre_close * 100
+        elif {"change", "pre_close"}.issubset(out.columns):
+            pre_close = out["pre_close"].replace(0, pd.NA)
+            out["pct_chg"] = out["change"] / pre_close * 100
+        else:
+            out["pct_chg"] = 0.0
+    elif out["pct_chg"].isna().any() and {"close", "pre_close"}.issubset(out.columns):
+        pre_close = out["pre_close"].replace(0, pd.NA)
+        calculated = (out["close"] - out["pre_close"]) / pre_close * 100
+        out["pct_chg"] = out["pct_chg"].fillna(calculated)
+    elif out["pct_chg"].isna().any() and {"change", "pre_close"}.issubset(out.columns):
+        pre_close = out["pre_close"].replace(0, pd.NA)
+        calculated = out["change"] / pre_close * 100
+        out["pct_chg"] = out["pct_chg"].fillna(calculated)
+    out["pct_chg"] = out["pct_chg"].fillna(0.0)
+    return out
+
+
+def normalize_board_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    """Normalize board cache/API aliases to keep old cache files readable."""
+    if frame is None or frame.empty:
+        return pd.DataFrame()
+    aliases = {
+        "ts_code": "board_code",
+        "code": "board_code",
+        "boardCode": "board_code",
+        "name": "board_name",
+        "boardName": "board_name",
+        "type": "board_type",
+        "boardType": "board_type",
+        "pctChange": "pct_chg",
+        "pct_change": "pct_chg",
+        "turnoverRate": "turnover_rate",
+    }
+    out = coalesce_alias_columns(frame, aliases)
+    for column in ("pct_chg", "amount", "turnover_rate"):
+        if column in out.columns:
+            out[column] = pd.to_numeric(out[column], errors="coerce")
+    if "pct_chg" not in out.columns:
+        out["pct_chg"] = 0.0
+    if "amount" not in out.columns:
+        out["amount"] = 0.0
+    if "board_type" not in out.columns:
+        out["board_type"] = "概念"
+    if "source" not in out.columns:
+        out["source"] = "缓存数据"
+    return out
+
+
 def previous_open_date(pro, now: datetime | None = None) -> str:
     now = now or datetime.now()
     end = now.strftime("%Y%m%d")
@@ -181,10 +268,10 @@ def latest_market_path() -> Path:
 def load_market(pro, trade_date: str) -> pd.DataFrame:
     try:
         df = pd.read_parquet(latest_market_path())
-        df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.strftime("%Y%m%d")
+        df = normalize_market_frame(df)
         day = df[df["trade_date"] == trade_date].copy()
         if not day.empty:
-            return day
+            return normalize_market_frame(day)
     except Exception:
         pass
 
@@ -205,7 +292,7 @@ def load_market(pro, trade_date: str) -> pd.DataFrame:
         daily["turnover_rate"] = float("nan")
         daily["pe_ttm"] = float("nan")
         daily["total_mv"] = float("nan")
-    return daily
+    return normalize_market_frame(daily)
 
 
 def load_latest_available_market(pro, requested_date: str) -> tuple[str, pd.DataFrame]:
@@ -334,6 +421,7 @@ def fetch_tushare_boards(pro, trade_date: str) -> pd.DataFrame:
         frame["amount"] = 0.0
         frame["source"] = "TuShare同花顺"
         frame["board_type"] = frame["board_type"].map({"N": "概念", "I": "行业"}).fillna(frame["board_type"]).fillna("概念")
+        frame = normalize_board_frame(frame)
         frame = frame[frame["pct_chg"].notna() & frame["board_name"].notna()]
         frame = frame[~frame["board_name"].astype(str).str.contains(BOARD_EXCLUDE_PATTERNS, na=False)]
         return frame.sort_values(["pct_chg", "turnover_rate"], ascending=[False, False]).reset_index(drop=True)
@@ -345,7 +433,9 @@ def fetch_tushare_boards(pro, trade_date: str) -> pd.DataFrame:
 def fetch_boards_for_date(pro, trade_date: str, limit_each_type: int = 120, use_cache: bool = True) -> pd.DataFrame:
     cache = DATA_DIR / f"hot_boards_all_{trade_date}.csv"
     if use_cache and cache.exists():
-        return pd.read_csv(cache)
+        cached = normalize_board_frame(pd.read_csv(cache))
+        if {"board_code", "board_name", "pct_chg"}.issubset(cached.columns):
+            return cached
     tushare_boards = fetch_tushare_boards(pro, trade_date)
     if not tushare_boards.empty:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -381,7 +471,7 @@ def fetch_boards_for_date(pro, trade_date: str, limit_each_type: int = 120, use_
         frames.append(pd.DataFrame(rows))
     if not frames:
         return pd.DataFrame()
-    out = pd.concat(frames, ignore_index=True)
+    out = normalize_board_frame(pd.concat(frames, ignore_index=True))
     out = out.sort_values(["pct_chg", "amount"], ascending=[False, False]).reset_index(drop=True)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     out.to_csv(cache, index=False)
@@ -1229,8 +1319,10 @@ def main() -> None:
     trade_date, market = load_latest_available_market(pro, requested_date)
     basic = load_stock_basic(pro)
     market = market.merge(basic[["ts_code", "name", "industry", "market"]], on="ts_code", how="left")
+    market = normalize_market_frame(market)
 
     boards = fetch_boards_for_date(pro, trade_date, limit_each_type=args.board_scan_limit)
+    boards = normalize_board_frame(boards)
     if boards.empty or "board_code" not in boards.columns:
         raise RuntimeError(f"{trade_date} 没有获取到可用的行业或概念板块数据")
     hot_boards = boards.head(max(args.top_boards, 12)).copy()
