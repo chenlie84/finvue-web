@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -15,6 +16,7 @@ from services import hotspot_fetcher, hotspot_stock_matcher
 
 
 SETTINGS_KEY = "feishu-hotspot-push-settings"
+SUMMARY_CACHE_KEY = "hotspot-ai-summary-cache"
 logger = logging.getLogger(__name__)
 LOCAL_TZ = timezone(timedelta(hours=8), "Asia/Shanghai")
 DEFAULT_DAILY_PUSH_TIME = "09:00"
@@ -195,24 +197,53 @@ def _hotspot_lines_for_summary(items: list[dict[str, Any]], top_per_platform: in
     return lines
 
 
-def _generate_push_summary() -> dict[str, Any]:
-    top_per_platform = 8
+def _summary_input_signature(items: list[dict[str, Any]]) -> str:
+    raw = "\n".join(
+        f"{store.text(item.get('platform'))}|{item.get('rank') or ''}|{store.text(item.get('title'))}"
+        for item in items
+    )
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()
+
+
+def _is_recent_iso(value: Any, max_age_minutes: int = 90) -> bool:
+    text = store.text(value).replace("Z", "+00:00")
+    if not text:
+        return False
+    try:
+        dt = datetime.fromisoformat(text)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) - dt.astimezone(timezone.utc) <= timedelta(minutes=max_age_minutes)
+    except Exception:
+        return False
+
+
+def generate_hotspot_summary(top_per_platform: int = 8, username: str = "", prefer_cache: bool = True) -> dict[str, Any]:
     items, grouped = _recent_summary_hotspots(top_per_platform)
     if not items:
         return {"analysis": "", "itemCount": 0, "platforms": [], "error": "暂无可分析的热搜数据"}
+    signature = _summary_input_signature(items)
+    if prefer_cache:
+        cached = store.safe_object(store.get_kv(SUMMARY_CACHE_KEY, {}))
+        if (
+            cached.get("signature") == signature
+            and cached.get("analysis")
+            and _is_recent_iso(cached.get("generatedAt"))
+        ):
+            return {**cached, "cacheHit": True}
 
     system_prompt = """你是财经直播内容主编和投顾合规助手。你需要从全网热搜中筛出真正重要、适合投顾团队关注的新闻，并转化为直播选题。
 要求：
 1. 优先关注财经、宏观政策、产业链、上市公司、科技、消费、监管、地缘风险等与投资相关的话题。
 2. 对纯娱乐、低价值八卦、重复话题要降权或忽略。
 3. 不编造具体股票买卖建议，不承诺收益，不输出荐股结论。
-4. 输出必须简洁，适合飞书推送和后台顶部展示。"""
+4. 输出必须简洁、可直接展示在后台顶部，也可原样用于飞书推送。"""
 
     user_prompt = f"""下面是最近一轮热搜数据，每个平台取前 {top_per_platform} 条：
 
 {chr(10).join(_hotspot_lines_for_summary(items, top_per_platform))}
 
-请输出 Markdown，总长度控制在 800 字以内，结构如下：
+请输出 Markdown，总长度控制在 900 字以内，结构如下：
 
 # 今日热搜总览
 
@@ -220,32 +251,40 @@ def _generate_push_summary() -> dict[str, Any]:
 用编号列表输出，每条包含：事件、为什么重要、可能影响的行业/方向。
 
 ## 直播可用选题
-给出 3-4 个适合财经直播展开的话题角度。
+给出 3-5 个适合财经直播展开的话题角度。
 
 ## 风险与合规提醒
-列出 2-3 条讨论时需要避开的表达边界。
+列出 2-4 条讨论时需要避开的表达边界。
 
 ## 可忽略噪音
 用一句话概括本轮哪些类型热搜价值较低。"""
 
     try:
-        ai_result = ai_router.generate({"systemPrompt": system_prompt, "userPrompt": user_prompt}, username="")
+        ai_result = ai_router.generate({"systemPrompt": system_prompt, "userPrompt": user_prompt}, username=username)
         analysis = store.text(ai_result.get("markdown"))
-        return {
+        payload = {
             "analysis": analysis,
             "itemCount": len(items),
             "platforms": sorted(grouped.keys()),
             "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "signature": signature,
             "aiMeta": ai_result.get("aiMeta"),
         }
+        store.set_kv(SUMMARY_CACHE_KEY, payload)
+        return payload
     except Exception as exc:
         logger.exception("[feishu] failed to generate hotspot summary for push")
         return {
             "analysis": "",
             "itemCount": len(items),
             "platforms": sorted(grouped.keys()),
+            "signature": signature,
             "error": str(exc),
         }
+
+
+def _generate_push_summary() -> dict[str, Any]:
+    return generate_hotspot_summary(top_per_platform=8, username="", prefer_cache=True)
 
 
 def _extract_markdown_section(markdown: str, heading_keywords: list[str]) -> str:
@@ -281,6 +320,65 @@ def _extract_numbered_items(section: str, limit: int) -> list[str]:
     if current:
         items.append(_clean_markdown_inline(" ".join(current)))
     return [item for item in items if item][:limit]
+
+
+def _extract_labeled_value(text: str, labels: list[str]) -> str:
+    label_pattern = "|".join(re.escape(label) for label in labels)
+    match = re.search(rf"(?:{label_pattern})[:：]\s*(.+?)(?=(?:事件|为什么重要|可能影响的行业/方向|可能影响的行业方向|方向|影响)[:：]|$)", text)
+    return _clean_markdown_inline(match.group(1)) if match else ""
+
+
+def _summary_focus_details(summary_text: str, limit: int = 5) -> list[dict[str, str]]:
+    section = _extract_markdown_section(summary_text, ["最值得关注", "值得盯", "重点新闻"])
+    if not section:
+        return [{"title": item, "event": "", "reason": "", "impact": ""} for item in _fallback_focus_items(limit)]
+    items: list[dict[str, str]] = []
+    current: dict[str, str] | None = None
+
+    def push_current() -> None:
+        nonlocal current
+        if not current:
+            return
+        if not current.get("title"):
+            current["title"] = current.get("event") or current.get("reason") or "未命名重点"
+        items.append({key: _clean_markdown_inline(value) for key, value in current.items()})
+        current = None
+
+    for raw_line in section.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        line = re.sub(r"^[-*•]\s+", "", line)
+        numbered = re.match(r"^\d+[\.\、)]\s*(.+)$", line)
+        if numbered:
+            push_current()
+            content = numbered.group(1).strip()
+            current = {
+                "title": _clean_markdown_inline(re.split(r"(?:事件|为什么重要|可能影响的行业/方向|可能影响的行业方向|方向|影响)[:：]", content, maxsplit=1)[0]) or "",
+                "event": _extract_labeled_value(content, ["事件"]),
+                "reason": _extract_labeled_value(content, ["为什么重要"]),
+                "impact": _extract_labeled_value(content, ["可能影响的行业/方向", "可能影响的行业方向", "方向", "影响"]),
+            }
+            continue
+        if current is None:
+            current = {"title": "", "event": "", "reason": "", "impact": ""}
+        clean = _clean_markdown_inline(line)
+        if re.match(r"^事件[:：]", clean):
+            current["event"] = re.sub(r"^事件[:：]\s*", "", clean)
+        elif re.match(r"^为什么重要[:：]", clean):
+            current["reason"] = re.sub(r"^为什么重要[:：]\s*", "", clean)
+        elif re.match(r"^(可能影响的行业/方向|可能影响的行业方向|方向|影响)[:：]", clean):
+            current["impact"] = re.sub(r"^(可能影响的行业/方向|可能影响的行业方向|方向|影响)[:：]\s*", "", clean)
+        elif not current.get("title"):
+            current["title"] = clean
+        elif not current.get("event"):
+            current["event"] = clean
+        else:
+            current["reason"] = "；".join(part for part in [current.get("reason"), clean] if part)
+    push_current()
+    if not items:
+        return [{"title": item, "event": "", "reason": "", "impact": ""} for item in _summary_focus_items(summary_text, limit)]
+    return items[:limit]
 
 
 def _fallback_focus_items(limit: int = 5) -> list[str]:
@@ -388,7 +486,34 @@ def _format_sector_digest(related: dict[str, Any], include_stocks: bool = True) 
 
 
 def _format_focus_digest(summary_text: str, limit: int = 5) -> list[str]:
-    return [f"{index}. {_short_text(item, 88)}" for index, item in enumerate(_summary_focus_items(summary_text, limit), 1)]
+    lines = []
+    for index, item in enumerate(_summary_focus_details(summary_text, limit), 1):
+        title = _short_text(item.get("title"), 64)
+        event = _short_text(item.get("event"), 86)
+        reason = _short_text(item.get("reason"), 86)
+        impact = _short_text(item.get("impact"), 64)
+        lines.append(f"{index}. {title}")
+        if event:
+            lines.append(f"   事件：{event}")
+        if reason:
+            lines.append(f"   重要性：{reason}")
+        if impact:
+            lines.append(f"   方向：{impact}")
+    return lines
+
+
+def _format_focus_card_block(summary_text: str, limit: int = 5) -> str:
+    blocks = []
+    for index, item in enumerate(_summary_focus_details(summary_text, limit), 1):
+        lines = [f"**#{index} {_short_text(item.get('title'), 72)}**"]
+        if item.get("event"):
+            lines.append(f"事件：{_short_text(item.get('event'), 96)}")
+        if item.get("reason"):
+            lines.append(f"为什么重要：{_short_text(item.get('reason'), 110)}")
+        if item.get("impact"):
+            lines.append(f"影响方向：{_short_text(item.get('impact'), 86)}")
+        blocks.append("\n".join(lines))
+    return "\n\n".join(blocks)
 
 
 def _format_live_topic_digest(summary_text: str, limit: int = 3) -> list[str]:
@@ -439,26 +564,32 @@ def _build_feishu_card(
     focus_lines = _format_focus_digest(summary_text)
     topic_lines = _format_live_topic_digest(summary_text)
     generated_at = datetime.now(LOCAL_TZ).strftime("%Y-%m-%d %H:%M")
-    method = "AI总览 + AI板块识别" if ai_used else "AI总览 + 规则兜底"
+    risk_lines = _extract_numbered_items(_extract_markdown_section(summary_text, ["风险", "合规"]), 3)
+    method = "页面AI总览同口径 + 板块观察池" if ai_used else "页面AI总览同口径 + 规则观察池"
     if not summary_text:
         method = "规则兜底"
     elements: list[dict[str, Any]] = [
         _card_div(f"**{generated_at}**｜{_format_refresh_line(refresh_result)}\n分析：{method}｜依据 {source_count or '若干'} 条财经/总览消息"),
         {"tag": "hr"},
-        _card_div("**本轮最值得盯的 5 条**\n" + ("\n".join(focus_lines) if focus_lines else "暂无可用总览，已使用板块雷达兜底。")),
+        _card_div("**本轮最值得盯的 5 条**\n" + (_format_focus_card_block(summary_text) if focus_lines else "暂无可用总览，已使用规则兜底。")),
         {"tag": "hr"},
-        _card_div("**Top 3 热点板块" + ("（含观察池）" if include_stocks else "") + "**\n" + _format_sector_card_block(related, include_stocks)),
+        _card_div("**相关板块/观察池（辅助，不覆盖上方5条）**\n" + _format_sector_card_block(related, include_stocks)),
     ]
     if topic_lines:
         elements.extend([
             {"tag": "hr"},
             _card_div("**直播可用选题**\n" + "\n".join(topic_lines)),
         ])
+    if risk_lines:
+        elements.extend([
+            {"tag": "hr"},
+            _card_div("**风险与合规提醒**\n" + "\n".join(f"{index}. {_short_text(item, 86)}" for index, item in enumerate(risk_lines, 1))),
+        ])
     return {
         "config": {"wide_screen_mode": True},
         "header": {
             "template": "blue",
-            "title": {"tag": "plain_text", "content": "FinVue 热点雷达"},
+            "title": {"tag": "plain_text", "content": "FinVue AI 热点总览"},
         },
         "elements": elements,
     }
@@ -481,21 +612,24 @@ def build_message(settings: dict[str, Any] | None = None, refresh_result: dict[s
     ai_used = bool(related.get("aiUsed"))
     source_count = related.get("sourceHotspotCount") or 0
     lines = [
-        "FinVue 热点板块雷达",
+        "FinVue AI 热点总览",
         f"{datetime.now().strftime('%Y-%m-%d %H:%M')}｜{_format_refresh_line(refresh_result)}",
-        f"分析：{'AI识别板块' if ai_used else '规则兜底'}｜依据 {source_count or '若干'} 条财经/总览消息",
+        f"分析：页面AI总览同口径{' + 板块观察池' if ai_used else ' + 规则观察池'}｜依据 {source_count or '若干'} 条财经/总览消息",
         "",
         "一、本轮最值得盯的 5 条",
     ]
     lines.extend(_format_focus_digest(summary_text))
     lines.extend([
         "",
-        f"Top 3 热点板块{'（含观察池）' if include_stocks else ''}",
+        f"二、相关板块/观察池（辅助，不覆盖上方5条）",
     ])
     lines.extend(_format_sector_digest(related, include_stocks))
     topic_lines = _format_live_topic_digest(summary_text)
     if topic_lines:
         lines.extend(["", "三、直播可用选题", *topic_lines])
+    risk_lines = _extract_numbered_items(_extract_markdown_section(summary_text, ["风险", "合规"]), 3)
+    if risk_lines:
+        lines.extend(["", "四、风险与合规提醒", *[f"{index}. {_short_text(item, 86)}" for index, item in enumerate(risk_lines, 1)]])
 
     return {
         "text": "\n".join(lines),

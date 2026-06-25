@@ -3352,8 +3352,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.39";
+const APP_VERSION = "0.1.40";
 const APP_RELEASES = [
+  {
+    version: "0.1.40",
+    date: "2026-06-25",
+    title: "AI 热点总览飞书同口径",
+    permissions: ["hotspot", "notify"],
+    summary: "统一页面 AI 热点总览与飞书推送的生成口径，避免同一轮热搜在页面和飞书里出现不同结论。",
+    items: [
+      "页面 AI 热点总览和飞书推送共用同一套总览生成函数。",
+      "页面生成的 AI 总览会写入服务端缓存，飞书推送优先复用同一轮缓存。",
+      "飞书标题改为 FinVue AI 热点总览，主体展示与页面一致的本轮最值得盯 5 条。",
+      "板块雷达和观察池降级为辅助信息，并补充直播选题与风险合规提醒。"
+    ]
+  },
   {
     version: "0.1.39",
     date: "2026-06-25",
