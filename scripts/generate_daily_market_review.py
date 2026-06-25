@@ -434,7 +434,8 @@ def fetch_boards_for_date(pro, trade_date: str, limit_each_type: int = 120, use_
     cache = DATA_DIR / f"hot_boards_all_{trade_date}.csv"
     if use_cache and cache.exists():
         cached = normalize_board_frame(pd.read_csv(cache))
-        if {"board_code", "board_name", "pct_chg"}.issubset(cached.columns):
+        seed_only_cache = limit_each_type > 0 and len(cached) <= len(SEED_BOARDS) + 2
+        if {"board_code", "board_name", "pct_chg"}.issubset(cached.columns) and not seed_only_cache:
             return cached
     tushare_boards = fetch_tushare_boards(pro, trade_date)
     if not tushare_boards.empty:
@@ -754,7 +755,7 @@ def fmt_wan(value: Any) -> str:
 
 
 def board_theme(board_name: str) -> str:
-    name = str(board_name)
+    name = re.sub(r"[ⅠⅡⅢⅣⅤ]+$", "", str(board_name)).strip()
     if any(k in name for k in ["MLCC", "被动元件", "电容"]):
         return "MLCC/被动元件"
     if any(k in name for k in ["钨", "钼", "小金属", "锗", "稀土"]):
@@ -763,10 +764,40 @@ def board_theme(board_name: str) -> str:
         return "算力材料/PCB链"
     if any(k in name for k in ["通信", "CPO", "MPO", "光"]):
         return "光连接/CPO"
-    if any(k in name for k in ["分立器件", "封测", "碳化硅", "半导体"]):
-        return "半导体/功率"
+    if any(k in name for k in ["分立器件", "功率器件"]):
+        return "功率半导体/分立器件"
+    if any(k in name for k in ["半导体设备", "光刻", "刻蚀"]):
+        return "半导体设备"
+    if any(k in name for k in ["集成电路制造", "晶圆制造"]):
+        return "晶圆制造/半导体"
+    if any(k in name for k in ["封测", "集成电路封测"]):
+        return "封测"
+    if any(k in name for k in ["碳化硅", "SiC"]):
+        return "SiC/功率材料"
+    if "半导体" in name:
+        return "半导体"
     clean = re.sub(r"(概念|指数|板块)$", "", name).strip()
     return clean or "其他强势主题"
+
+
+def select_hot_boards(boards: pd.DataFrame, top_n: int = 12) -> pd.DataFrame:
+    """Rank boards by tradable heat instead of raw percentage change only."""
+    if boards.empty:
+        return boards
+    ranked = normalize_board_frame(boards)
+    ranked["pct_chg"] = pd.to_numeric(ranked.get("pct_chg"), errors="coerce").fillna(0)
+    ranked["amount"] = pd.to_numeric(ranked.get("amount"), errors="coerce").fillna(0)
+    liquid = ranked[(ranked["pct_chg"] > 0) & (ranked["amount"] >= 3_000_000_000)].copy()
+    if liquid.empty:
+        liquid = ranked[ranked["pct_chg"] > 0].copy()
+    if liquid.empty:
+        liquid = ranked.copy()
+    amount_factor = liquid["amount"].clip(lower=1).map(math.log10)
+    liquid["hot_score"] = liquid["pct_chg"] * 3 + amount_factor / 2
+    liquid = liquid.sort_values(["hot_score", "pct_chg", "amount"], ascending=[False, False, False])
+    liquid["theme_key"] = liquid["board_name"].map(board_theme)
+    liquid = liquid.drop_duplicates(["theme_key", "pct_chg", "amount"])
+    return liquid.drop(columns=["hot_score", "theme_key"], errors="ignore").head(top_n).reset_index(drop=True)
 
 
 def compact_reason(board_name: str) -> str:
@@ -1311,7 +1342,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--date", help="Trade date, YYYYMMDD. Defaults to latest open day.")
     parser.add_argument("--top-boards", type=int, default=12)
-    parser.add_argument("--board-scan-limit", type=int, default=0)
+    parser.add_argument("--board-scan-limit", type=int, default=120)
     args = parser.parse_args()
 
     pro = pro_api()
@@ -1325,7 +1356,7 @@ def main() -> None:
     boards = normalize_board_frame(boards)
     if boards.empty or "board_code" not in boards.columns:
         raise RuntimeError(f"{trade_date} 没有获取到可用的行业或概念板块数据")
-    hot_boards = boards.head(max(args.top_boards, 12)).copy()
+    hot_boards = select_hot_boards(boards, max(args.top_boards, 12))
     board_leaders: dict[str, pd.DataFrame] = {}
     for code in hot_boards["board_code"].head(args.top_boards):
         try:

@@ -3352,8 +3352,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.38";
+const APP_VERSION = "0.1.39";
 const APP_RELEASES = [
+  {
+    version: "0.1.39",
+    date: "2026-06-25",
+    title: "复盘热门板块全市场扫描",
+    permissions: ["research", "market"],
+    summary: "行情复盘改为扫描更完整的行业与概念板块，并细化半导体相关主线，避免把局部强势误写成宽泛主题。",
+    items: [
+      "默认扫描东方财富行业和概念各 120 个板块，不再只依赖内置种子池。",
+      "旧的种子池板块缓存会自动失效重扫，避免沿用偏窄缓存。",
+      "热门板块按涨幅与成交额综合排序，并过滤低成交小板块。",
+      "半导体主题拆分为功率半导体/分立器件、半导体设备、晶圆制造、封测、SiC/功率材料等细分口径。"
+    ]
+  },
   {
     version: "0.1.38",
     date: "2026-06-24",
