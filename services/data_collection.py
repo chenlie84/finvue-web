@@ -117,6 +117,7 @@ def _normalize_item(item: dict[str, Any]) -> dict[str, Any]:
         "aweme_id": str(item.get("aweme_id") or item.get("group_id_str") or ""),
         "desc": str(item.get("desc") or ""),
         "create_time": item.get("create_time"),
+        "publish_at": _timestamp_to_iso(item.get("create_time")),
         "statistics": {
             "aweme_id": str(statistics.get("aweme_id") or item.get("aweme_id") or ""),
             "comment_count": statistics.get("comment_count") or 0,
@@ -170,6 +171,25 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _int_value(value: Any, default: int = 0) -> int:
+    try:
+        if value is None or value == "":
+            return default
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def _timestamp_to_iso(value: Any) -> str:
+    timestamp = _int_value(value)
+    if timestamp <= 0:
+        return ""
+    try:
+        return datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+    except (OverflowError, OSError, ValueError):
+        return ""
+
+
 def _creator_key(author: dict[str, Any]) -> str:
     return str(author.get("sec_uid") or author.get("unique_id") or author.get("short_id") or "").strip()
 
@@ -199,6 +219,84 @@ def _save_creators_index(payload: dict[str, Any]) -> None:
     _write_json(CREATORS_INDEX_PATH, payload)
 
 
+def _video_record_from_info(info: dict[str, Any], now: str | None = None) -> dict[str, Any]:
+    now = now or _utc_now()
+    aweme_id = str(info.get("aweme_id") or "")
+    stats = info.get("statistics") if isinstance(info.get("statistics"), dict) else {}
+    video = info.get("video") if isinstance(info.get("video"), dict) else {}
+    duration_ms = _int_value(video.get("duration_ms"))
+    duration_seconds = round(duration_ms / 1000) if duration_ms else 0
+    create_time = info.get("create_time")
+    metrics = {
+        "diggCount": _int_value(stats.get("digg_count")),
+        "commentCount": _int_value(stats.get("comment_count")),
+        "collectCount": _int_value(stats.get("collect_count")),
+        "shareCount": _int_value(stats.get("share_count")),
+        "playCount": _int_value(stats.get("play_count")),
+    }
+    return {
+        "awemeId": aweme_id,
+        "title": info.get("desc") or "",
+        "collectedAt": info.get("collected_at") or now,
+        "createTime": create_time,
+        "publishAt": _timestamp_to_iso(create_time),
+        "durationMs": duration_ms,
+        "durationSeconds": duration_seconds,
+        "metrics": metrics,
+        "diggCount": metrics["diggCount"],
+        "commentCount": metrics["commentCount"],
+        "collectCount": metrics["collectCount"],
+        "shareCount": metrics["shareCount"],
+        "playCount": metrics["playCount"],
+        "audioDownloadUrl": f"/api/data-collection/douyin/{aweme_id}/audio" if aweme_id else "",
+        "commentsDownloadUrl": f"/api/data-collection/douyin/{aweme_id}/comments" if aweme_id else "",
+    }
+
+
+def _merge_video_record(video: dict[str, Any], info: dict[str, Any] | None = None) -> tuple[dict[str, Any], bool]:
+    merged = dict(video)
+    before = json.dumps(merged, sort_keys=True, ensure_ascii=False)
+    aweme_id = str(merged.get("awemeId") or "")
+    if info:
+        from_info = _video_record_from_info(info)
+        for key, value in from_info.items():
+            if key in {"audioDownloadUrl", "commentsDownloadUrl"}:
+                if value and not merged.get(key):
+                    merged[key] = value
+            elif key == "metrics":
+                current = merged.get("metrics") if isinstance(merged.get("metrics"), dict) else {}
+                merged["metrics"] = {**from_info["metrics"], **current}
+            elif value not in ("", None, 0) and not merged.get(key):
+                merged[key] = value
+    metrics = merged.get("metrics") if isinstance(merged.get("metrics"), dict) else {}
+    for key in ("diggCount", "commentCount", "collectCount", "shareCount", "playCount"):
+        metrics[key] = _int_value(metrics.get(key, merged.get(key)))
+        merged[key] = metrics[key]
+    merged["metrics"] = metrics
+    if not merged.get("publishAt"):
+        merged["publishAt"] = _timestamp_to_iso(merged.get("createTime"))
+    if not merged.get("durationSeconds") and merged.get("durationMs"):
+        merged["durationSeconds"] = round(_int_value(merged.get("durationMs")) / 1000)
+    if aweme_id and not merged.get("commentsDownloadUrl"):
+        merged["commentsDownloadUrl"] = f"/api/data-collection/douyin/{aweme_id}/comments"
+    if aweme_id and not merged.get("audioDownloadUrl"):
+        merged["audioDownloadUrl"] = f"/api/data-collection/douyin/{aweme_id}/audio"
+    after = json.dumps(merged, sort_keys=True, ensure_ascii=False)
+    return merged, before != after
+
+
+def _apply_creator_video_summary(creator: dict[str, Any]) -> None:
+    videos = creator.get("videos") if isinstance(creator.get("videos"), list) else []
+    creator["videoCount"] = len(videos)
+    creator["totalDiggCount"] = sum(_int_value(item.get("diggCount")) for item in videos if isinstance(item, dict))
+    creator["totalCommentCount"] = sum(_int_value(item.get("commentCount")) for item in videos if isinstance(item, dict))
+    creator["totalCollectCount"] = sum(_int_value(item.get("collectCount")) for item in videos if isinstance(item, dict))
+    creator["totalShareCount"] = sum(_int_value(item.get("shareCount")) for item in videos if isinstance(item, dict))
+    creator["totalDurationSeconds"] = sum(_int_value(item.get("durationSeconds")) for item in videos if isinstance(item, dict))
+    publish_times = [str(item.get("publishAt") or "") for item in videos if isinstance(item, dict) and item.get("publishAt")]
+    creator["lastPublishAt"] = max(publish_times) if publish_times else ""
+
+
 def _upsert_creator(info: dict[str, Any]) -> dict[str, Any]:
     author = info.get("author") if isinstance(info.get("author"), dict) else {}
     key = _creator_key(author)
@@ -211,19 +309,7 @@ def _upsert_creator(info: dict[str, Any]) -> dict[str, Any]:
     videos = [item for item in (existing.get("videos") or []) if isinstance(item, dict)]
     aweme_id = str(info.get("aweme_id") or "")
     videos = [item for item in videos if str(item.get("awemeId")) != aweme_id]
-    stats = info.get("statistics") if isinstance(info.get("statistics"), dict) else {}
-    videos.insert(0, {
-        "awemeId": aweme_id,
-        "title": info.get("desc") or "",
-        "collectedAt": info.get("collected_at") or now,
-        "createTime": info.get("create_time"),
-        "diggCount": stats.get("digg_count") or 0,
-        "commentCount": stats.get("comment_count") or 0,
-        "collectCount": stats.get("collect_count") or 0,
-        "shareCount": stats.get("share_count") or 0,
-        "audioDownloadUrl": f"/api/data-collection/douyin/{aweme_id}/audio",
-        "commentsDownloadUrl": f"/api/data-collection/douyin/{aweme_id}/comments",
-    })
+    videos.insert(0, _video_record_from_info(info, now))
     creator = {
         **existing,
         "id": key,
@@ -242,9 +328,9 @@ def _upsert_creator(info: dict[str, Any]) -> dict[str, Any]:
         "firstCollectedAt": existing.get("firstCollectedAt") or now,
         "lastCollectedAt": now,
         "latestAwemeId": aweme_id,
-        "videoCount": len(videos),
         "videos": videos[:80],
     }
+    _apply_creator_video_summary(creator)
     creators[key] = creator
     _save_creators_index(index)
     return creator
@@ -265,14 +351,24 @@ def list_creators() -> list[dict[str, Any]]:
     changed = False
     for item in items:
         videos = item.get("videos") if isinstance(item.get("videos"), list) else []
+        merged_videos = []
         for video in videos:
             if not isinstance(video, dict):
                 continue
             aweme_id = str(video.get("awemeId") or "").strip()
-            if aweme_id and not video.get("commentsDownloadUrl"):
-                video["commentsDownloadUrl"] = f"/api/data-collection/douyin/{aweme_id}/comments"
-                changed = True
-        item["videos"] = videos
+            info = None
+            info_path = METADATA_DIR / f"{aweme_id}.info.json"
+            if aweme_id and info_path.exists():
+                loaded_info = _read_json(info_path, {})
+                info = loaded_info if isinstance(loaded_info, dict) else None
+            merged_video, video_changed = _merge_video_record(video, info)
+            merged_videos.append(merged_video)
+            changed = changed or video_changed
+        item["videos"] = merged_videos
+        before_summary = json.dumps({key: item.get(key) for key in ("videoCount", "totalDiggCount", "totalCommentCount", "totalCollectCount", "totalShareCount", "totalDurationSeconds", "lastPublishAt")}, sort_keys=True, ensure_ascii=False)
+        _apply_creator_video_summary(item)
+        after_summary = json.dumps({key: item.get(key) for key in ("videoCount", "totalDiggCount", "totalCommentCount", "totalCollectCount", "totalShareCount", "totalDurationSeconds", "lastPublishAt")}, sort_keys=True, ensure_ascii=False)
+        changed = changed or before_summary != after_summary
     if changed:
         index["creators"] = {str(item.get("id")): item for item in items if item.get("id")}
         _save_creators_index(index)
@@ -521,6 +617,11 @@ def recent_items(limit: int = 20) -> list[dict[str, Any]]:
             "creatorId": _creator_key(info.get("author") or {}),
             "creatorProfileUrl": (info.get("author") or {}).get("profile_url") or _profile_url(info.get("author") or {}),
             "collectedAt": info.get("collected_at") or datetime.fromtimestamp(path.stat().st_mtime).isoformat(),
+            "createTime": info.get("create_time"),
+            "publishAt": _timestamp_to_iso(info.get("create_time")),
+            "durationMs": _int_value((info.get("video") or {}).get("duration_ms")),
+            "durationSeconds": round(_int_value((info.get("video") or {}).get("duration_ms")) / 1000) if _int_value((info.get("video") or {}).get("duration_ms")) else 0,
+            "statistics": info.get("statistics") if isinstance(info.get("statistics"), dict) else {},
             "infoPath": str(path),
             "commentsPath": str(COMMENTS_DIR / f"{aweme_id}.comments.json"),
             "commentsCollected": bool((info.get("comments") or {}).get("collected")),

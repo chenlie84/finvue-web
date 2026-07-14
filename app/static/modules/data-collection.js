@@ -5,6 +5,35 @@
 
   let loaded = false;
 
+  function formatDate(value) {
+    if (!value) return "--";
+    const raw = Number(value);
+    const date = Number.isFinite(raw) && raw > 0
+      ? new Date(raw < 100000000000 ? raw * 1000 : raw)
+      : new Date(value);
+    if (Number.isNaN(date.getTime())) return "--";
+    return date.toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  }
+
+  function formatDuration(value) {
+    const seconds = Math.round(Number(value || 0));
+    if (!seconds) return "--";
+    const minutes = Math.floor(seconds / 60);
+    const rest = seconds % 60;
+    return minutes ? `${minutes}分${String(rest).padStart(2, "0")}秒` : `${rest}秒`;
+  }
+
+  function videoMetrics(video = {}) {
+    const metrics = video.metrics || {};
+    return {
+      digg: metrics.diggCount ?? video.diggCount ?? 0,
+      comment: metrics.commentCount ?? video.commentCount ?? 0,
+      collect: metrics.collectCount ?? video.collectCount ?? 0,
+      share: metrics.shareCount ?? video.shareCount ?? 0,
+      play: metrics.playCount ?? video.playCount ?? 0,
+    };
+  }
+
   function setStatus(message, kind = "") {
     const el = $("dataCollectionStatus");
     if (!el) return;
@@ -64,8 +93,9 @@
       </div>
       <div class="data-collection-info-grid">
         <div><span>视频 ID</span><b>${esc(info.aweme_id || "--")}</b></div>
+        <div><span>发布日期</span><b>${esc(formatDate(info.publish_at || info.create_time))}</b></div>
         <div><span>尺寸</span><b>${esc(video.width || "--")} x ${esc(video.height || "--")}</b></div>
-        <div><span>时长</span><b>${video.duration_ms ? Math.round(video.duration_ms / 1000) + " 秒" : "--"}</b></div>
+        <div><span>时长</span><b>${esc(formatDuration(video.duration_ms ? Math.round(video.duration_ms / 1000) : 0))}</b></div>
         <div><span>音乐</span><b>${esc(music.title || "--")}</b></div>
       </div>
       ${risk.content ? `<div class="data-collection-risk">风险提示：${esc(risk.content)}</div>` : ""}
@@ -95,6 +125,7 @@
     el.innerHTML = items.map((item) => {
       const videos = item.videos || [];
       const latest = videos[0] || {};
+      const latestMetrics = videoMetrics(latest);
       const tags = (item.tags || []).join("，");
       return `
         <article class="data-collection-creator-card" data-creator-id="${esc(item.id)}">
@@ -111,13 +142,30 @@
             ${latest.awemeId ? `<a href="/api/data-collection/douyin/${esc(latest.awemeId)}/audio" target="_blank" rel="noopener">最新音频</a>` : ""}
             ${latest.commentsDownloadUrl ? `<a href="${esc(latest.commentsDownloadUrl)}" target="_blank" rel="noopener">评论下载</a>` : ""}
           </div>
+          <div class="data-collection-creator-stats">
+            <span>累计点赞 <b>${num(item.totalDiggCount)}</b></span>
+            <span>累计评论 <b>${num(item.totalCommentCount)}</b></span>
+            <span>累计收藏 <b>${num(item.totalCollectCount)}</b></span>
+            <span>累计转发 <b>${num(item.totalShareCount)}</b></span>
+          </div>
           <div class="data-collection-creator-form">
             <label>分类<input value="${esc(item.category || "")}" data-field="category" placeholder="如：宏观/短线/产业链/情绪"></label>
             <label>标签<input value="${esc(tags)}" data-field="tags" placeholder="逗号或空格分隔"></label>
             <label>备注<textarea rows="2" data-field="note" placeholder="记录风格、可靠度、适合跟踪的方向">${esc(item.note || "")}</textarea></label>
             <button class="btn btn-outline" type="button" onclick="window.FinVueDataCollection?.saveCreator?.('${esc(encodeURIComponent(item.id || ""))}')">保存标签</button>
           </div>
-          ${latest.title ? `<div class="data-collection-creator-latest">最近视频：${esc(latest.title)}</div>` : ""}
+          ${latest.title ? `
+            <div class="data-collection-creator-latest">
+              <div>最近视频：${esc(latest.title)}</div>
+              <div class="data-collection-video-meta">发布 ${esc(formatDate(latest.publishAt || latest.createTime))} · 时长 ${esc(formatDuration(latest.durationSeconds))}</div>
+              <div class="data-collection-video-stats">
+                <span>赞 ${num(latestMetrics.digg)}</span>
+                <span>评 ${num(latestMetrics.comment)}</span>
+                <span>藏 ${num(latestMetrics.collect)}</span>
+                <span>转 ${num(latestMetrics.share)}</span>
+              </div>
+            </div>
+          ` : ""}
         </article>
       `;
     }).join("");
@@ -130,11 +178,21 @@
       el.innerHTML = '<div class="data-collection-empty">暂无采集记录。</div>';
       return;
     }
-    el.innerHTML = items.map((item) => `
+    el.innerHTML = items.map((item) => {
+      const stats = item.statistics || {};
+      const metrics = {
+        digg: stats.digg_count || 0,
+        comment: stats.comment_count || item.commentsCount || 0,
+        collect: stats.collect_count || 0,
+        share: stats.share_count || 0,
+      };
+      return `
       <article class="data-collection-recent-item">
         <div>
           <h4>${esc(item.title || item.awemeId)}</h4>
           <p>${esc(item.author || "未知博主")} · ${esc(item.awemeId || "")}</p>
+          <p>发布 ${esc(formatDate(item.publishAt || item.createTime))} · 时长 ${esc(formatDuration(item.durationSeconds))}</p>
+          <p>赞 ${num(metrics.digg)} · 评 ${num(metrics.comment)} · 藏 ${num(metrics.collect)} · 转 ${num(metrics.share)}</p>
           <p>评论明细：${item.commentsCollected ? `${num(item.commentsCount)} 条` : "未抓到/未采集"}</p>
         </div>
         <div class="data-collection-recent-files">
@@ -144,7 +202,8 @@
           <span>JSON</span>
         </div>
       </article>
-    `).join("");
+    `;
+    }).join("");
   }
 
   async function load() {

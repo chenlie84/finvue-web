@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="/static/modules/daily-review.css" />
 <link rel="stylesheet" href="/static/modules/backtest.css" />
 <link rel="stylesheet" href="/static/modules/feishu.css" />
-<link rel="stylesheet" href="/static/modules/data-collection.css?v=20260714b" />
+<link rel="stylesheet" href="/static/modules/data-collection.css?v=20260714c" />
 <style>
   :root {
     --bg0:#0A0B0E; --bg1:#11131A; --bg2:#181B24; --bg3:#1E2230;
@@ -3404,8 +3404,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.43";
+const APP_VERSION = "0.1.44";
 const APP_RELEASES = [
+  {
+    version: "0.1.44",
+    date: "2026-07-14",
+    title: "主播采集历史指标增强",
+    permissions: ["data-collection"],
+    summary: "数据采集会把每条视频的点赞、评论、收藏、转发、时长和发布日期沉淀到主播历史记录里，主播库和最近采集列表可以直接查看。",
+    items: [
+      "主播视频历史新增发布日期、时长、播放量、点赞、评论、收藏和转发字段。",
+      "新采集的视频会直接写入完整互动指标，旧记录会在读取主播库时从已有 info.json 自动回填。",
+      "主播卡片新增累计点赞、评论、收藏和转发统计，方便快速判断账号历史表现。",
+      "最近视频和最近采集列表展示发布日期、时长与赞评藏转，不必再打开 JSON 文件确认。",
+      "数据采集 JS/CSS 追加版本参数 v=20260714c，确保线上页面刷新到新展示逻辑。"
+    ]
+  },
   {
     version: "0.1.43",
     date: "2026-07-14",
@@ -13876,7 +13890,7 @@ window.addEventListener("resize", () => {
 <script src="/static/modules/daily-review.js"></script>
 <script src="/static/modules/backtest.js"></script>
 <script src="/static/modules/feishu.js"></script>
-<script src="/static/modules/data-collection.js?v=20260714b"></script>
+<script src="/static/modules/data-collection.js?v=20260714c"></script>
 <script src="/static/modules/anchor-dashboard-api.js"></script>
 <script src="/static/modules/roi-calculator.js"></script>
 <script src="/static/modules/anchor-portrait.js"></script>
