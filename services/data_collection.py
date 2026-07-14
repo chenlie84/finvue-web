@@ -16,6 +16,9 @@ import requests
 ROOT = Path(os.getenv("FINVUE_DATA_COLLECTION_ROOT", str(Path.home() / "Documents" / "抖音数据")))
 DOWNLOAD_DIR = ROOT / "downloads"
 METADATA_DIR = ROOT / "metadata"
+CREATORS_DIR = ROOT / "creators"
+COMMENTS_DIR = ROOT / "comments"
+CREATORS_INDEX_PATH = CREATORS_DIR / "creators.json"
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
@@ -27,6 +30,8 @@ HEADERS = {
 
 def _ensure_dirs() -> None:
     METADATA_DIR.mkdir(parents=True, exist_ok=True)
+    CREATORS_DIR.mkdir(parents=True, exist_ok=True)
+    COMMENTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _first_url(value: str) -> str:
@@ -152,6 +157,220 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def _read_json(path: Path, default: Any) -> Any:
+    if not path.exists():
+        return default
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return default
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _creator_key(author: dict[str, Any]) -> str:
+    return str(author.get("sec_uid") or author.get("unique_id") or author.get("short_id") or "").strip()
+
+
+def _profile_url(author: dict[str, Any]) -> str:
+    sec_uid = str(author.get("sec_uid") or "").strip()
+    unique_id = str(author.get("unique_id") or author.get("short_id") or "").strip()
+    if sec_uid:
+        return f"https://www.douyin.com/user/{sec_uid}"
+    if unique_id:
+        return f"https://www.douyin.com/search/{unique_id}?type=user"
+    return ""
+
+
+def _load_creators_index() -> dict[str, Any]:
+    payload = _read_json(CREATORS_INDEX_PATH, {"creators": {}})
+    if not isinstance(payload, dict):
+        payload = {"creators": {}}
+    if not isinstance(payload.get("creators"), dict):
+        payload["creators"] = {}
+    return payload
+
+
+def _save_creators_index(payload: dict[str, Any]) -> None:
+    CREATORS_DIR.mkdir(parents=True, exist_ok=True)
+    payload["updatedAt"] = _utc_now()
+    _write_json(CREATORS_INDEX_PATH, payload)
+
+
+def _upsert_creator(info: dict[str, Any]) -> dict[str, Any]:
+    author = info.get("author") if isinstance(info.get("author"), dict) else {}
+    key = _creator_key(author)
+    if not key:
+        return {}
+    index = _load_creators_index()
+    creators = index["creators"]
+    existing = creators.get(key) if isinstance(creators.get(key), dict) else {}
+    now = _utc_now()
+    videos = [item for item in (existing.get("videos") or []) if isinstance(item, dict)]
+    aweme_id = str(info.get("aweme_id") or "")
+    videos = [item for item in videos if str(item.get("awemeId")) != aweme_id]
+    stats = info.get("statistics") if isinstance(info.get("statistics"), dict) else {}
+    videos.insert(0, {
+        "awemeId": aweme_id,
+        "title": info.get("desc") or "",
+        "collectedAt": info.get("collected_at") or now,
+        "createTime": info.get("create_time"),
+        "diggCount": stats.get("digg_count") or 0,
+        "commentCount": stats.get("comment_count") or 0,
+        "collectCount": stats.get("collect_count") or 0,
+        "shareCount": stats.get("share_count") or 0,
+        "audioDownloadUrl": f"/api/data-collection/douyin/{aweme_id}/audio",
+        "commentsDownloadUrl": f"/api/data-collection/douyin/{aweme_id}/comments",
+    })
+    creator = {
+        **existing,
+        "id": key,
+        "nickname": str(author.get("nickname") or existing.get("nickname") or ""),
+        "shortId": str(author.get("short_id") or existing.get("shortId") or ""),
+        "uniqueId": str(author.get("unique_id") or existing.get("uniqueId") or ""),
+        "secUid": str(author.get("sec_uid") or existing.get("secUid") or ""),
+        "signature": str(author.get("signature") or existing.get("signature") or ""),
+        "avatar": str(author.get("avatar") or existing.get("avatar") or ""),
+        "awemeCount": author.get("aweme_count") or existing.get("awemeCount") or 0,
+        "followingCount": author.get("following_count") or existing.get("followingCount") or 0,
+        "profileUrl": _profile_url(author) or existing.get("profileUrl") or "",
+        "tags": existing.get("tags") if isinstance(existing.get("tags"), list) else [],
+        "category": str(existing.get("category") or ""),
+        "note": str(existing.get("note") or ""),
+        "firstCollectedAt": existing.get("firstCollectedAt") or now,
+        "lastCollectedAt": now,
+        "latestAwemeId": aweme_id,
+        "videoCount": len(videos),
+        "videos": videos[:80],
+    }
+    creators[key] = creator
+    _save_creators_index(index)
+    return creator
+
+
+def list_creators() -> list[dict[str, Any]]:
+    _ensure_dirs()
+    index = _load_creators_index()
+    creators = index.get("creators") or {}
+    if not creators:
+        for path in sorted(METADATA_DIR.glob("*.info.json"), key=lambda item: item.stat().st_mtime):
+            info = _read_json(path, {})
+            if isinstance(info, dict):
+                _upsert_creator(info)
+        index = _load_creators_index()
+        creators = index.get("creators") or {}
+    items = [item for item in creators.values() if isinstance(item, dict)]
+    return sorted(items, key=lambda item: str(item.get("lastCollectedAt") or ""), reverse=True)
+
+
+def update_creator(creator_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    _ensure_dirs()
+    creator_id = str(creator_id or "").strip()
+    index = _load_creators_index()
+    creators = index["creators"]
+    creator = creators.get(creator_id)
+    if not isinstance(creator, dict):
+        raise FileNotFoundError("没有找到该主播记录")
+    if "tags" in payload:
+        raw_tags = payload.get("tags") or []
+        if isinstance(raw_tags, str):
+            raw_tags = re.split(r"[,，\s]+", raw_tags)
+        creator["tags"] = [str(item).strip() for item in raw_tags if str(item).strip()][:24]
+    if "category" in payload:
+        creator["category"] = str(payload.get("category") or "").strip()[:80]
+    if "note" in payload:
+        creator["note"] = str(payload.get("note") or "").strip()[:500]
+    creator["updatedAt"] = _utc_now()
+    creators[creator_id] = creator
+    _save_creators_index(index)
+    return creator
+
+
+def _normalize_comment(item: dict[str, Any]) -> dict[str, Any]:
+    user = item.get("user") if isinstance(item.get("user"), dict) else {}
+    return {
+        "cid": str(item.get("cid") or item.get("id") or ""),
+        "text": str(item.get("text") or item.get("content") or ""),
+        "createTime": item.get("create_time") or item.get("createTime"),
+        "diggCount": item.get("digg_count") or item.get("diggCount") or 0,
+        "replyCommentTotal": item.get("reply_comment_total") or item.get("replyCommentTotal") or 0,
+        "user": {
+            "uid": str(user.get("uid") or ""),
+            "secUid": str(user.get("sec_uid") or ""),
+            "nickname": str(user.get("nickname") or ""),
+            "uniqueId": str(user.get("unique_id") or ""),
+            "shortId": str(user.get("short_id") or ""),
+        },
+    }
+
+
+def _comment_api_candidates(aweme_id: str, cursor: int, count: int) -> list[tuple[str, dict[str, Any]]]:
+    return [
+        (
+            "https://www.douyin.com/aweme/v1/web/comment/list/",
+            {
+                "device_platform": "webapp",
+                "aid": "6383",
+                "channel": "channel_pc_web",
+                "aweme_id": aweme_id,
+                "cursor": cursor,
+                "count": count,
+                "item_type": 0,
+            },
+        ),
+        (
+            "https://www.iesdouyin.com/web/api/v2/aweme/comment/",
+            {
+                "aweme_id": aweme_id,
+                "cursor": cursor,
+                "count": count,
+            },
+        ),
+    ]
+
+
+def fetch_douyin_comments(aweme_id: str, source_url: str = "", limit: int = 50) -> dict[str, Any]:
+    aweme_id = str(aweme_id or "").strip()
+    if not aweme_id:
+        return {"ok": False, "comments": [], "error": "缺少视频 ID"}
+    collected: list[dict[str, Any]] = []
+    cursor = 0
+    errors: list[str] = []
+    headers = {
+        **HEADERS,
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+        ),
+        "Referer": source_url or f"https://www.douyin.com/video/{aweme_id}",
+    }
+    while len(collected) < limit:
+        page_loaded = False
+        for url, params in _comment_api_candidates(aweme_id, cursor, min(20, limit - len(collected))):
+            try:
+                response = requests.get(url, params=params, headers=headers, timeout=15)
+                response.raise_for_status()
+                data = response.json()
+            except Exception as exc:
+                errors.append(f"{url}: {exc}")
+                continue
+            raw_comments = data.get("comments") or data.get("comment_list") or data.get("data") or []
+            if not isinstance(raw_comments, list):
+                raw_comments = []
+            collected.extend(_normalize_comment(item) for item in raw_comments if isinstance(item, dict))
+            cursor = int(data.get("cursor") or data.get("next_cursor") or cursor + len(raw_comments))
+            has_more = bool(data.get("has_more"))
+            page_loaded = True
+            if not has_more or not raw_comments:
+                return {"ok": True, "comments": collected[:limit], "error": "", "cursor": cursor, "hasMore": has_more}
+            break
+        if not page_loaded:
+            return {"ok": False, "comments": collected[:limit], "error": errors[-1] if errors else "评论接口未返回数据"}
+    return {"ok": True, "comments": collected[:limit], "error": "", "cursor": cursor, "hasMore": True}
+
+
 def _extract_audio_from_url(play_url: str, aweme_id: str) -> Path:
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
@@ -185,20 +404,53 @@ def collect_douyin_video(source: str) -> dict[str, Any]:
         raise RuntimeError("未能识别视频 ID")
     info["aweme_id"] = aweme_id
     info["source_url"] = share_url
-    info["collected_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    info["collected_at"] = _utc_now()
+    if isinstance(info.get("author"), dict):
+        info["author"]["profile_url"] = _profile_url(info["author"])
 
     share_path = METADATA_DIR / f"{aweme_id}.share.html"
     info_path = METADATA_DIR / f"{aweme_id}.info.json"
     play_path = METADATA_DIR / f"{aweme_id}.play_url.txt"
+    comments_path = COMMENTS_DIR / f"{aweme_id}.comments.json"
     share_path.write_text(html, encoding="utf-8")
-    _write_json(info_path, info)
     play_url = _first_url_from_list(info.get("video", {}).get("play_addr"))
     if play_url:
         play_path.write_text(play_url, encoding="utf-8")
+    comments_result = fetch_douyin_comments(aweme_id, source_url=share_url, limit=50)
+    expected_comments = int((info.get("statistics") or {}).get("comment_count") or 0)
+    if expected_comments > 0 and not comments_result.get("comments"):
+        comments_result = {
+            **comments_result,
+            "ok": False,
+            "error": comments_result.get("error") or "评论接口未返回明细，可能需要登录态或风控签名参数",
+        }
+    comments_payload = {
+        "awemeId": aweme_id,
+        "sourceUrl": share_url,
+        "collectedAt": _utc_now(),
+        "ok": bool(comments_result.get("ok")),
+        "error": comments_result.get("error") or "",
+        "comments": comments_result.get("comments") or [],
+    }
+    _write_json(comments_path, comments_payload)
+    info["comments"] = {
+        "collected": bool(comments_payload["ok"]),
+        "count": len(comments_payload["comments"]),
+        "error": comments_payload["error"],
+        "path": str(comments_path),
+    }
+    creator = _upsert_creator(info)
+    _write_json(info_path, info)
 
-    files = {"info": str(info_path), "shareHtml": str(share_path), "playUrl": str(play_path) if play_url else ""}
+    files = {
+        "info": str(info_path),
+        "shareHtml": str(share_path),
+        "playUrl": str(play_path) if play_url else "",
+        "comments": str(comments_path),
+    }
     info["audio_download_url"] = f"/api/data-collection/douyin/{aweme_id}/audio" if play_url else ""
-    return {"ok": True, "info": info, "files": files, "root": str(ROOT)}
+    info["comments_download_url"] = f"/api/data-collection/douyin/{aweme_id}/comments"
+    return {"ok": True, "info": info, "creator": creator, "comments": comments_payload, "files": files, "root": str(ROOT)}
 
 
 def info_for_aweme(aweme_id: str) -> dict[str, Any]:
@@ -216,6 +468,19 @@ def build_audio_download(aweme_id: str) -> Path:
     return _extract_audio_from_url(play_url, aweme_id)
 
 
+def comments_file_for_aweme(aweme_id: str) -> Path:
+    _ensure_dirs()
+    aweme_id = str(aweme_id or "").strip()
+    if not re.match(r"^\d{16,22}$", aweme_id):
+        raise ValueError("视频 ID 不合法")
+    path = (COMMENTS_DIR / f"{aweme_id}.comments.json").resolve()
+    if COMMENTS_DIR.resolve() not in path.parents:
+        raise ValueError("评论文件路径不合法")
+    if not path.exists() or not path.is_file():
+        raise FileNotFoundError("没有找到该视频的评论文件，请先采集一次")
+    return path
+
+
 def recent_items(limit: int = 20) -> list[dict[str, Any]]:
     _ensure_dirs()
     items = []
@@ -229,8 +494,14 @@ def recent_items(limit: int = 20) -> list[dict[str, Any]]:
             "awemeId": aweme_id,
             "title": info.get("desc") or "",
             "author": (info.get("author") or {}).get("nickname") or "",
+            "creatorId": _creator_key(info.get("author") or {}),
+            "creatorProfileUrl": (info.get("author") or {}).get("profile_url") or _profile_url(info.get("author") or {}),
             "collectedAt": info.get("collected_at") or datetime.fromtimestamp(path.stat().st_mtime).isoformat(),
             "infoPath": str(path),
+            "commentsPath": str(COMMENTS_DIR / f"{aweme_id}.comments.json"),
+            "commentsCollected": bool((info.get("comments") or {}).get("collected")),
+            "commentsCount": (info.get("comments") or {}).get("count") or 0,
+            "commentsDownloadUrl": f"/api/data-collection/douyin/{aweme_id}/comments",
             "audioDownloadUrl": f"/api/data-collection/douyin/{aweme_id}/audio" if _first_url_from_list((info.get("video") or {}).get("play_addr")) else "",
         })
     return items

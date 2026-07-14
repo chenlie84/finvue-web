@@ -19,6 +19,23 @@ def recent(_: dict = Depends(security.require_permission("data-collection"))) ->
     return {"ok": True, "items": data_collection.recent_items(), "root": str(data_collection.ROOT)}
 
 
+@router.get("/api/data-collection/creators")
+def creators(_: dict = Depends(security.require_permission("data-collection"))) -> dict:
+    return {"ok": True, "items": data_collection.list_creators(), "root": str(data_collection.ROOT)}
+
+
+@router.patch("/api/data-collection/creators/{creator_id}")
+async def update_creator(creator_id: str, request: Request, _: dict = Depends(security.require_permission("data-collection"))) -> dict:
+    body = await request.json()
+    try:
+        creator = data_collection.update_creator(creator_id, body if isinstance(body, dict) else {})
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return {"ok": True, "creator": creator}
+
+
 @router.post("/api/data-collection/douyin")
 async def collect_douyin(request: Request, _: dict = Depends(security.require_permission("data-collection"))) -> dict:
     body = await request.json()
@@ -47,4 +64,19 @@ async def download_audio(aweme_id: str, _: dict = Depends(security.require_permi
         media_type="audio/mp4",
         filename=f"{aweme_id}.audio.m4a",
         background=BackgroundTask(lambda: shutil.rmtree(audio_path.parent, ignore_errors=True)),
+    )
+
+
+@router.get("/api/data-collection/douyin/{aweme_id}/comments")
+async def download_comments(aweme_id: str, _: dict = Depends(security.require_permission("data-collection"))) -> FileResponse:
+    try:
+        comments_path = data_collection.comments_file_for_aweme(aweme_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return FileResponse(
+        comments_path,
+        media_type="application/json",
+        filename=f"{aweme_id}.comments.json",
     )

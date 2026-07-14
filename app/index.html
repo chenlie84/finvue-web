@@ -1137,6 +1137,17 @@
 
           <section class="data-collection-card">
             <div class="data-collection-card-head">
+              <div>
+                <div class="data-collection-card-title">主播收集库</div>
+                <div class="muted">按采集过的博主自动归档，可做标签、分类和备注。</div>
+              </div>
+              <span id="dataCollectionCreatorCount" class="muted"></span>
+            </div>
+            <div id="dataCollectionCreators" class="data-collection-creators">正在读取主播库...</div>
+          </section>
+
+          <section class="data-collection-card">
+            <div class="data-collection-card-head">
               <div class="data-collection-card-title">最近采集</div>
               <span id="dataCollectionRoot" class="muted"></span>
             </div>
@@ -3393,8 +3404,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.41";
+const APP_VERSION = "0.1.42";
 const APP_RELEASES = [
+  {
+    version: "0.1.42",
+    date: "2026-07-14",
+    title: "数据采集评论与主播收集库",
+    permissions: ["data-collection"],
+    summary: "数据采集模块新增评论 JSON 下载能力，并把采集过的博主自动沉淀到主播收集库，方便后续做分类、标签和备注管理。",
+    items: [
+      "新增评论文件下载接口 /api/data-collection/douyin/{aweme_id}/comments，文件名为 {aweme_id}.comments.json。",
+      "采集结果、最近采集列表和主播最新视频均新增评论下载入口。",
+      "后端只允许合法视频 ID 读取评论文件，避免路径穿越读取其他文件。",
+      "新增主播收集库，按采集过的博主自动归档头像、主页、视频数量和最近采集视频。",
+      "主播收集库支持维护分类、标签和备注，便于后续跟踪主播风格与素材价值。"
+    ]
+  },
   {
     version: "0.1.41",
     date: "2026-07-14",
