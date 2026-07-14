@@ -170,6 +170,7 @@ PERMISSION_KEYS = [
     "home",
     "ai-chat",
     "live",
+    "data-collection",
     "anchor-library",
     "customer-library",
     "operation",

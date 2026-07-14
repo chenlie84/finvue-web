@@ -24,6 +24,7 @@ from services import tushare_market
 router = APIRouter()
 _REPORT_NAME_RE = re.compile(r"^a_share_daily_review_(\d{8})\.html$")
 _DATA_NAME_RE = re.compile(r"^a_share_daily_review_(\d{8})\.json$")
+_DEFAULT_GENERATE_TIMEOUT_SECONDS = 420
 
 
 def _review_permission():
@@ -108,14 +109,112 @@ def _report_meta(path: Path) -> dict[str, Any]:
     }
 
 
+def _json_candidate_from_text(value: str) -> str:
+    text = store.text(value).strip()
+    fenced = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.I)
+    if fenced:
+        text = fenced.group(1).strip()
+    decoder = json.JSONDecoder()
+    for matched in re.finditer(r"\{", text):
+        try:
+            _, end = decoder.raw_decode(text[matched.start():])
+            return text[matched.start(): matched.start() + end]
+        except json.JSONDecodeError:
+            continue
+    start = text.find("{")
+    end = text.rfind("}")
+    if start < 0 or end <= start:
+        raise ValueError("AI 归因结果缺少 JSON 对象")
+    return text[start:end + 1]
+
+
+def _repair_json_candidate(candidate: str) -> str:
+    repaired = candidate.strip()
+    repaired = repaired.replace("\ufeff", "")
+    repaired = repaired.replace("\u201c", '"').replace("\u201d", '"')
+    repaired = repaired.replace("\u2018", "'").replace("\u2019", "'")
+    repaired = re.sub(r",\s*([}\]])", r"\1", repaired)
+    return repaired
+
+
 def _extract_json_object(value: str) -> dict[str, Any]:
-    text = store.text(value)
-    fenced = re.search(r"```(?:json)?\s*(\{[\s\S]*\})\s*```", text, re.I)
-    candidate = fenced.group(1) if fenced else text[text.find("{"): text.rfind("}") + 1]
-    parsed = json.loads(candidate)
+    candidate = _json_candidate_from_text(value)
+    try:
+        parsed = json.loads(candidate)
+    except json.JSONDecodeError:
+        parsed = json.loads(_repair_json_candidate(candidate))
     if not isinstance(parsed, dict):
         raise ValueError("AI 归因结果不是 JSON 对象")
     return parsed
+
+
+def _to_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _fallback_ai_sector(sector_payload: dict[str, Any], error: Exception) -> dict[str, Any]:
+    name = store.text(sector_payload.get("name")) or "当前板块"
+    pct_change = sector_payload.get("pctChange")
+    subsectors = [item for item in (sector_payload.get("subsectors") or []) if isinstance(item, dict)]
+    stocks = [item for item in (sector_payload.get("stocks") or []) if isinstance(item, dict)]
+    top_subsector = subsectors[0] if subsectors else {}
+    sub_name = store.text(top_subsector.get("name")) or name
+    up_count = sum(1 for item in stocks if _to_float(item.get("pctChange")) > 0)
+    down_count = sum(1 for item in stocks if _to_float(item.get("pctChange")) < 0)
+    pct_text = f"{_to_float(pct_change):.2f}%" if pct_change is not None else "靠前"
+    stock_reasons = []
+    for stock in stocks:
+        stock_name = store.text(stock.get("name"))
+        industry = store.text(stock.get("industry")) or "相关行业"
+        role = store.text(stock.get("role")) or "跟踪"
+        stock_reasons.append(
+            {
+                "code": store.text(stock.get("code")),
+                "reason": (
+                    f"{stock_name}位于{industry}环节，当日随{name}共振，角色为{role}。"
+                    "本次 AI 结构化解析失败，先按行情强度、成交和换手作为线索保留，"
+                    "具体业务纯度仍需用公告、财报或订单继续核验。"
+                ),
+                "risk": "若板块涨跌家数转弱、成交放大但价格滞涨，或后续公告/财报无法验证业务相关性，需降级为资金博弈。",
+            }
+        )
+    return {
+        "id": sector_payload.get("id"),
+        "summary": f"{name}当日涨幅{pct_text}，当前先按板块价格行为和成分股共振降级展示。",
+        "chainLogic": (
+            f"当前确认链条为市场资金从{name}扩散到{sub_name}及相关标的；"
+            "由于 AI 返回 JSON 格式异常，尚不能升级为完整产业基本面链条，"
+            "后续需补充终端需求、核心部件、材料/设备和公司订单或财报证据。"
+        ),
+        "riseReason": (
+            f"分类：[资金/行情]。变化事实：{name}涨幅{pct_text}，样本股上涨{up_count}只、下跌{down_count}只。"
+            "受益环节先锁定为涨幅和换手靠前的细分赛道及代表标的；利润或订单传导尚未被模型结构化确认，"
+            "需继续核验公告、财报、价格和产业新闻。"
+        ),
+        "driverEvidence": [
+            {
+                "type": "资金",
+                "fact": f"{name}涨幅{pct_text}，代表标的出现板块共振。",
+                "transmission": f"资金先从板块指数扩散到{sub_name}及高弹性个股。",
+                "validation": "次日验证成交额、涨跌家数、核心标的承接，以及是否出现公告/订单/价格等产业证据。",
+                "newsIndex": -1,
+            },
+            {
+                "type": "行情",
+                "fact": f"AI 结构化归因解析失败：{store.text(error)[:120]}",
+                "transmission": "当前保留行情线索，避免把坏格式输出误判为基本面结论。",
+                "validation": "重新生成 AI 归因，或用产业新闻和财报数据补齐传导链。",
+                "newsIndex": -1,
+            },
+        ],
+        "fallRisk": "证据不足时容易从产业逻辑退化为纯资金轮动；若核心标的放量滞涨或板块宽度收缩，行情可能退潮。",
+        "outlook": "次日优先看核心标的承接、细分赛道是否继续扩散；未来1-8季度看公告、订单、价格和财报兑现。",
+        "stocks": stock_reasons,
+        "_fallbackError": store.text(error),
+    }
 
 
 def _compact_process_error(stderr: str, stdout: str) -> str:
@@ -212,12 +311,16 @@ def _enrich_report_with_ai(path: Path, username: str) -> dict[str, Any]:
             {"systemPrompt": system_prompt, "userPrompt": user_prompt},
             username=username,
         )
-        parsed = _extract_json_object(result.get("markdown") or "")
-        ai_sector = parsed.get("sector")
-        if not isinstance(ai_sector, dict):
-            ai_sector = next((item for item in parsed.get("sectors") or [] if isinstance(item, dict)), None)
-        if not isinstance(ai_sector, dict):
-            raise ValueError("AI 归因结果缺少 sector 对象")
+        try:
+            parsed = _extract_json_object(result.get("markdown") or "")
+            ai_sector = parsed.get("sector")
+            if not isinstance(ai_sector, dict):
+                ai_sector = next((item for item in parsed.get("sectors") or [] if isinstance(item, dict)), None)
+            if not isinstance(ai_sector, dict):
+                raise ValueError("AI 归因结果缺少 sector 对象")
+        except Exception as exc:
+            parsed = {"marketConclusion": ""}
+            ai_sector = _fallback_ai_sector(sector_payload, exc)
         ai_sector.setdefault("id", sector_payload.get("id"))
         return {"marketConclusion": store.text(parsed.get("marketConclusion")), "sector": ai_sector}, result.get("aiMeta") or {}
 
@@ -233,12 +336,15 @@ def _enrich_report_with_ai(path: Path, username: str) -> dict[str, Any]:
             try:
                 chunk, chunk_meta = future.result()
                 ai_sector = chunk["sector"]
+                fallback_error = store.text(ai_sector.pop("_fallbackError", ""))
                 sector_map[store.text(ai_sector.get("id") or sector_payload.get("id"))] = ai_sector
                 sector_id = store.text(ai_sector.get("id") or sector_payload.get("id"))
                 if chunk["marketConclusion"]:
                     conclusions[sector_id] = chunk["marketConclusion"]
                 if not ai_meta:
                     ai_meta = chunk_meta
+                if fallback_error:
+                    failures.append(f"{store.text(sector_payload.get('name'))}：AI返回JSON格式异常，已使用行情降级归因（{fallback_error[:160]}）")
             except Exception as exc:
                 failures.append(f"{store.text(sector_payload.get('name'))}：{exc}")
 
@@ -307,6 +413,15 @@ def _reports() -> list[dict[str, Any]]:
     return [_report_meta(path) for path in sorted(paths, key=lambda item: item.name, reverse=True)]
 
 
+def _generation_timeout_seconds() -> int:
+    raw = store.text(os.getenv("DAILY_MARKET_REVIEW_TIMEOUT_SECONDS"))
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        value = _DEFAULT_GENERATE_TIMEOUT_SECONDS
+    return max(180, value)
+
+
 @router.get("/api/daily-review/reports")
 def list_daily_reviews(_: dict = Depends(_review_permission())) -> dict:
     reports = _reports()
@@ -363,17 +478,31 @@ async def generate_daily_review(request: Request, session: dict = Depends(_revie
             "DAILY_MARKET_REVIEW_DATA_DIR": str(_data_dir()),
             "DAILY_MARKET_REVIEW_NEWS_JSON": json.dumps(_review_news_context(trade_date), ensure_ascii=False),
         }
+        timeout_seconds = _generation_timeout_seconds()
         result = subprocess.run(
             command,
             cwd=str(script.parent.parent),
             env=env,
             capture_output=True,
             text=True,
-            timeout=180,
+            timeout=timeout_seconds,
             check=False,
         )
     except subprocess.TimeoutExpired as exc:
-        raise HTTPException(status_code=504, detail="复盘生成超时，请稍后查看输出目录") from exc
+        reports = _reports()
+        generated_report = next((item for item in reports if item.get("tradeDate") == trade_date), None)
+        if generated_report:
+            return {
+                "ok": True,
+                "message": f"复盘生成耗时超过 {_generation_timeout_seconds()} 秒，已加载已落盘报告",
+                "aiWarning": "生成进程超时，AI 归因可能尚未补齐；请稍后刷新或重新生成",
+                "resolvedTradeDate": trade_date,
+                "dateFallback": False,
+                "stdout": store.text(exc.stdout)[-2000:],
+                "latest": generated_report,
+                "reports": reports,
+            }
+        raise HTTPException(status_code=504, detail=f"复盘生成超过 {_generation_timeout_seconds()} 秒仍未落盘，请稍后重试或查看服务日志") from exc
 
     if result.returncode != 0:
         raise HTTPException(status_code=500, detail=_compact_process_error(result.stderr, result.stdout))

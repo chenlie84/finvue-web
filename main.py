@@ -13,7 +13,7 @@ import uvicorn
 
 import config
 import migrate
-from api import admin, ai, auth, customers, daily_review, files, jobs, libraries, reports, settings, sop, system, logs, ai_chat, hotspot, market, backtest, feishu
+from api import admin, ai, auth, customers, daily_review, data_collection, files, jobs, libraries, reports, settings, sop, system, logs, ai_chat, hotspot, market, backtest, feishu
 from api import operation as api_operation
 
 
@@ -87,6 +87,7 @@ app.include_router(jobs.router)
 app.include_router(libraries.router)
 app.include_router(customers.router)
 app.include_router(daily_review.router)
+app.include_router(data_collection.router)
 app.include_router(reports.router)
 app.include_router(admin.router)
 app.include_router(ai.router)

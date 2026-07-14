@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="/static/modules/daily-review.css" />
 <link rel="stylesheet" href="/static/modules/backtest.css" />
 <link rel="stylesheet" href="/static/modules/feishu.css" />
+<link rel="stylesheet" href="/static/modules/data-collection.css" />
 <style>
   :root {
     --bg0:#0A0B0E; --bg1:#11131A; --bg2:#181B24; --bg3:#1E2230;
@@ -924,6 +925,7 @@
       <button class="nav-item active" data-sec="home" data-permission="home" onclick="showSec('home',this)"><span class="ni">◈</span> 工作台概览</button>
       <button class="nav-item" data-sec="ai-chat" data-permission="ai-chat" onclick="showSec('ai-chat',this)"><span class="ni">🤖</span> AI 对话</button>
       <button class="nav-item" data-sec="live" data-permission="live" onclick="showSec('live',this)"><span class="ni">▶</span> 直播分析 <span class="nav-badge live-status" id="liveAnalysisNavBadge"></span></button>
+      <button class="nav-item" data-sec="data-collection" data-permission="data-collection" onclick="showSec('data-collection',this)"><span class="ni">⤓</span> 数据采集</button>
       <button class="nav-item" data-sec="anchor-library" data-permission="anchor-library" onclick="showSec('anchor-library',this)"><span class="ni">▣</span> 主播资料库</button>
       <button class="nav-item" data-sec="customer-library" data-permission="customer-library" onclick="showSec('customer-library',this)"><span class="ni">◉</span> 客户库</button>
       <button class="nav-item" data-permission="operation" onclick="goOperationDashboard()"><span class="ni">📊</span> 运营数据中心</button>
@@ -1104,6 +1106,44 @@
         </div>
       </div>
       <div id="ai-sidebar-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:8999;display:none;" onclick="closeAiDrawer()"></div>
+
+      <!-- ══ 数据采集 ══ -->
+      <div class="sec" id="sec-data-collection">
+        <div class="data-collection-page">
+          <div class="data-collection-header">
+            <div>
+              <div class="page-title">数据采集</div>
+              <div class="page-sub">解析公开抖音分享页，沉淀博主信息、互动数据、风险提示与播放地址；音频按需直下，不长期落盘。</div>
+            </div>
+            <button class="btn btn-outline" type="button" onclick="window.FinVueDataCollection?.load?.()">刷新记录</button>
+          </div>
+
+          <div class="data-collection-layout">
+            <section class="data-collection-card data-collection-form">
+              <div class="data-collection-card-title">抖音视频采集</div>
+              <label>
+                <span>分享链接或视频 ID</span>
+                <textarea id="dataCollectionSource" class="textarea" rows="5" placeholder="粘贴抖音分享口令、公开分享链接，或直接输入视频 ID"></textarea>
+              </label>
+              <button id="dataCollectionRunBtn" class="btn btn-gold" type="button" onclick="window.FinVueDataCollection?.collect?.()">开始采集</button>
+              <div id="dataCollectionStatus" class="data-collection-status">仅保存博主与视频结构化信息；音频点击下载时临时生成，不在本地长期保存。</div>
+            </section>
+
+            <section class="data-collection-card data-collection-result">
+              <div class="data-collection-card-title">采集结果</div>
+              <div id="dataCollectionResult" class="data-collection-empty">等待采集任务。</div>
+            </section>
+          </div>
+
+          <section class="data-collection-card">
+            <div class="data-collection-card-head">
+              <div class="data-collection-card-title">最近采集</div>
+              <span id="dataCollectionRoot" class="muted"></span>
+            </div>
+            <div id="dataCollectionRecent" class="data-collection-recent">正在读取最近记录...</div>
+          </section>
+        </div>
+      </div>
 
       <!-- ══ 直播分析 ══ -->
       <div class="sec" id="sec-live">
@@ -3333,6 +3373,7 @@ const DASHBOARD_PERMISSION_LABELS = {
   home: "工作台概览",
   "ai-chat": "AI 对话",
   live: "直播分析",
+  "data-collection": "数据采集",
   "anchor-library": "主播资料库",
   "customer-library": "客户库",
   operation: "运营数据中心",
@@ -3352,8 +3393,24 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.40";
+const APP_VERSION = "0.1.41";
 const APP_RELEASES = [
+  {
+    version: "0.1.41",
+    date: "2026-07-14",
+    title: "数据采集工作台与复盘容错",
+    permissions: ["data-collection", "live", "daily-review"],
+    summary: "分析工具新增数据采集入口，可从公开抖音分享页解析视频信息并沉淀结构化数据；行情复盘增强超时与 AI JSON 容错，避免单点失败打断整页生成。",
+    items: [
+      "侧边栏分析工具新增 数据采集 模块，并加入独立 data-collection 权限。",
+      "新增抖音视频采集接口，支持输入分享链接或视频 ID，解析博主、标题、互动数据、风险提示、音乐、话题标签和播放地址。",
+      "采集结果默认只保存 info.json、分享页 HTML 和 play_url 等小文件。",
+      "音频改为点击下载时临时抽取 m4a，响应完成后自动删除临时文件，不在业务目录长期保存。",
+      "页面保留最近采集记录，便于快速确认博主信息和结构化数据是否已经记录。",
+      "行情复盘生成超时默认放宽到 420 秒，并支持 DAILY_MARKET_REVIEW_TIMEOUT_SECONDS 环境变量调整。",
+      "AI 返回非标准 JSON 时会先修复常见格式；仍失败则对该板块降级为行情归因，不再让整份复盘失败。"
+    ]
+  },
   {
     version: "0.1.40",
     date: "2026-06-25",
@@ -5061,6 +5118,7 @@ function showSec(id, btn) {
   if (id === "market") window.FinVueMarket?.load?.();
   if (id === "daily-review") window.FinVueDailyReview?.load?.();
   if (id === "backtest") window.FinVueBacktest?.load?.();
+  if (id === "data-collection") window.FinVueDataCollection?.ensureLoaded?.();
   if (id === "distill-library") renderDistillLibrary();
   if (id === "ai-chat") initAiChat();
   if (id === "export") renderExportCenter();
@@ -13779,6 +13837,7 @@ window.addEventListener("resize", () => {
 <script src="/static/modules/daily-review.js"></script>
 <script src="/static/modules/backtest.js"></script>
 <script src="/static/modules/feishu.js"></script>
+<script src="/static/modules/data-collection.js"></script>
 <script src="/static/modules/anchor-dashboard-api.js"></script>
 <script src="/static/modules/roi-calculator.js"></script>
 <script src="/static/modules/anchor-portrait.js"></script>
