@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="/static/modules/daily-review.css" />
 <link rel="stylesheet" href="/static/modules/backtest.css" />
 <link rel="stylesheet" href="/static/modules/feishu.css" />
-<link rel="stylesheet" href="/static/modules/data-collection.css" />
+<link rel="stylesheet" href="/static/modules/data-collection.css?v=20260714b" />
 <style>
   :root {
     --bg0:#0A0B0E; --bg1:#11131A; --bg2:#181B24; --bg3:#1E2230;
@@ -3404,8 +3404,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.42";
+const APP_VERSION = "0.1.43";
 const APP_RELEASES = [
+  {
+    version: "0.1.43",
+    date: "2026-07-14",
+    title: "数据采集评论下载兜底",
+    permissions: ["data-collection"],
+    summary: "修复数据采集页主播收集库读取失败时卡住的问题，并为旧采集记录补齐评论 JSON 下载兜底和静态资源缓存刷新。",
+    items: [
+      "最近采集和主播收集库改为独立加载，任一接口失败都不会阻塞另一块内容展示。",
+      "主播收集库读取失败时会在卡片内显示具体错误，不再一直停留在读取中。",
+      "旧视频记录自动补齐评论下载入口，主播卡片和最近采集列表都能显示评论下载。",
+      "旧视频缺少 comments.json 时，下载接口会自动生成占位 JSON，包含 expectedCommentCount 和失败原因，不再返回 404。",
+      "数据采集 JS/CSS 追加版本参数 v=20260714b，避免浏览器继续使用旧静态资源。"
+    ]
+  },
   {
     version: "0.1.42",
     date: "2026-07-14",
@@ -13862,7 +13876,7 @@ window.addEventListener("resize", () => {
 <script src="/static/modules/daily-review.js"></script>
 <script src="/static/modules/backtest.js"></script>
 <script src="/static/modules/feishu.js"></script>
-<script src="/static/modules/data-collection.js"></script>
+<script src="/static/modules/data-collection.js?v=20260714b"></script>
 <script src="/static/modules/anchor-dashboard-api.js"></script>
 <script src="/static/modules/roi-calculator.js"></script>
 <script src="/static/modules/anchor-portrait.js"></script>

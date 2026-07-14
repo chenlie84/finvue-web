@@ -148,24 +148,29 @@
   }
 
   async function load() {
+    let errors = [];
     try {
-      const [recentRes, creatorsRes] = await Promise.all([
-        fetch("/api/data-collection/recent", { credentials: "include" }),
-        fetch("/api/data-collection/creators", { credentials: "include" }),
-      ]);
+      const recentRes = await fetch("/api/data-collection/recent", { credentials: "include", cache: "no-store" });
       const recentData = await recentRes.json().catch(() => ({}));
-      const creatorsData = await creatorsRes.json().catch(() => ({}));
       if (!recentRes.ok || recentData.ok === false) throw new Error(recentData.error || recentData.detail || "读取采集记录失败");
-      if (!creatorsRes.ok || creatorsData.ok === false) throw new Error(creatorsData.error || creatorsData.detail || "读取主播库失败");
       $("dataCollectionRoot").textContent = recentData.root ? `保存目录：${recentData.root}` : "";
-      renderCreators(creatorsData.items || []);
       renderRecent(recentData.items || []);
-      loaded = true;
     } catch (error) {
-      renderCreators([]);
       renderRecent([]);
-      setStatus(error.message, "error");
+      errors.push(error.message);
     }
+    try {
+      const creatorsRes = await fetch("/api/data-collection/creators", { credentials: "include", cache: "no-store" });
+      const creatorsData = await creatorsRes.json().catch(() => ({}));
+      if (!creatorsRes.ok || creatorsData.ok === false) throw new Error(creatorsData.error || creatorsData.detail || "读取主播库失败");
+      renderCreators(creatorsData.items || []);
+    } catch (error) {
+      const el = $("dataCollectionCreators");
+      if (el) el.innerHTML = `<div class="data-collection-empty">主播库读取失败：${esc(error.message)}</div>`;
+      errors.push(error.message);
+    }
+    loaded = errors.length === 0;
+    if (errors.length) setStatus(errors.join("；"), "error");
   }
 
   async function saveCreator(encodedId) {

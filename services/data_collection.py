@@ -262,6 +262,20 @@ def list_creators() -> list[dict[str, Any]]:
         index = _load_creators_index()
         creators = index.get("creators") or {}
     items = [item for item in creators.values() if isinstance(item, dict)]
+    changed = False
+    for item in items:
+        videos = item.get("videos") if isinstance(item.get("videos"), list) else []
+        for video in videos:
+            if not isinstance(video, dict):
+                continue
+            aweme_id = str(video.get("awemeId") or "").strip()
+            if aweme_id and not video.get("commentsDownloadUrl"):
+                video["commentsDownloadUrl"] = f"/api/data-collection/douyin/{aweme_id}/comments"
+                changed = True
+        item["videos"] = videos
+    if changed:
+        index["creators"] = {str(item.get("id")): item for item in items if item.get("id")}
+        _save_creators_index(index)
     return sorted(items, key=lambda item: str(item.get("lastCollectedAt") or ""), reverse=True)
 
 
@@ -477,7 +491,17 @@ def comments_file_for_aweme(aweme_id: str) -> Path:
     if COMMENTS_DIR.resolve() not in path.parents:
         raise ValueError("评论文件路径不合法")
     if not path.exists() or not path.is_file():
-        raise FileNotFoundError("没有找到该视频的评论文件，请先采集一次")
+        info = info_for_aweme(aweme_id)
+        payload = {
+            "awemeId": aweme_id,
+            "sourceUrl": info.get("source_url") or "",
+            "collectedAt": _utc_now(),
+            "ok": False,
+            "error": (info.get("comments") or {}).get("error") or "该视频暂无评论明细文件，已生成空评论导出占位",
+            "expectedCommentCount": (info.get("statistics") or {}).get("comment_count") or 0,
+            "comments": [],
+        }
+        _write_json(path, payload)
     return path
 
 
