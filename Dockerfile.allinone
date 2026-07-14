@@ -2,7 +2,7 @@
 FROM debian:bookworm-slim
 
 # 安装 MySQL、Python 和依赖
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --fix-missing -o Acquire::Retries=5 --no-install-recommends \
     mariadb-server \
     mariadb-client \
     python3 \

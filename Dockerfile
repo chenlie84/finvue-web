@@ -3,7 +3,7 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # 安装系统依赖
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --fix-missing -o Acquire::Retries=5 --no-install-recommends \
     gcc \
     default-libmysqlclient-dev \
     ffmpeg \
