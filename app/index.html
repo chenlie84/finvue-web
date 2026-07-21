@@ -3436,8 +3436,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.47";
+const APP_VERSION = "0.1.48";
 const APP_RELEASES = [
+  {
+    version: "0.1.48",
+    date: "2026-07-21",
+    title: "行情复盘板块抓取提速",
+    permissions: ["daily-review"],
+    summary: "修复 TuShare 无 ths_daily 权限时，东方财富公共板块降级源串行抓取过慢导致复盘生成超时的问题。",
+    items: [
+      "东方财富板块 K 线从串行抓取改为并发抓取，减少卡在 boards:fetch:start 的时间。",
+      "单个公共源请求超时缩短，避免慢连接拖死整份复盘生成。",
+      "新增 DAILY_MARKET_REVIEW_BOARD_FETCH_SECONDS 独立板块抓取预算，默认 110 秒。",
+      "预算耗尽时会用已抓到的板块数据继续生成，不再等到整份复盘 420 秒超时。",
+      "公共源没有拿到板块数据时，会再尝试种子板块兜底。"
+    ]
+  },
   {
     version: "0.1.47",
     date: "2026-07-21",

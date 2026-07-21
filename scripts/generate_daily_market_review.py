@@ -13,6 +13,7 @@ import sys
 import time
 import warnings
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -39,6 +40,18 @@ HEADERS = {
 }
 SESSION = requests.Session()
 SESSION.trust_env = False
+
+
+def env_int(name: str, default: int, min_value: int | None = None, max_value: int | None = None) -> int:
+    try:
+        value = int(float(os.getenv(name, str(default))))
+    except Exception:
+        value = default
+    if min_value is not None:
+        value = max(min_value, value)
+    if max_value is not None:
+        value = min(max_value, value)
+    return value
 
 
 def progress(stage: str, **fields: Any) -> None:
@@ -397,16 +410,18 @@ def board_kline_on_date(code: str, trade_date: str) -> dict[str, Any] | None:
 
 def request_get(url: str, params: dict[str, Any]) -> requests.Response:
     last_error: Exception | None = None
-    for attempt in range(2):
+    primary_timeout = env_int("DAILY_MARKET_REVIEW_EASTMONEY_TIMEOUT_SECONDS", 5, 2, 20)
+    fallback_timeout = env_int("DAILY_MARKET_REVIEW_EASTMONEY_FALLBACK_TIMEOUT_SECONDS", 7, 2, 30)
+    for attempt in range(1):
         try:
-            resp = SESSION.get(url, params=params, headers=HEADERS, timeout=8)
+            resp = SESSION.get(url, params=params, headers=HEADERS, timeout=primary_timeout)
             resp.raise_for_status()
             return resp
         except Exception as exc:
             last_error = exc
-            time.sleep(0.4 * (attempt + 1))
+            time.sleep(0.2 * (attempt + 1))
     try:
-        resp = requests.get(url, params=params, headers=HEADERS, timeout=12)
+        resp = requests.get(url, params=params, headers=HEADERS, timeout=fallback_timeout)
         resp.raise_for_status()
         return resp
     except Exception as exc:
@@ -441,6 +456,58 @@ def fetch_tushare_boards(pro, trade_date: str) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+def fetch_board_kline_rows(board_type: str, base: pd.DataFrame, trade_date: str, deadline: float) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    candidates = []
+    for _, row in base.iterrows():
+        name = str(row["board_name"])
+        if BOARD_EXCLUDE_PATTERNS.search(name):
+            continue
+        candidates.append((str(row["board_code"]), name))
+    if not candidates:
+        return rows
+
+    workers = env_int("DAILY_MARKET_REVIEW_BOARD_FETCH_WORKERS", 16, 1, 32)
+    workers = min(workers, len(candidates))
+
+    def fetch_one(board_code: str, board_name: str) -> dict[str, Any] | None:
+        if time.monotonic() >= deadline:
+            return None
+        try:
+            item = board_kline_on_date(board_code, trade_date)
+        except Exception:
+            return None
+        if not item:
+            return None
+        item["board_type"] = board_type
+        item["source"] = "东方财富降级源"
+        if not item.get("board_name"):
+            item["board_name"] = board_name
+        return item
+
+    progress("boards:kline:batch:start", board_type=board_type, candidates=len(candidates), workers=workers)
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = [executor.submit(fetch_one, code, name) for code, name in candidates]
+        while futures:
+            remaining = max(0.1, deadline - time.monotonic())
+            try:
+                for future in as_completed(futures, timeout=remaining):
+                    futures.remove(future)
+                    item = future.result()
+                    if item:
+                        rows.append(item)
+                    if time.monotonic() >= deadline:
+                        break
+            except TimeoutError:
+                break
+            if time.monotonic() >= deadline:
+                break
+        for future in futures:
+            future.cancel()
+    progress("boards:kline:batch:done", board_type=board_type, rows=len(rows), timed_out=time.monotonic() >= deadline)
+    return rows
+
+
 def fetch_boards_for_date(pro, trade_date: str, limit_each_type: int = 120, use_cache: bool = True) -> pd.DataFrame:
     cache = DATA_DIR / f"hot_boards_all_{trade_date}.csv"
     if use_cache and cache.exists():
@@ -453,8 +520,13 @@ def fetch_boards_for_date(pro, trade_date: str, limit_each_type: int = 120, use_
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         tushare_boards.to_csv(cache, index=False)
         return tushare_boards
+    board_budget_seconds = env_int("DAILY_MARKET_REVIEW_BOARD_FETCH_SECONDS", 110, 20, 360)
+    deadline = time.monotonic() + board_budget_seconds
     frames = []
     for board_type, fs in [("概念", "m:90+t:3"), ("行业", "m:90+t:2")]:
+        if time.monotonic() >= deadline:
+            progress("boards:fetch:budget_exhausted", board_type=board_type, budget_seconds=board_budget_seconds)
+            break
         if limit_each_type <= 0:
             base = SEED_BOARDS[SEED_BOARDS["board_type"] == board_type][["board_code", "board_name"]]
         else:
@@ -466,24 +538,25 @@ def fetch_boards_for_date(pro, trade_date: str, limit_each_type: int = 120, use_
                 base = base[["board_code", "board_name"]].drop_duplicates().head(limit_each_type)
             except Exception:
                 base = SEED_BOARDS[SEED_BOARDS["board_type"] == board_type][["board_code", "board_name"]]
-        rows = []
-        for _, row in base.iterrows():
-            name = str(row["board_name"])
-            if BOARD_EXCLUDE_PATTERNS.search(name):
-                continue
+        rows = fetch_board_kline_rows(board_type, base, trade_date, deadline)
+        frames.append(pd.DataFrame(rows))
+    non_empty_frames = [frame for frame in frames if frame is not None and not frame.empty]
+    if not non_empty_frames:
+        progress("boards:fetch:seed_fallback", reason="public board source returned no kline rows")
+        seed_frames = []
+        for _, row in SEED_BOARDS.iterrows():
             try:
                 k = board_kline_on_date(str(row["board_code"]), trade_date)
-                if k:
-                    k["board_type"] = board_type
-                    k["source"] = "东方财富降级源"
-                    rows.append(k)
             except Exception:
-                continue
-            time.sleep(0.005)
-        frames.append(pd.DataFrame(rows))
-    if not frames:
-        return pd.DataFrame()
-    out = normalize_board_frame(pd.concat(frames, ignore_index=True))
+                k = None
+            if k:
+                k["board_type"] = row.get("board_type") or "概念"
+                k["source"] = "东方财富种子板块降级源"
+                seed_frames.append(k)
+        if not seed_frames:
+            return pd.DataFrame()
+        non_empty_frames = [pd.DataFrame(seed_frames)]
+    out = normalize_board_frame(pd.concat(non_empty_frames, ignore_index=True))
     out = out.sort_values(["pct_chg", "amount"], ascending=[False, False]).reset_index(drop=True)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     out.to_csv(cache, index=False)
