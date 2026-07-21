@@ -18,6 +18,7 @@ from services import tushare_market
 logger = logging.getLogger(__name__)
 LOCAL_TZ = timezone(timedelta(hours=8), "Asia/Shanghai")
 STATE_KEY = "daily-review-scheduler-state"
+SETTINGS_KEY = "daily-review-scheduler-settings"
 _RUN_LOCK = Lock()
 
 
@@ -40,12 +41,29 @@ def _normalize_time(value: Any) -> str:
 
 
 def get_settings() -> dict[str, Any]:
+    saved = store.safe_object(store.get_kv(SETTINGS_KEY, {}))
     return {
-        "enabled": bool(config.DAILY_MARKET_REVIEW_SCHEDULER_ENABLED),
-        "dailyRunTime": _normalize_time(config.DAILY_MARKET_REVIEW_SCHEDULE_TIME),
-        "retryMinutes": max(5, int(config.DAILY_MARKET_REVIEW_RETRY_MINUTES or 30)),
-        "weekdayOnly": bool(config.DAILY_MARKET_REVIEW_WEEKDAY_ONLY),
+        "enabled": bool(saved.get("enabled", config.DAILY_MARKET_REVIEW_SCHEDULER_ENABLED)),
+        "dailyRunTime": _normalize_time(saved.get("dailyRunTime") or config.DAILY_MARKET_REVIEW_SCHEDULE_TIME),
+        "retryMinutes": max(5, store.to_int(saved.get("retryMinutes"), int(config.DAILY_MARKET_REVIEW_RETRY_MINUTES or 30)) or 30),
+        "weekdayOnly": saved.get("weekdayOnly", config.DAILY_MARKET_REVIEW_WEEKDAY_ONLY) is not False,
+        "updatedAt": store.text(saved.get("updatedAt")),
+        "updatedBy": store.text(saved.get("updatedBy")),
     }
+
+
+def save_settings(payload: dict[str, Any], username: str = "") -> dict[str, Any]:
+    current = get_settings()
+    incoming = store.safe_object(payload)
+    value = {
+        "enabled": bool(incoming.get("enabled", current.get("enabled", True))),
+        "dailyRunTime": _normalize_time(incoming.get("dailyRunTime") or current.get("dailyRunTime")),
+        "retryMinutes": max(5, store.to_int(incoming.get("retryMinutes"), current.get("retryMinutes", 30)) or 30),
+        "weekdayOnly": incoming.get("weekdayOnly", current.get("weekdayOnly", True)) is not False,
+        "updatedAt": _now_iso(),
+        "updatedBy": store.text(username),
+    }
+    return store.set_kv(SETTINGS_KEY, value)
 
 
 def get_state() -> dict[str, Any]:

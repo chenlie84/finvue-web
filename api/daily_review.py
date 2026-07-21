@@ -551,6 +551,16 @@ def get_daily_review_scheduler(_: dict = Depends(_review_permission())) -> dict:
     return daily_review_scheduler.scheduler_status()
 
 
+@router.put("/api/daily-review/scheduler")
+async def put_daily_review_scheduler(request: Request, session: dict = Depends(_review_permission())) -> dict:
+    from services import daily_review_scheduler
+
+    body = await request.json()
+    incoming = body.get("settings") if isinstance(body.get("settings"), dict) else body
+    saved = daily_review_scheduler.save_settings(incoming if isinstance(incoming, dict) else {}, store.text(session.get("username")))
+    return {**daily_review_scheduler.scheduler_status(), "settings": saved, "message": "行情复盘定时任务配置已保存"}
+
+
 @router.get("/api/daily-review/reports/{filename}")
 def get_daily_review_html(filename: str, _: dict = Depends(_review_permission())) -> HTMLResponse:
     path = _safe_report_path(filename)

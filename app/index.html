@@ -12,7 +12,7 @@
 <script src="/static/modules/report-export.js"></script>
 <link rel="stylesheet" href="/static/modules/hotspot.css" />
 <link rel="stylesheet" href="/static/modules/market.css?v=20260721b" />
-<link rel="stylesheet" href="/static/modules/daily-review.css?v=20260721b" />
+<link rel="stylesheet" href="/static/modules/daily-review.css?v=20260721c" />
 <link rel="stylesheet" href="/static/modules/backtest.css" />
 <link rel="stylesheet" href="/static/modules/feishu.css?v=20260721b" />
 <link rel="stylesheet" href="/static/modules/data-collection.css?v=20260714c" />
@@ -1982,6 +1982,27 @@
             </div>
           </div>
           <div class="daily-review-status" id="dailyReviewStatus">正在读取每日行情复盘...</div>
+          <section class="panel" style="margin-bottom:14px;">
+            <div class="panel-hd">
+              <div>
+                <div class="panel-title">定时生成</div>
+                <div class="muted" id="dailyReviewSchedulerMeta" style="font-size:12px;margin-top:4px;">正在读取定时任务状态...</div>
+              </div>
+              <button class="btn btn-outline" id="dailyReviewSchedulerSaveBtn" type="button" style="font-size:12px;padding:6px 12px;">保存定时任务</button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;align-items:center;">
+              <label class="muted" style="font-size:12px;display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;">
+                <input id="dailyReviewSchedulerEnabled" type="checkbox">
+                启用每日自动复盘
+              </label>
+              <input class="inp" id="dailyReviewSchedulerTime" type="time" value="17:40" title="北京时间运行时间">
+              <input class="inp" id="dailyReviewSchedulerRetry" type="number" min="5" value="30" title="失败后重试间隔（分钟）">
+              <label class="muted" style="font-size:12px;display:flex;gap:8px;align-items:center;border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;">
+                <input id="dailyReviewSchedulerWeekdayOnly" type="checkbox" checked>
+                仅工作日运行
+              </label>
+            </div>
+          </section>
           <div class="daily-review-historybar">
             <span class="daily-review-history-label">历史交易日</span>
             <div class="daily-review-list" id="dailyReviewList"></div>
@@ -3436,8 +3457,23 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.48";
+const APP_VERSION = "0.1.49";
 const APP_RELEASES = [
+  {
+    version: "0.1.49",
+    date: "2026-07-21",
+    title: "行情复盘定时配置与板块回补",
+    permissions: ["daily-review", "admin-backup"],
+    summary: "行情复盘定时任务支持在页面和总配置包里保存；板块成员为空时会按板块关键词回补候选，避免热门主线显示 0/0。",
+    items: [
+      "行情复盘页新增定时生成配置卡，可保存启用状态、北京时间运行时间、失败重试间隔和仅工作日运行。",
+      "调度器配置写入 KV，服务重启后继续沿用页面保存的定时任务配置。",
+      "新增 PUT /api/daily-review/scheduler，用于后台更新行情复盘定时任务。",
+      "FinVue 总配置包支持 dailyReview.scheduler 导入导出。",
+      "板块成员下钻为空时，会用板块名和国资云、IPv6、信创、数据安全、算力等关键词回补候选标的。",
+      "退潮日正涨板块过少时，会补充相对强势板块，减少复盘主线缺失。"
+    ]
+  },
   {
     version: "0.1.48",
     date: "2026-07-21",
@@ -7129,6 +7165,7 @@ async function importConfigBundleFile(file) {
     if (imported.tushare) parts.push(`TuShare：${imported.tushare.indexCount || 0} 个指数 / ${imported.tushare.stockCount || 0} 只股票`);
     if (imported.feishu) parts.push(`飞书：${imported.feishu.hasWebhook ? "Webhook 已配置" : "未含 Webhook"}`);
     if (imported.ai) parts.push(`AI：${imported.ai.providerCount || 0} 条路由 / ${imported.ai.enabledCount || 0} 条启用`);
+    if (imported.dailyReview) parts.push(`复盘定时：${imported.dailyReview.schedulerEnabled ? "已启用" : "未启用"} / ${imported.dailyReview.dailyRunTime || "--"}`);
     if (status) status.textContent = `${payload.message || "总配置已导入"}。${parts.join("；") || "未返回导入摘要"}`;
     showToast("FinVue 总配置已导入");
   } catch (error) {
@@ -14059,7 +14096,7 @@ window.addEventListener("resize", () => {
 </script>
 <script src="/static/modules/hotspot.js"></script>
 <script src="/static/modules/market.js?v=20260721b"></script>
-<script src="/static/modules/daily-review.js?v=20260721b"></script>
+<script src="/static/modules/daily-review.js?v=20260721c"></script>
 <script src="/static/modules/backtest.js"></script>
 <script src="/static/modules/feishu.js?v=20260721b"></script>
 <script src="/static/modules/data-collection.js?v=20260714c"></script>

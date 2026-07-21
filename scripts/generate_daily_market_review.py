@@ -101,6 +101,11 @@ BOARD_INDUSTRY_FALLBACK = {
     "碳化硅": ["半导体"],
     "复合集流体": ["电气设备", "化工", "塑料"],
     "超级电容": ["元器件", "电气设备"],
+    "国资云": ["云计算", "数据中心", "软件", "互联网服务", "IT服务", "通信服务", "信息安全", "国资"],
+    "IPv6": ["通信设备", "通信服务", "软件", "互联网服务", "IT服务", "网络安全"],
+    "信创": ["软件", "IT服务", "半导体", "通信设备", "信息安全"],
+    "数据安全": ["软件", "IT服务", "信息安全", "网络安全"],
+    "算力": ["通信设备", "光通信", "数据中心", "服务器", "软件", "半导体"],
 }
 
 SOURCE_LINKS = [
@@ -605,25 +610,56 @@ def limit_up_label(row: pd.Series) -> str:
     return ""
 
 
-def leaders_for_board(pro, board_code: str, market: pd.DataFrame, basic: pd.DataFrame, max_rows: int = 16) -> pd.DataFrame:
+def fallback_constituents_by_board_name(board_name: str, market: pd.DataFrame, basic: pd.DataFrame, max_rows: int = 80) -> pd.DataFrame:
+    keywords: list[str] = []
+    for key, values in BOARD_INDUSTRY_FALLBACK.items():
+        if key in board_name:
+            keywords.extend(values)
+    if not keywords:
+        clean = re.sub(r"(概念|指数|板块)$", "", board_name).strip()
+        if clean:
+            keywords.append(clean)
+    if not keywords:
+        return pd.DataFrame(columns=["ts_code", "name"])
+    pattern = "|".join(map(re.escape, dict.fromkeys(keywords)))
+    universe = basic[["ts_code", "name", "industry"]].copy()
+    mask = (
+        universe["industry"].astype(str).str.contains(pattern, regex=True, na=False)
+        | universe["name"].astype(str).str.contains(pattern, regex=True, na=False)
+    )
+    candidates = universe[mask][["ts_code", "name"]].drop_duplicates("ts_code")
+    if candidates.empty and not market.empty:
+        enriched = market.merge(basic[["ts_code", "name", "industry"]], on="ts_code", how="left")
+        mask = (
+            enriched["industry"].astype(str).str.contains(pattern, regex=True, na=False)
+            | enriched["name"].astype(str).str.contains(pattern, regex=True, na=False)
+        )
+        candidates = enriched[mask][["ts_code", "name"]].drop_duplicates("ts_code")
+    return candidates.head(max_rows)
+
+
+def leaders_for_board(pro, board_code: str, market: pd.DataFrame, basic: pd.DataFrame, board_name: str = "", max_rows: int = 16) -> pd.DataFrame:
     cons = board_constituents(pro, board_code)
     if cons.empty:
-        board_name = ""
         seed = SEED_BOARDS[SEED_BOARDS["board_code"] == board_code]
-        if not seed.empty:
+        if not board_name and not seed.empty:
             board_name = str(seed.iloc[0]["board_name"])
         keywords = []
         for key, values in BOARD_INDUSTRY_FALLBACK.items():
             if key in board_name:
                 keywords = values
                 break
-        if not keywords:
-            return pd.DataFrame()
-        pattern = "|".join(map(re.escape, keywords))
-        cons = basic[basic["industry"].astype(str).str.contains(pattern, regex=True, na=False)][["ts_code", "name"]]
+        if keywords:
+            pattern = "|".join(map(re.escape, keywords))
+            cons = basic[basic["industry"].astype(str).str.contains(pattern, regex=True, na=False)][["ts_code", "name"]]
+        else:
+            cons = fallback_constituents_by_board_name(board_name, market, basic)
     cols = ["ts_code", "close", "pct_chg", "amount", "turnover_rate", "pe_ttm", "total_mv"]
     day = market[[c for c in cols if c in market.columns]].copy()
     merged = cons.merge(day, on="ts_code", how="inner")
+    if merged.empty and board_name:
+        cons = fallback_constituents_by_board_name(board_name, market, basic)
+        merged = cons.merge(day, on="ts_code", how="inner")
     merged = merged.merge(basic[["ts_code", "industry", "market"]], on="ts_code", how="left")
     if merged.empty:
         return merged
@@ -881,7 +917,16 @@ def select_hot_boards(boards: pd.DataFrame, top_n: int = 12) -> pd.DataFrame:
     liquid = liquid.sort_values(["hot_score", "pct_chg", "amount"], ascending=[False, False, False])
     liquid["theme_key"] = liquid["board_name"].map(board_theme)
     liquid = liquid.drop_duplicates(["theme_key", "pct_chg", "amount"])
-    return liquid.drop(columns=["hot_score", "theme_key"], errors="ignore").head(top_n).reset_index(drop=True)
+    selected = liquid.drop(columns=["hot_score", "theme_key"], errors="ignore").head(top_n)
+    if len(selected) < top_n:
+        used = set(selected.get("board_code", pd.Series(dtype=str)).astype(str))
+        supplement = ranked[~ranked["board_code"].astype(str).isin(used)].copy()
+        supplement["relative_score"] = supplement["pct_chg"] * 3 + supplement["amount"].clip(lower=1).map(math.log10) / 2
+        supplement["theme_key"] = supplement["board_name"].map(board_theme)
+        supplement = supplement.sort_values(["relative_score", "pct_chg", "amount"], ascending=[False, False, False])
+        supplement = supplement.drop_duplicates(["theme_key", "pct_chg", "amount"])
+        selected = pd.concat([selected, supplement.drop(columns=["relative_score", "theme_key"], errors="ignore").head(top_n - len(selected))], ignore_index=True)
+    return selected.head(top_n).reset_index(drop=True)
 
 
 def compact_reason(board_name: str) -> str:
@@ -1470,7 +1515,7 @@ def main() -> None:
         name = str(row.get("board_name", ""))
         progress("leaders:fetch:start", index=index + 1, board_code=code, board_name=name)
         try:
-            board_leaders[code] = leaders_for_board(pro, code, market, basic)
+            board_leaders[code] = leaders_for_board(pro, code, market, basic, name)
             progress("leaders:fetch:done", index=index + 1, board_code=code, board_name=name, rows=len(board_leaders[code]))
         except Exception as exc:
             board_leaders[code] = pd.DataFrame()

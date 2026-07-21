@@ -78,6 +78,58 @@
     list.querySelectorAll("[data-review-file]").forEach((button) => button.addEventListener("click", () => selectReport(button.dataset.reviewFile)));
   }
 
+  function renderScheduler(payload = {}) {
+    const settings = payload.settings || {};
+    const stateInfo = payload.state || {};
+    const enabledInput = $("dailyReviewSchedulerEnabled");
+    const timeInput = $("dailyReviewSchedulerTime");
+    const retryInput = $("dailyReviewSchedulerRetry");
+    const weekdayInput = $("dailyReviewSchedulerWeekdayOnly");
+    if (enabledInput) enabledInput.checked = !!settings.enabled;
+    if (timeInput) timeInput.value = settings.dailyRunTime || "17:40";
+    if (retryInput) retryInput.value = settings.retryMinutes || 30;
+    if (weekdayInput) weekdayInput.checked = settings.weekdayOnly !== false;
+    const meta = $("dailyReviewSchedulerMeta");
+    if (meta) {
+      const token = payload.tokenConfigured ? "TuShare 已配置" : "TuShare Token 未配置";
+      const status = stateInfo.status ? `最近状态：${stateInfo.status}${stateInfo.message ? ` · ${stateInfo.message}` : ""}` : "暂无运行记录";
+      meta.textContent = `${payload.enabled ? "已启用" : "未启用"} · 北京时间 ${settings.dailyRunTime || "--"} · ${token} · ${status}`;
+    }
+  }
+
+  function collectSchedulerSettings() {
+    return {
+      enabled: Boolean($("dailyReviewSchedulerEnabled")?.checked),
+      dailyRunTime: $("dailyReviewSchedulerTime")?.value || "17:40",
+      retryMinutes: Number($("dailyReviewSchedulerRetry")?.value || 30),
+      weekdayOnly: $("dailyReviewSchedulerWeekdayOnly")?.checked !== false
+    };
+  }
+
+  async function loadScheduler() {
+    try {
+      renderScheduler(await requestJson("/api/daily-review/scheduler"));
+    } catch (_) {}
+  }
+
+  async function saveScheduler() {
+    const button = $("dailyReviewSchedulerSaveBtn");
+    try {
+      if (button) button.disabled = true;
+      const payload = await requestJson("/api/daily-review/scheduler", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings: collectSchedulerSettings() })
+      });
+      renderScheduler(payload);
+      window.showToast?.("行情复盘定时任务已保存");
+    } catch (error) {
+      window.showToast?.(`定时任务保存失败：${error.message}`);
+    } finally {
+      if (button) button.disabled = false;
+    }
+  }
+
   function metric(label, value, detail, kind = "") {
     return `<div class="daily-review-metric"><div class="daily-review-metric-label">${esc(label)}</div><div class="daily-review-metric-value ${kind}">${esc(value)}</div><div class="daily-review-metric-detail">${esc(detail)}</div></div>`;
   }
@@ -214,6 +266,7 @@
     if (state.loaded && !force) return;
     setStatus("正在读取行情复盘...");
     try {
+      loadScheduler();
       const data = await requestJson("/api/daily-review/reports");
       state.reports = Array.isArray(data.reports) ? data.reports : [];
       state.loaded = true;
@@ -272,6 +325,7 @@
   function bind() {
     $("dailyReviewRefreshBtn")?.addEventListener("click", () => load(true));
     $("dailyReviewGenerateBtn")?.addEventListener("click", generate);
+    $("dailyReviewSchedulerSaveBtn")?.addEventListener("click", saveScheduler);
     window.addEventListener("resize", () => state.chart?.resize());
   }
   document.addEventListener("DOMContentLoaded", bind);

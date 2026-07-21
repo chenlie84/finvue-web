@@ -279,7 +279,7 @@ GET /api/daily-review/scheduler
 
 ## 配置文件导入
 
-管理后台的“备份管理 / FinVue 总配置包”支持上传一个配置文件，一次恢复 TuShare Token、飞书 Webhook、AI API Key、指数池、股票池和定时任务开关。单项页面“TuShare配置”、“飞书推送”和“API 管理”也保留独立导入导出入口。支持 JSON 或 `.env` 键值格式。
+管理后台的“备份管理 / FinVue 总配置包”支持上传一个配置文件，一次恢复 TuShare Token、飞书 Webhook、AI API Key、指数池、股票池、行情复盘定时任务和飞书推送开关。单项页面“TuShare配置”、“飞书推送”和“API 管理”也保留独立导入导出入口。支持 JSON 或 `.env` 键值格式。
 
 总配置包 JSON 示例：
 
@@ -316,6 +316,14 @@ GET /api/daily-review/scheduler
         "useProxy": true
       }
     ]
+  },
+  "dailyReview": {
+    "scheduler": {
+      "enabled": true,
+      "dailyRunTime": "17:40",
+      "retryMinutes": 30,
+      "weekdayOnly": true
+    }
   }
 }
 ```
@@ -345,6 +353,11 @@ AI_PRIORITY=20
 AI_API_FORMAT=finvue
 AI_API_KEY_PLACEMENT=header
 AI_USE_PROXY=true
+
+DAILY_REVIEW_SCHEDULER_ENABLED=true
+DAILY_REVIEW_RUN_TIME=17:40
+DAILY_REVIEW_RETRY_MINUTES=30
+DAILY_REVIEW_WEEKDAY_ONLY=true
 ```
 
 单项配置仍可单独导入：

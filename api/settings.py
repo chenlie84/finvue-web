@@ -11,7 +11,7 @@ import security
 import store
 from api import feishu as feishu_api
 from api import market as market_api
-from services import feishu_push, tushare_market
+from services import daily_review_scheduler, feishu_push, tushare_market
 
 
 router = APIRouter()
@@ -131,6 +131,7 @@ def _current_config_bundle() -> dict[str, Any]:
     settings = store.get_settings()
     tushare = tushare_market.get_settings()
     feishu = feishu_push.get_settings()
+    daily_review = daily_review_scheduler.get_settings()
     return {
         "type": "finvue-config-bundle",
         "version": 1,
@@ -151,6 +152,14 @@ def _current_config_bundle() -> dict[str, Any]:
         },
         "ai": {
             "providers": settings.get("aiProviders") or [],
+        },
+        "dailyReview": {
+            "scheduler": {
+                "enabled": daily_review.get("enabled"),
+                "dailyRunTime": daily_review.get("dailyRunTime"),
+                "retryMinutes": daily_review.get("retryMinutes"),
+                "weekdayOnly": daily_review.get("weekdayOnly"),
+            },
         },
     }
 
@@ -189,6 +198,14 @@ def _config_bundle_template() -> dict[str, Any]:
                 }
             ],
         },
+        "dailyReview": {
+            "scheduler": {
+                "enabled": True,
+                "dailyRunTime": "17:40",
+                "retryMinutes": 30,
+                "weekdayOnly": True,
+            },
+        },
     }
 
 
@@ -219,6 +236,17 @@ def _parse_uploaded_config_bundle(
         parsed["feishu"] = feishu_api._normalize_imported_feishu_settings(data)
     if isinstance(data.get("ai"), dict) or isinstance(data.get("aiProviders"), list) or _has_any_key(data, "AI_API_KEY", "AI_PROVIDER_API_KEY", "AI_BASE_URL", "AI_MODEL"):
         parsed["ai"] = _normalize_imported_ai_settings(data, existing_ai_by_id)
+    daily_review = data.get("dailyReview") if isinstance(data.get("dailyReview"), dict) else {}
+    scheduler = daily_review.get("scheduler") if isinstance(daily_review.get("scheduler"), dict) else {}
+    if scheduler or _has_any_key(data, "DAILY_REVIEW_SCHEDULER_ENABLED", "DAILY_REVIEW_RUN_TIME", "DAILY_REVIEW_RETRY_MINUTES", "DAILY_REVIEW_WEEKDAY_ONLY"):
+        parsed["dailyReview"] = {
+            "scheduler": {
+                "enabled": _truthy(_pick(scheduler or data, "enabled", "DAILY_REVIEW_SCHEDULER_ENABLED"), True),
+                "dailyRunTime": str(_pick(scheduler or data, "dailyRunTime", "runTime", "DAILY_REVIEW_RUN_TIME") or "17:40").strip(),
+                "retryMinutes": _pick(scheduler or data, "retryMinutes", "DAILY_REVIEW_RETRY_MINUTES") or 30,
+                "weekdayOnly": _truthy(_pick(scheduler or data, "weekdayOnly", "DAILY_REVIEW_WEEKDAY_ONLY"), True),
+            }
+        }
 
     if not parsed:
         raise ValueError("未找到可导入的 tushare / feishu / ai 配置段")
@@ -357,6 +385,15 @@ async def import_config_bundle(
                 "providerCount": len(providers),
                 "enabledCount": len([p for p in providers if p.get("enabled")]),
                 "keyCount": len([p for p in providers if p.get("apiKey")]),
+            }
+        if "dailyReview" in parsed:
+            scheduler = store.safe_object(parsed["dailyReview"].get("scheduler"))
+            saved = daily_review_scheduler.save_settings(scheduler, session.get("username", ""))
+            imported["dailyReview"] = {
+                "schedulerEnabled": bool(saved.get("enabled")),
+                "dailyRunTime": saved.get("dailyRunTime"),
+                "retryMinutes": saved.get("retryMinutes"),
+                "weekdayOnly": saved.get("weekdayOnly"),
             }
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"总配置文件导入失败：{exc}") from exc
