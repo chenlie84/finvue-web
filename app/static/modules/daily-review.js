@@ -10,7 +10,12 @@
   async function requestJson(url, options = {}) {
     const response = await (window.apiFetch || fetch)(url, { credentials: "include", ...options });
     const data = await response.json();
-    if (!response.ok || data.ok === false) throw new Error(data.error || data.detail || "请求失败");
+    if (!response.ok || data.ok === false) {
+      const detail = data.detail && typeof data.detail === "object" ? data.detail : {};
+      const error = new Error(detail.message || data.error || data.detail || "请求失败");
+      error.diagnostics = detail.diagnostics || data.diagnostics || null;
+      throw error;
+    }
     return data;
   }
 
@@ -23,6 +28,42 @@
     if (!el) return;
     el.textContent = text;
     el.dataset.tone = kind;
+  }
+
+  function statusWithDiagnostics(prefix, error) {
+    const el = $("dailyReviewStatus");
+    if (!el) return;
+    const message = error?.message || String(error || "请求失败");
+    const diagnostics = error?.diagnostics || null;
+    if (!diagnostics) {
+      setStatus(`${prefix}${message}`, "error");
+      return;
+    }
+    const rows = [
+      ["阶段", diagnostics.stage],
+      ["交易日", diagnostics.tradeDate],
+      ["耗时", diagnostics.elapsedSeconds ? `${diagnostics.elapsedSeconds} 秒` : ""],
+      ["超时阈值", diagnostics.timeoutSeconds ? `${diagnostics.timeoutSeconds} 秒` : ""],
+      ["返回码", diagnostics.returncode],
+      ["脚本", diagnostics.script],
+      ["脚本存在", diagnostics.scriptExists === false ? "否" : diagnostics.scriptExists === true ? "是" : ""],
+      ["工作目录", diagnostics.cwd],
+      ["输出目录", diagnostics.outputDir],
+      ["输出目录存在", diagnostics.outputDirExists === false ? "否" : diagnostics.outputDirExists === true ? "是" : ""],
+      ["命令", diagnostics.command],
+    ].filter(([, value]) => value !== undefined && value !== null && value !== "");
+    const recent = (diagnostics.recentOutputFiles || []).map((item) => `${item.name} (${item.size} bytes, ${item.updatedAt})`).join("\n");
+    el.innerHTML = `
+      <div class="daily-review-error-main">${esc(prefix)}${esc(message)}</div>
+      <details class="daily-review-diagnostics" open>
+        <summary>诊断详情</summary>
+        <dl>${rows.map(([key, value]) => `<div><dt>${esc(key)}</dt><dd>${esc(value)}</dd></div>`).join("")}</dl>
+        ${diagnostics.stderrTail ? `<h4>stderr 尾部</h4><pre>${esc(diagnostics.stderrTail)}</pre>` : ""}
+        ${diagnostics.stdoutTail ? `<h4>stdout 尾部</h4><pre>${esc(diagnostics.stdoutTail)}</pre>` : ""}
+        ${recent ? `<h4>最近输出文件</h4><pre>${esc(recent)}</pre>` : ""}
+        ${(diagnostics.suggestions || []).length ? `<h4>排查建议</h4><ul>${diagnostics.suggestions.map((item) => `<li>${esc(item)}</li>`).join("")}</ul>` : ""}
+      </details>`;
+    el.dataset.tone = "error";
   }
 
   function renderHistory() {
@@ -165,7 +206,7 @@
       renderNative();
       setStatus(`已加载 ${state.data.tradeDate} · ${state.data.source}`, "ok");
     } catch (error) {
-      setStatus(`复盘加载失败：${error.message}`, "error");
+      statusWithDiagnostics("复盘加载失败：", error);
     }
   }
 
@@ -180,7 +221,7 @@
       renderHistory();
       if (target) await selectReport(target.filename);
       else setStatus("暂无复盘，请生成最新交易日数据");
-    } catch (error) { setStatus(`行情复盘加载失败：${error.message}`, "error"); }
+    } catch (error) { statusWithDiagnostics("行情复盘加载失败：", error); }
   }
 
   async function generate() {
@@ -200,7 +241,7 @@
       if (data.latest) await selectReport(data.latest.filename);
       setStatus(data.aiWarning ? `复盘已生成；${data.aiWarning}` : "复盘与 AI 涨跌归因已生成", data.aiWarning ? "warn" : "ok");
       window.showToast?.("行情复盘已生成");
-    } catch (error) { setStatus(`生成失败：${error.message}`, "error"); window.showToast?.(`生成失败：${error.message}`); }
+    } catch (error) { statusWithDiagnostics("生成失败：", error); window.showToast?.(`生成失败：${error.message}`); }
     finally { if (button) button.disabled = false; }
   }
 
@@ -210,7 +251,11 @@
       const payload = await requestJson(`/api/daily-review/jobs/${encodeURIComponent(jobId)}`);
       const job = payload.job || {};
       if (job.status === "completed") return job.result || {};
-      if (job.status === "failed") throw new Error(job.error || job.message || "后台生成失败");
+      if (job.status === "failed") {
+        const error = new Error(job.error || job.message || "后台生成失败");
+        error.diagnostics = job.diagnostics || null;
+        throw error;
+      }
       const waited = Math.round(((attempt + 1) * 3) / 60 * 10) / 10;
       setStatus(`${job.message || "后台生成中"} · 已等待 ${waited} 分钟`);
       if (attempt % 4 === 3) {

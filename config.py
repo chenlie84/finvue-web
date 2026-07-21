@@ -56,6 +56,10 @@ DAILY_MARKET_REVIEW_OUTPUT_DIR = Path(
 DAILY_MARKET_REVIEW_SCRIPT = Path(
     os.environ.get("DAILY_MARKET_REVIEW_SCRIPT", str(BASE_DIR / "scripts" / "generate_daily_market_review.py"))
 )
+DAILY_MARKET_REVIEW_SCHEDULER_ENABLED = os.environ.get("DAILY_MARKET_REVIEW_SCHEDULER_ENABLED", "true").lower() == "true"
+DAILY_MARKET_REVIEW_SCHEDULE_TIME = os.environ.get("DAILY_MARKET_REVIEW_SCHEDULE_TIME", "17:40")
+DAILY_MARKET_REVIEW_RETRY_MINUTES = int(os.environ.get("DAILY_MARKET_REVIEW_RETRY_MINUTES", "30"))
+DAILY_MARKET_REVIEW_WEEKDAY_ONLY = os.environ.get("DAILY_MARKET_REVIEW_WEEKDAY_ONLY", "true").lower() == "true"
 
 
 def _proxy_url(value: str) -> str:

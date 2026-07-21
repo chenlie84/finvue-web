@@ -255,6 +255,25 @@ HOTSPOT_API_URL=https://newsnow.busiyi.world/api/s
 
 如果服务部署在 Northflank 或其他容器平台，修改平台/间隔配置后不需要改环境变量；配置保存后会由后台调度器在下一次轮询时读取。
 
+## 行情复盘定时任务
+
+服务启动后会按北京时间检查行情复盘定时任务，默认在每个工作日 `17:40` 后自动生成一次最新交易日复盘。同一天成功后不会重复生成；如果失败，会按重试间隔再次尝试，并把失败状态和诊断信息记录到调度状态中。
+
+生产环境可通过环境变量调整：
+
+```bash
+DAILY_MARKET_REVIEW_SCHEDULER_ENABLED=true
+DAILY_MARKET_REVIEW_SCHEDULE_TIME=17:40
+DAILY_MARKET_REVIEW_RETRY_MINUTES=30
+DAILY_MARKET_REVIEW_WEEKDAY_ONLY=true
+```
+
+状态接口：
+
+```text
+GET /api/daily-review/scheduler
+```
+
 ## 数据库迁移
 
 迁移文件位于：

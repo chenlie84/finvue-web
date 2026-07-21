@@ -9,6 +9,7 @@ import json
 import math
 import os
 import re
+import sys
 import time
 import warnings
 from collections import defaultdict
@@ -38,6 +39,16 @@ HEADERS = {
 }
 SESSION = requests.Session()
 SESSION.trust_env = False
+
+
+def progress(stage: str, **fields: Any) -> None:
+    payload = {
+        "event": "daily_market_review_progress",
+        "stage": stage,
+        "ts": datetime.now().isoformat(timespec="seconds"),
+        **fields,
+    }
+    print(json.dumps(payload, ensure_ascii=False, default=str), file=sys.stderr, flush=True)
 
 BOARD_EXCLUDE_PATTERNS = re.compile(
     r"(昨日|今日|连板|涨停|首板|打板|热股|题材股|百日|历史新高|融资融券|预盈预增|"
@@ -1345,31 +1356,63 @@ def main() -> None:
     parser.add_argument("--board-scan-limit", type=int, default=120)
     args = parser.parse_args()
 
+    progress(
+        "start",
+        requested_arg=args.date,
+        top_boards=args.top_boards,
+        board_scan_limit=args.board_scan_limit,
+        output_dir=str(OUTPUT_DIR),
+        data_dir=str(DATA_DIR),
+    )
     pro = pro_api()
+    progress("tushare_client_ready")
     requested_date = args.date or previous_open_date(pro)
+    progress("date_resolved", requested_date=requested_date)
+    progress("market:load:start", requested_date=requested_date)
     trade_date, market = load_latest_available_market(pro, requested_date)
+    progress("market:load:done", trade_date=trade_date, market_rows=len(market))
+    progress("stock_basic:load:start")
     basic = load_stock_basic(pro)
+    progress("stock_basic:load:done", rows=len(basic))
     market = market.merge(basic[["ts_code", "name", "industry", "market"]], on="ts_code", how="left")
     market = normalize_market_frame(market)
+    progress("market:normalize:done", rows=len(market), columns=list(market.columns))
 
+    progress("boards:fetch:start", trade_date=trade_date, limit_each_type=args.board_scan_limit)
     boards = fetch_boards_for_date(pro, trade_date, limit_each_type=args.board_scan_limit)
+    progress("boards:fetch:done", rows=len(boards), columns=list(boards.columns))
     boards = normalize_board_frame(boards)
+    progress("boards:normalize:done", rows=len(boards), columns=list(boards.columns))
     if boards.empty or "board_code" not in boards.columns:
         raise RuntimeError(f"{trade_date} 没有获取到可用的行业或概念板块数据")
     hot_boards = select_hot_boards(boards, max(args.top_boards, 12))
+    progress(
+        "boards:select_hot:done",
+        rows=len(hot_boards),
+        names=hot_boards.get("board_name", pd.Series(dtype=str)).head(args.top_boards).tolist(),
+    )
     board_leaders: dict[str, pd.DataFrame] = {}
-    for code in hot_boards["board_code"].head(args.top_boards):
+    for index, row in hot_boards.head(args.top_boards).reset_index(drop=True).iterrows():
+        code = str(row["board_code"])
+        name = str(row.get("board_name", ""))
+        progress("leaders:fetch:start", index=index + 1, board_code=code, board_name=name)
         try:
-            board_leaders[str(code)] = leaders_for_board(pro, str(code), market, basic)
-        except Exception:
-            board_leaders[str(code)] = pd.DataFrame()
+            board_leaders[code] = leaders_for_board(pro, code, market, basic)
+            progress("leaders:fetch:done", index=index + 1, board_code=code, board_name=name, rows=len(board_leaders[code]))
+        except Exception as exc:
+            board_leaders[code] = pd.DataFrame()
+            progress("leaders:fetch:failed", index=index + 1, board_code=code, board_name=name, error=str(exc))
         time.sleep(0.05)
 
+    progress("lhb:fetch:start", trade_date=trade_date)
     try:
         top_lhb, inst = get_lhb(pro, trade_date)
     except Exception as exc:
-        print(f"TuShare LHB unavailable: {exc}")
+        print(f"TuShare LHB unavailable: {exc}", file=sys.stderr, flush=True)
         top_lhb, inst = pd.DataFrame(), pd.DataFrame()
+        progress("lhb:fetch:failed", error=str(exc))
+    else:
+        progress("lhb:fetch:done", top_rows=len(top_lhb), inst_rows=len(inst))
     if top_lhb.empty:
         lhb_hot = pd.DataFrame()
     else:
@@ -1381,16 +1424,26 @@ def main() -> None:
         lhb_hot = lhb[(lhb["pct_change"] > 0) | (lhb["net_amount"] > 0)].sort_values(
             ["pct_change", "net_amount"], ascending=[False, False]
         )
+    progress("lhb:filter_hot:done", rows=len(lhb_hot))
+    progress("news:read:start", trade_date=trade_date)
     news = read_news(trade_date, hot_boards)
+    progress("news:read:done", rows=len(news))
+    progress("render:start")
     html_text = render_html(trade_date, market, hot_boards, board_leaders, top_lhb, lhb_hot, news)
+    progress("render:html:done", chars=len(html_text))
     native_report = build_native_report(trade_date, market, hot_boards, board_leaders, lhb_hot, news)
+    progress("render:native_report:done", sector_count=len(native_report.get("sectors", [])))
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     out = OUTPUT_DIR / f"a_share_daily_review_{trade_date}.html"
+    progress("write:html:start", path=str(out))
     out.write_text(html_text, encoding="utf-8")
     data_out = OUTPUT_DIR / f"a_share_daily_review_{trade_date}.json"
+    progress("write:json:start", path=str(data_out))
     data_out.write_text(json.dumps(native_report, ensure_ascii=False, indent=2), encoding="utf-8")
+    progress("write:frames:start")
     save_frames(trade_date, hot_boards, top_lhb, lhb_hot)
+    progress("done", html=str(out), json=str(data_out), boards=len(hot_boards), lhb=len(top_lhb))
     print(json.dumps({"requested_date": requested_date, "trade_date": trade_date, "date_fallback": trade_date != requested_date, "html": str(out), "json": str(data_out), "boards": len(hot_boards), "lhb": len(top_lhb)}, ensure_ascii=False, indent=2))
 
 

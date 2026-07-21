@@ -25,6 +25,8 @@ async def lifespan(_: FastAPI):
     market_task: asyncio.Task | None = None
     feishu_stop_event: asyncio.Event | None = None
     feishu_task: asyncio.Task | None = None
+    daily_review_stop_event: asyncio.Event | None = None
+    daily_review_task: asyncio.Task | None = None
     print(f"[lifespan] AUTO_MIGRATE={config.AUTO_MIGRATE}, ENV={config.ENV}, has_mysql={config.has_mysql_config()}")
     if config.AUTO_MIGRATE and config.has_mysql_config() and config.ENV.lower() != "test":
         print("[lifespan] Running migrations...")
@@ -48,6 +50,9 @@ async def lifespan(_: FastAPI):
         from services.feishu_scheduler import run_scheduler as run_feishu_scheduler
         feishu_stop_event = asyncio.Event()
         feishu_task = asyncio.create_task(run_feishu_scheduler(feishu_stop_event))
+        from services.daily_review_scheduler import run_scheduler as run_daily_review_scheduler
+        daily_review_stop_event = asyncio.Event()
+        daily_review_task = asyncio.create_task(run_daily_review_scheduler(daily_review_stop_event))
     try:
         yield
     finally:
@@ -70,6 +75,13 @@ async def lifespan(_: FastAPI):
             feishu_task.cancel()
             try:
                 await feishu_task
+            except asyncio.CancelledError:
+                pass
+        if daily_review_stop_event and daily_review_task:
+            daily_review_stop_event.set()
+            daily_review_task.cancel()
+            try:
+                await daily_review_task
             except asyncio.CancelledError:
                 pass
 

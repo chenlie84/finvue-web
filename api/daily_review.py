@@ -231,6 +231,74 @@ def _compact_process_error(stderr: str, stdout: str) -> str:
     return (useful[-1] if useful else lines[-1] if lines else "复盘生成失败")[-500:]
 
 
+def _tail_text(value: Any, limit: int = 4000) -> str:
+    if isinstance(value, bytes):
+        try:
+            text = value.decode("utf-8", errors="replace")
+        except Exception:
+            text = str(value)
+    else:
+        text = store.text(value)
+    return text.strip()[-limit:]
+
+
+def _recent_output_files(limit: int = 10) -> list[dict[str, Any]]:
+    base = _output_dir()
+    if not base.exists():
+        return []
+    files = [path for path in base.glob("*") if path.is_file()]
+    rows = []
+    for path in sorted(files, key=lambda item: item.stat().st_mtime, reverse=True)[:limit]:
+        stat = path.stat()
+        rows.append({
+            "name": path.name,
+            "size": stat.st_size,
+            "updatedAt": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat().replace("+00:00", "Z"),
+        })
+    return rows
+
+
+def _generation_diagnostics(
+    *,
+    stage: str,
+    trade_date: str,
+    command: list[str] | None = None,
+    stdout: Any = "",
+    stderr: Any = "",
+    returncode: int | None = None,
+    timeout_seconds: int | None = None,
+    elapsed_seconds: float | None = None,
+) -> dict[str, Any]:
+    script = _script_path()
+    return {
+        "stage": stage,
+        "tradeDate": trade_date,
+        "returncode": returncode,
+        "timeoutSeconds": timeout_seconds,
+        "elapsedSeconds": round(elapsed_seconds, 2) if isinstance(elapsed_seconds, (int, float)) else None,
+        "command": " ".join(command or []),
+        "python": sys.executable,
+        "script": str(script) if script else "",
+        "scriptExists": bool(script and script.exists()),
+        "cwd": str(script.parent.parent) if script else "",
+        "outputDir": str(_output_dir()),
+        "outputDirExists": _output_dir().exists(),
+        "dataDir": str(_data_dir()),
+        "stdoutTail": _tail_text(stdout),
+        "stderrTail": _tail_text(stderr),
+        "recentOutputFiles": _recent_output_files(),
+        "suggestions": [
+            "如果 stdout/stderr 为空，通常是脚本卡在数据源请求、行情接口或远端网络等待。",
+            "先确认 DAILY_MARKET_REVIEW_OUTPUT_DIR 可写，且生成脚本能在该目录落盘 html/json。",
+            "若频繁超过超时，可临时调大 DAILY_MARKET_REVIEW_TIMEOUT_SECONDS，或把脚本内部耗时步骤拆分日志。",
+        ],
+    }
+
+
+def _daily_review_error(message: str, diagnostics: dict[str, Any], status_code: int = 500) -> HTTPException:
+    return HTTPException(status_code=status_code, detail={"message": message, "diagnostics": diagnostics})
+
+
 def _review_news_context(trade_date: str) -> list[dict[str, Any]]:
     try:
         anchor = datetime.strptime(trade_date, "%Y%m%d") if trade_date else datetime.now()
@@ -476,6 +544,13 @@ def list_daily_reviews(_: dict = Depends(_review_permission())) -> dict:
     }
 
 
+@router.get("/api/daily-review/scheduler")
+def get_daily_review_scheduler(_: dict = Depends(_review_permission())) -> dict:
+    from services import daily_review_scheduler
+
+    return daily_review_scheduler.scheduler_status()
+
+
 @router.get("/api/daily-review/reports/{filename}")
 def get_daily_review_html(filename: str, _: dict = Depends(_review_permission())) -> HTMLResponse:
     path = _safe_report_path(filename)
@@ -496,13 +571,22 @@ def get_daily_review_data(filename: str, _: dict = Depends(_review_permission())
 
 
 def _generate_daily_review_payload(trade_date: str, username: str) -> dict[str, Any]:
+    started_at = datetime.now(timezone.utc)
     script = _script_path()
     if not script or not script.exists():
-        raise HTTPException(status_code=404, detail="云端复盘生成脚本不存在，请检查 DAILY_MARKET_REVIEW_SCRIPT")
+        raise _daily_review_error(
+            "云端复盘生成脚本不存在，请检查 DAILY_MARKET_REVIEW_SCRIPT",
+            _generation_diagnostics(stage="precheck:script", trade_date=trade_date),
+            status_code=404,
+        )
     tushare_settings = tushare_market.get_settings()
     token = store.text(tushare_settings.get("token"))
     if not token:
-        raise HTTPException(status_code=400, detail="请先在管理后台配置 TuShare Token，再线上生成行情复盘")
+        raise _daily_review_error(
+            "请先在管理后台配置 TuShare Token，再线上生成行情复盘",
+            _generation_diagnostics(stage="precheck:tushare-token", trade_date=trade_date, command=[sys.executable, str(script)]),
+            status_code=400,
+        )
 
     command = [sys.executable, str(script)]
     if trade_date:
@@ -512,6 +596,7 @@ def _generate_daily_review_payload(trade_date: str, username: str) -> dict[str, 
         env = {
             **os.environ,
             "TUSHARE_TOKEN": token,
+            "PYTHONUNBUFFERED": "1",
             "DAILY_MARKET_REVIEW_OUTPUT_DIR": str(_output_dir()),
             "DAILY_MARKET_REVIEW_DATA_DIR": str(_data_dir()),
             "DAILY_MARKET_REVIEW_NEWS_JSON": json.dumps(_review_news_context(trade_date), ensure_ascii=False),
@@ -540,10 +625,39 @@ def _generate_daily_review_payload(trade_date: str, username: str) -> dict[str, 
                 "latest": generated_report,
                 "reports": reports,
             }
-        raise HTTPException(status_code=504, detail=f"复盘生成超过 {_generation_timeout_seconds()} 秒仍未落盘，请稍后重试或查看服务日志") from exc
+        elapsed = (datetime.now(timezone.utc) - started_at).total_seconds()
+        diagnostics = _generation_diagnostics(
+            stage="script:timeout",
+            trade_date=trade_date,
+            command=command,
+            stdout=exc.stdout,
+            stderr=exc.stderr,
+            timeout_seconds=_generation_timeout_seconds(),
+            elapsed_seconds=elapsed,
+        )
+        raise _daily_review_error(
+            f"复盘生成超过 {_generation_timeout_seconds()} 秒仍未落盘",
+            diagnostics,
+            status_code=504,
+        ) from exc
 
     if result.returncode != 0:
-        raise HTTPException(status_code=500, detail=_compact_process_error(result.stderr, result.stdout))
+        elapsed = (datetime.now(timezone.utc) - started_at).total_seconds()
+        message = _compact_process_error(result.stderr, result.stdout)
+        raise _daily_review_error(
+            message,
+            _generation_diagnostics(
+                stage="script:failed",
+                trade_date=trade_date,
+                command=command,
+                stdout=result.stdout,
+                stderr=result.stderr,
+                returncode=result.returncode,
+                timeout_seconds=_generation_timeout_seconds(),
+                elapsed_seconds=elapsed,
+            ),
+            status_code=500,
+        )
 
     generated_date = trade_date
     stdout_payload: dict[str, Any] = {}
@@ -561,10 +675,39 @@ def _generate_daily_review_payload(trade_date: str, username: str) -> dict[str, 
             except Exception as exc:
                 ai_warning = f"AI 归因暂未生成：{exc}"
                 report = json.loads(data_path.read_text(encoding="utf-8"))
-                report["ai"] = {"status": "fallback", "provider": "", "message": ai_warning}
+                report["ai"] = {
+                    "status": "fallback",
+                    "provider": "",
+                    "message": ai_warning,
+                    "diagnostics": _generation_diagnostics(
+                        stage="ai:failed",
+                        trade_date=generated_date,
+                        command=command,
+                        stdout=result.stdout,
+                        stderr=result.stderr,
+                        returncode=result.returncode,
+                        timeout_seconds=_generation_timeout_seconds(),
+                        elapsed_seconds=(datetime.now(timezone.utc) - started_at).total_seconds(),
+                    ),
+                }
                 data_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     reports = _reports()
     generated_report = next((item for item in reports if item.get("tradeDate") == generated_date), None)
+    if generated_date and not generated_report:
+        raise _daily_review_error(
+            f"脚本已结束但没有找到 {generated_date} 的复盘文件",
+            _generation_diagnostics(
+                stage="script:no-output",
+                trade_date=generated_date,
+                command=command,
+                stdout=result.stdout,
+                stderr=result.stderr,
+                returncode=result.returncode,
+                timeout_seconds=_generation_timeout_seconds(),
+                elapsed_seconds=(datetime.now(timezone.utc) - started_at).total_seconds(),
+            ),
+            status_code=500,
+        )
     date_fallback = bool(stdout_payload.get("date_fallback") or (trade_date and generated_date and trade_date != generated_date))
     message = f"目标日期暂无收盘行情，已生成最近交易日 {generated_date} 的复盘" if date_fallback else "行情复盘已生成"
     return {
@@ -589,10 +732,23 @@ def _run_generation_job(job_id: str, trade_date: str, username: str) -> None:
     try:
         result = _generate_daily_review_payload(trade_date, username)
     except HTTPException as exc:
-        detail = exc.detail if isinstance(exc.detail, str) else "复盘生成失败"
-        _set_generation_job(job_id, status="failed", message=detail, error=detail)
+        if isinstance(exc.detail, dict):
+            detail = exc.detail
+            message = store.text(detail.get("message")) or "复盘生成失败"
+            diagnostics = detail.get("diagnostics") if isinstance(detail.get("diagnostics"), dict) else {}
+        else:
+            message = store.text(exc.detail) or "复盘生成失败"
+            diagnostics = {}
+        _set_generation_job(job_id, status="failed", message=message, error=message, diagnostics=diagnostics)
     except Exception as exc:
-        _set_generation_job(job_id, status="failed", message=str(exc) or "复盘生成失败", error=str(exc) or "复盘生成失败")
+        message = str(exc) or "复盘生成失败"
+        _set_generation_job(
+            job_id,
+            status="failed",
+            message=message,
+            error=message,
+            diagnostics=_generation_diagnostics(stage="job:failed", trade_date=trade_date),
+        )
     else:
         _set_generation_job(
             job_id,
