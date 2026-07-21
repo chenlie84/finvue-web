@@ -14,6 +14,10 @@
     return data;
   }
 
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   function setStatus(text, kind = "") {
     const el = $("dailyReviewStatus");
     if (!el) return;
@@ -185,7 +189,11 @@
     if (button) button.disabled = true;
     setStatus(value ? `正在生成 ${value} 复盘并进行 AI 归因...` : "正在生成最新交易日复盘并进行 AI 归因...");
     try {
-      const data = await requestJson("/api/daily-review/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: value }) });
+      let data = await requestJson("/api/daily-review/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: value }) });
+      if (data.jobId) {
+        setStatus(data.message || "复盘生成已启动，正在等待后台任务...");
+        data = await waitForGenerationJob(data.jobId);
+      }
       state.reports = data.reports || [];
       state.loaded = true;
       renderHistory();
@@ -194,6 +202,26 @@
       window.showToast?.("行情复盘已生成");
     } catch (error) { setStatus(`生成失败：${error.message}`, "error"); window.showToast?.(`生成失败：${error.message}`); }
     finally { if (button) button.disabled = false; }
+  }
+
+  async function waitForGenerationJob(jobId) {
+    for (let attempt = 0; attempt < 180; attempt += 1) {
+      await sleep(3000);
+      const payload = await requestJson(`/api/daily-review/jobs/${encodeURIComponent(jobId)}`);
+      const job = payload.job || {};
+      if (job.status === "completed") return job.result || {};
+      if (job.status === "failed") throw new Error(job.error || job.message || "后台生成失败");
+      const waited = Math.round(((attempt + 1) * 3) / 60 * 10) / 10;
+      setStatus(`${job.message || "后台生成中"} · 已等待 ${waited} 分钟`);
+      if (attempt % 4 === 3) {
+        try {
+          const data = await requestJson("/api/daily-review/reports");
+          state.reports = Array.isArray(data.reports) ? data.reports : [];
+          renderHistory();
+        } catch (_) {}
+      }
+    }
+    throw new Error("后台生成仍在进行，请稍后刷新列表查看输出结果");
   }
 
   function bind() {

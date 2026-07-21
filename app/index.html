@@ -12,7 +12,7 @@
 <script src="/static/modules/report-export.js"></script>
 <link rel="stylesheet" href="/static/modules/hotspot.css" />
 <link rel="stylesheet" href="/static/modules/market.css" />
-<link rel="stylesheet" href="/static/modules/daily-review.css" />
+<link rel="stylesheet" href="/static/modules/daily-review.css?v=20260721a" />
 <link rel="stylesheet" href="/static/modules/backtest.css" />
 <link rel="stylesheet" href="/static/modules/feishu.css" />
 <link rel="stylesheet" href="/static/modules/data-collection.css?v=20260714c" />
@@ -3404,8 +3404,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.44";
+const APP_VERSION = "0.1.45";
 const APP_RELEASES = [
+  {
+    version: "0.1.45",
+    date: "2026-07-21",
+    title: "行情复盘后台任务生成",
+    permissions: ["daily-review"],
+    summary: "行情复盘生成改为后台任务模式，避免浏览器长连接被线上网关断开后误报无法连接服务。",
+    items: [
+      "点击生成复盘后，接口会立即返回 jobId，后端后台线程继续执行复盘生成和 AI 归因。",
+      "前端每 3 秒轮询任务状态，显示后台生成中和已等待时间。",
+      "任务完成后自动刷新复盘列表并加载新报告，失败时展示后台返回的具体错误。",
+      "生成过程中会定期刷新历史列表，即使页面保持打开也能看到已有报告变化。",
+      "daily-review JS/CSS 追加版本参数 v=20260721a，避免浏览器继续使用旧长请求逻辑。"
+    ]
+  },
   {
     version: "0.1.44",
     date: "2026-07-14",
@@ -13887,7 +13901,7 @@ window.addEventListener("resize", () => {
 </script>
 <script src="/static/modules/hotspot.js"></script>
 <script src="/static/modules/market.js"></script>
-<script src="/static/modules/daily-review.js"></script>
+<script src="/static/modules/daily-review.js?v=20260721a"></script>
 <script src="/static/modules/backtest.js"></script>
 <script src="/static/modules/feishu.js"></script>
 <script src="/static/modules/data-collection.js?v=20260714c"></script>

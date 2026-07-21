@@ -8,7 +8,9 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from threading import Lock, Thread
 from typing import Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse
@@ -25,6 +27,8 @@ router = APIRouter()
 _REPORT_NAME_RE = re.compile(r"^a_share_daily_review_(\d{8})\.html$")
 _DATA_NAME_RE = re.compile(r"^a_share_daily_review_(\d{8})\.json$")
 _DEFAULT_GENERATE_TIMEOUT_SECONDS = 420
+_GENERATION_JOBS: dict[str, dict[str, Any]] = {}
+_GENERATION_JOBS_LOCK = Lock()
 
 
 def _review_permission():
@@ -422,6 +426,44 @@ def _generation_timeout_seconds() -> int:
     return max(180, value)
 
 
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _job_snapshot(job_id: str) -> dict[str, Any]:
+    with _GENERATION_JOBS_LOCK:
+        job = dict(_GENERATION_JOBS.get(job_id) or {})
+    if not job:
+        raise HTTPException(status_code=404, detail="复盘生成任务不存在，可能服务已重启，请重新生成")
+    return job
+
+
+def _set_generation_job(job_id: str, **updates: Any) -> None:
+    with _GENERATION_JOBS_LOCK:
+        job = _GENERATION_JOBS.setdefault(
+            job_id,
+            {
+                "id": job_id,
+                "status": "queued",
+                "message": "复盘生成已排队",
+                "createdAt": _now_iso(),
+                "updatedAt": _now_iso(),
+                "result": None,
+                "error": "",
+            },
+        )
+        job.update(updates)
+        job["updatedAt"] = _now_iso()
+        if len(_GENERATION_JOBS) > 30:
+            removable = [
+                item_id
+                for item_id, item in sorted(_GENERATION_JOBS.items(), key=lambda pair: store.text(pair[1].get("updatedAt")))
+                if item_id != job_id and item.get("status") in {"completed", "failed"}
+            ]
+            for item_id in removable[: len(_GENERATION_JOBS) - 30]:
+                _GENERATION_JOBS.pop(item_id, None)
+
+
 @router.get("/api/daily-review/reports")
 def list_daily_reviews(_: dict = Depends(_review_permission())) -> dict:
     reports = _reports()
@@ -453,11 +495,7 @@ def get_daily_review_data(filename: str, _: dict = Depends(_review_permission())
     return {"ok": True, "report": json.loads(path.read_text(encoding="utf-8"))}
 
 
-@router.post("/api/daily-review/generate")
-async def generate_daily_review(request: Request, session: dict = Depends(_review_permission())) -> dict:
-    body = await request.json()
-    trade_date = _normalize_trade_date(body.get("date"))
-
+def _generate_daily_review_payload(trade_date: str, username: str) -> dict[str, Any]:
     script = _script_path()
     if not script or not script.exists():
         raise HTTPException(status_code=404, detail="云端复盘生成脚本不存在，请检查 DAILY_MARKET_REVIEW_SCRIPT")
@@ -519,7 +557,7 @@ async def generate_daily_review(request: Request, session: dict = Depends(_revie
         data_path = _output_dir() / f"a_share_daily_review_{generated_date}.json"
         if data_path.exists():
             try:
-                _enrich_report_with_ai(data_path, store.text(session.get("username")))
+                _enrich_report_with_ai(data_path, username)
             except Exception as exc:
                 ai_warning = f"AI 归因暂未生成：{exc}"
                 report = json.loads(data_path.read_text(encoding="utf-8"))
@@ -537,6 +575,54 @@ async def generate_daily_review(request: Request, session: dict = Depends(_revie
         "dateFallback": date_fallback,
         "stdout": (result.stdout or "").strip()[-2000:],
         "latest": generated_report or (reports[0] if reports else None),
+        "reports": reports,
+    }
+
+
+def _run_generation_job(job_id: str, trade_date: str, username: str) -> None:
+    _set_generation_job(
+        job_id,
+        status="running",
+        message=f"正在生成 {trade_date or '最新交易日'} 复盘，页面可保持打开或稍后刷新",
+        tradeDate=trade_date,
+    )
+    try:
+        result = _generate_daily_review_payload(trade_date, username)
+    except HTTPException as exc:
+        detail = exc.detail if isinstance(exc.detail, str) else "复盘生成失败"
+        _set_generation_job(job_id, status="failed", message=detail, error=detail)
+    except Exception as exc:
+        _set_generation_job(job_id, status="failed", message=str(exc) or "复盘生成失败", error=str(exc) or "复盘生成失败")
+    else:
+        _set_generation_job(
+            job_id,
+            status="completed",
+            message=result.get("message") or "行情复盘已生成",
+            result=result,
+            resolvedTradeDate=result.get("resolvedTradeDate"),
+        )
+
+
+@router.get("/api/daily-review/jobs/{job_id}")
+def get_daily_review_job(job_id: str, _: dict = Depends(_review_permission())) -> dict:
+    return {"ok": True, "job": _job_snapshot(job_id)}
+
+
+@router.post("/api/daily-review/generate")
+async def generate_daily_review(request: Request, session: dict = Depends(_review_permission())) -> dict:
+    body = await request.json()
+    trade_date = _normalize_trade_date(body.get("date"))
+    username = store.text(session.get("username"))
+    job_id = uuid4().hex
+    _set_generation_job(job_id, status="queued", message="复盘生成已启动", tradeDate=trade_date)
+    Thread(target=_run_generation_job, args=(job_id, trade_date, username), daemon=True).start()
+    reports = _reports()
+    return {
+        "ok": True,
+        "status": "running",
+        "jobId": job_id,
+        "message": "复盘生成已在后台启动，完成后会自动加载",
+        "latest": reports[0] if reports else None,
         "reports": reports,
     }
 
