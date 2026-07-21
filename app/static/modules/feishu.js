@@ -1,6 +1,15 @@
 (function () {
   const state = { loaded: false };
 
+  function downloadUrl(url) {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
   function template() {
     return `<div class="feishu-admin-grid">
       <section class="panel">
@@ -41,6 +50,18 @@
           <div class="feishu-actions">
             <button class="btn btn-gold" id="feishuSaveBtn" type="button">保存配置</button>
             <button class="btn btn-outline" id="feishuTestBtn" type="button">测试推送</button>
+          </div>
+          <div class="feishu-config-file">
+            <div>
+              <strong>配置文件导入/导出</strong>
+              <p>支持 JSON 或 .env 键值文件，适合更新部署后一次恢复 webhook、推送时间和通知开关。</p>
+            </div>
+            <div class="feishu-config-actions">
+              <input id="feishuConfigFile" type="file" accept=".json,.env,.txt" hidden>
+              <button class="btn btn-outline" id="feishuImportBtn" type="button">上传配置文件</button>
+              <button class="btn btn-outline" id="feishuExportBtn" type="button">下载当前配置</button>
+              <button class="btn btn-outline" id="feishuTemplateBtn" type="button">下载模板</button>
+            </div>
           </div>
           <div class="feishu-status" id="feishuAdminStatus">正在读取配置...</div>
         </div>
@@ -93,6 +114,10 @@
       mount.innerHTML = template();
       document.getElementById("feishuSaveBtn")?.addEventListener("click", save);
       document.getElementById("feishuTestBtn")?.addEventListener("click", test);
+      document.getElementById("feishuImportBtn")?.addEventListener("click", () => document.getElementById("feishuConfigFile")?.click());
+      document.getElementById("feishuExportBtn")?.addEventListener("click", () => downloadUrl("/api/admin/feishu/export"));
+      document.getElementById("feishuTemplateBtn")?.addEventListener("click", () => downloadUrl("/api/admin/feishu/template"));
+      document.getElementById("feishuConfigFile")?.addEventListener("change", (event) => importConfig(event.target.files?.[0]));
       state.loaded = true;
     }
     const status = document.getElementById("feishuAdminStatus");
@@ -126,6 +151,33 @@
     } catch (error) {
       if (status) status.textContent = error.message;
       window.showToast?.(error.message);
+    }
+  }
+
+  async function importConfig(file) {
+    if (!file) return;
+    const status = document.getElementById("feishuAdminStatus");
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      if (status) status.textContent = `正在导入飞书配置文件：${file.name}...`;
+      const res = await fetch("/api/admin/feishu/import", {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error || payload.detail || "飞书配置文件导入失败");
+      render(payload.settings || {});
+      const imported = payload.imported || {};
+      if (status) status.textContent = `${payload.message || "飞书配置已导入"}：Webhook ${imported.hasWebhook ? "已导入" : "未包含"}，每日 ${imported.dailyPushTime || "--"} 推送。`;
+      window.showToast?.("飞书配置已导入");
+    } catch (error) {
+      if (status) status.textContent = error.message;
+      window.showToast?.(error.message);
+    } finally {
+      const input = document.getElementById("feishuConfigFile");
+      if (input) input.value = "";
     }
   }
 

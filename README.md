@@ -274,6 +274,169 @@ DAILY_MARKET_REVIEW_WEEKDAY_ONLY=true
 GET /api/daily-review/scheduler
 ```
 
+## 配置文件导入
+
+管理后台的“备份管理 / FinVue 总配置包”支持上传一个配置文件，一次恢复 TuShare Token、飞书 Webhook、AI API Key、指数池、股票池和定时任务开关。单项页面“TuShare配置”、“飞书推送”和“API 管理”也保留独立导入导出入口。支持 JSON 或 `.env` 键值格式。
+
+总配置包 JSON 示例：
+
+```json
+{
+  "type": "finvue-config-bundle",
+  "version": 1,
+  "tushare": {
+    "enabled": true,
+    "token": "your-tushare-token",
+    "intervalMinutes": 60,
+    "indexCodes": ["000001.SH", "399001.SZ", "399006.SZ"],
+    "stockCodes": ["600519.SH", "300750.SZ"]
+  },
+  "feishu": {
+    "enabled": true,
+    "webhookUrl": "https://open.feishu.cn/open-apis/bot/v2/hook/...",
+    "dailyPushTime": "09:00",
+    "pushRelatedStocks": true,
+    "notifyRegistrations": true
+  },
+  "ai": {
+    "providers": [
+      {
+        "id": "primary-volcengine",
+        "label": "火山主路由",
+        "baseUrl": "https://ark.cn-beijing.volces.com/api/v3/responses",
+        "apiKey": "your-ai-api-key",
+        "model": "doubao-seed-2-0-pro-250415",
+        "enabled": true,
+        "priority": 20,
+        "apiFormat": "finvue",
+        "apiKeyPlacement": "header",
+        "useProxy": true
+      }
+    ]
+  }
+}
+```
+
+总配置包 `.env` 示例：
+
+```bash
+TUSHARE_ENABLED=true
+TUSHARE_TOKEN=your-tushare-token
+TUSHARE_INTERVAL_MINUTES=60
+TUSHARE_INDEX_CODES=000001.SH,399001.SZ,399006.SZ
+TUSHARE_STOCK_CODES=600519.SH,300750.SZ
+
+FEISHU_ENABLED=true
+FEISHU_WEBHOOK_URL=https://open.feishu.cn/open-apis/bot/v2/hook/...
+FEISHU_DAILY_PUSH_TIME=09:00
+FEISHU_PUSH_RELATED_STOCKS=true
+FEISHU_NOTIFY_REGISTRATIONS=true
+
+AI_PROVIDER_ID=primary-volcengine
+AI_PROVIDER_LABEL=火山主路由
+AI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3/responses
+AI_API_KEY=your-ai-api-key
+AI_MODEL=doubao-seed-2-0-pro-250415
+AI_ENABLED=true
+AI_PRIORITY=20
+AI_API_FORMAT=finvue
+AI_API_KEY_PLACEMENT=header
+AI_USE_PROXY=true
+```
+
+单项配置仍可单独导入：
+
+TuShare JSON 示例：
+
+```json
+{
+  "type": "finvue-tushare-config",
+  "tushare": {
+    "enabled": true,
+    "token": "your-tushare-token",
+    "intervalMinutes": 60,
+    "indexCodes": ["000001.SH", "399001.SZ", "399006.SZ"],
+    "stockCodes": ["600519.SH", "300750.SZ"]
+  }
+}
+```
+
+`.env` 示例：
+
+```bash
+TUSHARE_ENABLED=true
+TUSHARE_TOKEN=your-tushare-token
+TUSHARE_INTERVAL_MINUTES=60
+TUSHARE_INDEX_CODES=000001.SH,399001.SZ,399006.SZ
+TUSHARE_STOCK_CODES=600519.SH,300750.SZ
+```
+
+飞书 JSON 示例：
+
+```json
+{
+  "type": "finvue-feishu-config",
+  "feishu": {
+    "enabled": true,
+    "webhookUrl": "https://open.feishu.cn/open-apis/bot/v2/hook/...",
+    "dailyPushTime": "09:00",
+    "pushRelatedStocks": true,
+    "notifyRegistrations": true
+  }
+}
+```
+
+飞书 `.env` 示例：
+
+```bash
+FEISHU_ENABLED=true
+FEISHU_WEBHOOK_URL=https://open.feishu.cn/open-apis/bot/v2/hook/...
+FEISHU_DAILY_PUSH_TIME=09:00
+FEISHU_PUSH_RELATED_STOCKS=true
+FEISHU_NOTIFY_REGISTRATIONS=true
+```
+
+AI 路由 JSON 示例：
+
+```json
+{
+  "type": "finvue-ai-config",
+  "ai": {
+    "providers": [
+      {
+        "id": "primary-volcengine",
+        "label": "火山主路由",
+        "baseUrl": "https://ark.cn-beijing.volces.com/api/v3/responses",
+        "apiKey": "your-ai-api-key",
+        "model": "doubao-seed-2-0-pro-250415",
+        "enabled": true,
+        "priority": 20,
+        "apiFormat": "finvue",
+        "apiKeyPlacement": "header",
+        "useProxy": true
+      }
+    ]
+  }
+}
+```
+
+AI 路由 `.env` 示例：
+
+```bash
+AI_PROVIDER_ID=primary-volcengine
+AI_PROVIDER_LABEL=火山主路由
+AI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3/responses
+AI_API_KEY=your-ai-api-key
+AI_MODEL=doubao-seed-2-0-pro-250415
+AI_ENABLED=true
+AI_PRIORITY=20
+AI_API_FORMAT=finvue
+AI_API_KEY_PLACEMENT=header
+AI_USE_PROXY=true
+```
+
+说明：下载当前 AI 配置会包含真实 API Key，仅限管理员接口，请把导出的文件按密钥文件保管。导入模板里的占位 key 或 `********` 时，会保留服务端原有 key，避免覆盖为空。
+
 ## 数据库迁移
 
 迁移文件位于：

@@ -5,8 +5,13 @@
 .feishu-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg2);padding:12px;}
 .feishu-toggle-row input{accent-color:var(--gold);}
 .feishu-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.feishu-config-file{display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px dashed rgba(200,146,42,.34);border-radius:var(--r);background:rgba(200,146,42,.06);padding:12px 14px;}
+.feishu-config-file strong{display:block;color:var(--text0);font-size:13px;margin-bottom:4px;}
+.feishu-config-file p{margin:0;color:var(--text2);font-size:11px;line-height:1.6;}
+.feishu-config-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
 .feishu-side-card{border:1px solid var(--border);border-radius:var(--r);background:var(--bg1);padding:14px;}
 .feishu-side-card h4{font-size:14px;margin-bottom:8px;color:var(--text0);}
 .feishu-side-card p{font-size:12px;color:var(--text1);line-height:1.7;}
 .feishu-status{font-size:12px;color:var(--text1);line-height:1.7;margin-top:10px;}
 @media(max-width:1100px){.feishu-admin-grid{grid-template-columns:1fr;}}
+@media(max-width:700px){.feishu-config-file{flex-direction:column;align-items:stretch}}

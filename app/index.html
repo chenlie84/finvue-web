@@ -11,10 +11,10 @@
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <script src="/static/modules/report-export.js"></script>
 <link rel="stylesheet" href="/static/modules/hotspot.css" />
-<link rel="stylesheet" href="/static/modules/market.css" />
+<link rel="stylesheet" href="/static/modules/market.css?v=20260721b" />
 <link rel="stylesheet" href="/static/modules/daily-review.css?v=20260721b" />
 <link rel="stylesheet" href="/static/modules/backtest.css" />
-<link rel="stylesheet" href="/static/modules/feishu.css" />
+<link rel="stylesheet" href="/static/modules/feishu.css?v=20260721b" />
 <link rel="stylesheet" href="/static/modules/data-collection.css?v=20260714c" />
 <style>
   :root {
@@ -2592,6 +2592,18 @@
         <div class="panel">
           <div class="panel-hd"><div class="panel-title">AI 路由池</div></div>
           <div class="muted" style="font-size:12px;margin-bottom:8px;">按优先级顺序尝试。主路由失败时会自动切到下一条启用中的路由。</div>
+          <div class="admin-note" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text0);">配置文件迁移</div>
+              <div class="muted" style="font-size:12px;margin-top:4px;">支持 JSON / .env 导入 AI Base URL、模型、路由优先级和 API Key。导出文件包含真实 Key，请妥善保存。</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <input id="aiConfigFileInput" type="file" accept=".json,.env,.txt" hidden>
+              <button class="btn btn-outline" id="aiConfigImportBtn" type="button" style="font-size:12px;padding:6px 12px;">上传 AI 配置</button>
+              <button class="btn btn-outline" id="aiConfigExportBtn" type="button" style="font-size:12px;padding:6px 12px;">下载当前配置</button>
+              <button class="btn btn-outline" id="aiConfigTemplateBtn" type="button" style="font-size:12px;padding:6px 12px;">下载模板</button>
+            </div>
+          </div>
           <div id="adminAiProviders" style="display:flex;flex-direction:column;gap:10px;"></div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
             <button class="btn btn-outline" id="addAiProviderBtn" style="font-size:12px;padding:6px 12px;">新增 AI 路由</button>
@@ -2603,6 +2615,26 @@
       <div class="asec" id="asec-backup">
         <div class="page-title">备份管理</div>
         <div class="page-sub">当前为本地开发模式，先管理本地数据导出与恢复</div>
+        <div class="panel mb">
+          <div class="panel-hd">
+            <div>
+              <div class="panel-title">FinVue 总配置包</div>
+              <div class="muted" style="font-size:12px;margin-top:4px;">一个文件汇总 TuShare、飞书推送和 AI 路由池，适合部署更新后一次恢复所有外部服务配置。</div>
+            </div>
+          </div>
+          <div class="admin-note" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="font-size:13px;line-height:1.8;color:var(--text1);">
+              导出文件包含 TuShare Token、飞书 Webhook 和 AI API Key。导入模板里的占位密钥或 <code>********</code> 会自动保留服务端已有密钥。
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <input id="configBundleFileInput" type="file" accept=".json,.env,.txt" hidden>
+              <button class="btn btn-outline" id="configBundleImportBtn" type="button" style="font-size:12px;padding:6px 12px;">上传总配置</button>
+              <button class="btn btn-outline" id="configBundleExportBtn" type="button" style="font-size:12px;padding:6px 12px;">下载当前总配置</button>
+              <button class="btn btn-outline" id="configBundleTemplateBtn" type="button" style="font-size:12px;padding:6px 12px;">下载总模板</button>
+            </div>
+          </div>
+          <div id="configBundleStatus" class="result-box" style="min-height:auto;margin-top:12px;">可下载模板后填写，也可以直接上传已有总配置文件。</div>
+        </div>
         <div class="g2">
           <div class="panel">
             <div class="panel-hd"><div class="panel-title">本地备份建议</div></div>
@@ -3404,8 +3436,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.46";
+const APP_VERSION = "0.1.47";
 const APP_RELEASES = [
+  {
+    version: "0.1.47",
+    date: "2026-07-21",
+    title: "FinVue 总配置包",
+    permissions: ["admin-backup", "admin-api", "market", "notify"],
+    summary: "管理后台备份管理新增 FinVue 总配置包，可一次导入导出 TuShare、飞书和 AI 路由配置，并保留单项配置导入导出入口。",
+    items: [
+      "新增 /api/admin/config/export、/api/admin/config/template、/api/admin/config/import 总配置包接口。",
+      "总配置包汇总 TuShare Token、指数池、股票池、取数间隔、启用状态、飞书 Webhook、推送时间和 AI 路由池。",
+      "TuShare、飞书和 AI 路由配置保留独立导入导出与模板下载入口。",
+      "支持 JSON 和 .env 键值格式导入，模板占位符、******** 或空密钥不会覆盖服务端已有密钥。",
+      "备份管理页新增 FinVue 总配置包操作区，README 补充总配置和单项配置文件示例。"
+    ]
+  },
   {
     version: "0.1.46",
     date: "2026-07-21",
@@ -7002,6 +7048,82 @@ function renderAdminAiProviders() {
     </div>
   `).join("");
   renderAiRouteSummary();
+}
+
+function downloadAdminConfigUrl(url) {
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+async function importAiConfigFile(file) {
+  if (!file) return;
+  try {
+    if (!isAdmin()) throw new Error("需要管理员权限");
+    if (els.adminStatus) els.adminStatus.textContent = "正在导入 AI 配置文件...";
+    const form = new FormData();
+    form.append("file", file);
+    const response = await fetch("/api/admin/ai-config/import", {
+      method: "POST",
+      credentials: "include",
+      body: form
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.detail || payload.error || "AI 配置文件导入失败");
+    state.globalSettings = payload.settings || state.globalSettings || {};
+    state.globalSettings.aiProviders = (Array.isArray(state.globalSettings.aiProviders) ? state.globalSettings.aiProviders : []).map(normalizeAiProviderDraft);
+    renderAdminAiProviders();
+    updateAdminDashboardSummary();
+    if (els.adminStatus) els.adminStatus.textContent = payload.message || "AI 配置已导入";
+    const imported = payload.imported || {};
+    showToast(`AI 配置已导入：${imported.providerCount || 0} 条路由，${imported.enabledCount || 0} 条启用`);
+  } catch (error) {
+    if (els.adminStatus) els.adminStatus.textContent = error.message;
+    showToast(error.message);
+  } finally {
+    const input = document.getElementById("aiConfigFileInput");
+    if (input) input.value = "";
+  }
+}
+
+async function importConfigBundleFile(file) {
+  if (!file) return;
+  const status = document.getElementById("configBundleStatus");
+  try {
+    if (!isAdmin()) throw new Error("需要管理员权限");
+    if (status) status.textContent = `正在导入总配置文件：${file.name}...`;
+    const form = new FormData();
+    form.append("file", file);
+    const response = await fetch("/api/admin/config/import", {
+      method: "POST",
+      credentials: "include",
+      body: form
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.detail || payload.error || "总配置文件导入失败");
+    state.globalSettings = payload.settings || state.globalSettings || {};
+    state.globalSettings.aiProviders = (Array.isArray(state.globalSettings.aiProviders) ? state.globalSettings.aiProviders : []).map(normalizeAiProviderDraft);
+    renderAdminAiProviders();
+    updateAdminDashboardSummary();
+    window.FinVueMarketAdmin?.load?.();
+    window.FinVueFeishuAdmin?.load?.();
+    const imported = payload.imported || {};
+    const parts = [];
+    if (imported.tushare) parts.push(`TuShare：${imported.tushare.indexCount || 0} 个指数 / ${imported.tushare.stockCount || 0} 只股票`);
+    if (imported.feishu) parts.push(`飞书：${imported.feishu.hasWebhook ? "Webhook 已配置" : "未含 Webhook"}`);
+    if (imported.ai) parts.push(`AI：${imported.ai.providerCount || 0} 条路由 / ${imported.ai.enabledCount || 0} 条启用`);
+    if (status) status.textContent = `${payload.message || "总配置已导入"}。${parts.join("；") || "未返回导入摘要"}`;
+    showToast("FinVue 总配置已导入");
+  } catch (error) {
+    if (status) status.textContent = error.message;
+    showToast(error.message);
+  } finally {
+    const input = document.getElementById("configBundleFileInput");
+    if (input) input.value = "";
+  }
 }
 
 function collectAiProvidersFromUi() {
@@ -13404,6 +13526,14 @@ els.reportFormat?.addEventListener("input", updateAdminDashboardSummary);
 els.rolePrompt?.addEventListener("input", updateAdminDashboardSummary);
 els.taskPrompt?.addEventListener("input", updateAdminDashboardSummary);
 els.addAiProviderBtn?.addEventListener("click", addAiProviderDraft);
+document.getElementById("aiConfigImportBtn")?.addEventListener("click", () => document.getElementById("aiConfigFileInput")?.click());
+document.getElementById("aiConfigExportBtn")?.addEventListener("click", () => downloadAdminConfigUrl("/api/admin/ai-config/export"));
+document.getElementById("aiConfigTemplateBtn")?.addEventListener("click", () => downloadAdminConfigUrl("/api/admin/ai-config/template"));
+document.getElementById("aiConfigFileInput")?.addEventListener("change", (event) => importAiConfigFile(event.target.files?.[0]));
+document.getElementById("configBundleImportBtn")?.addEventListener("click", () => document.getElementById("configBundleFileInput")?.click());
+document.getElementById("configBundleExportBtn")?.addEventListener("click", () => downloadAdminConfigUrl("/api/admin/config/export"));
+document.getElementById("configBundleTemplateBtn")?.addEventListener("click", () => downloadAdminConfigUrl("/api/admin/config/template"));
+document.getElementById("configBundleFileInput")?.addEventListener("change", (event) => importConfigBundleFile(event.target.files?.[0]));
 els.adminAiProviders?.addEventListener("click", async (event) => {
   // 删除按钮
   const removeBtn = event.target.closest("[data-ai-provider-remove]");
@@ -13914,10 +14044,10 @@ window.addEventListener("resize", () => {
 });
 </script>
 <script src="/static/modules/hotspot.js"></script>
-<script src="/static/modules/market.js"></script>
+<script src="/static/modules/market.js?v=20260721b"></script>
 <script src="/static/modules/daily-review.js?v=20260721b"></script>
 <script src="/static/modules/backtest.js"></script>
-<script src="/static/modules/feishu.js"></script>
+<script src="/static/modules/feishu.js?v=20260721b"></script>
 <script src="/static/modules/data-collection.js?v=20260714c"></script>
 <script src="/static/modules/anchor-dashboard-api.js"></script>
 <script src="/static/modules/roi-calculator.js"></script>

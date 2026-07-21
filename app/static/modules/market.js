@@ -16,6 +16,15 @@
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/`([^`]+)`/g, "<code>$1</code>");
 
+  function downloadUrl(url) {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
   function markdownToHtml(markdown) {
     const lines = String(markdown || "").split(/\r?\n/);
     let out = "";
@@ -254,6 +263,18 @@
             <button class="btn btn-outline" id="tushareTestBtn" type="button">测试 Token</button>
             <button class="btn btn-gold" id="tushareSaveBtn" type="button">保存配置</button>
           </div>
+          <div class="market-config-file">
+            <div>
+              <strong>配置文件导入/导出</strong>
+              <p>支持 JSON 或 .env 键值文件，适合更新部署后一次恢复 TuShare token、指数和股票池。</p>
+            </div>
+            <div class="market-config-actions">
+              <input id="tushareConfigFile" type="file" accept=".json,.env,.txt" hidden>
+              <button class="btn btn-outline" id="tushareImportBtn" type="button">上传配置文件</button>
+              <button class="btn btn-outline" id="tushareExportBtn" type="button">下载当前配置</button>
+              <button class="btn btn-outline" id="tushareTemplateBtn" type="button">下载模板</button>
+            </div>
+          </div>
           <div class="result-box" id="tushareAdminStatus" style="min-height:auto;">正在读取配置...</div>
         </div>
       </section>
@@ -401,6 +422,10 @@
       mount.innerHTML = adminTemplate();
       document.getElementById("tushareSaveBtn")?.addEventListener("click", saveAdmin);
       document.getElementById("tushareTestBtn")?.addEventListener("click", testAdmin);
+      document.getElementById("tushareImportBtn")?.addEventListener("click", () => document.getElementById("tushareConfigFile")?.click());
+      document.getElementById("tushareExportBtn")?.addEventListener("click", () => downloadUrl("/api/admin/tushare/export"));
+      document.getElementById("tushareTemplateBtn")?.addEventListener("click", () => downloadUrl("/api/admin/tushare/template"));
+      document.getElementById("tushareConfigFile")?.addEventListener("change", (event) => importAdminConfig(event.target.files?.[0]));
       document.getElementById("tushareLoadStocksBtn")?.addEventListener("click", () => loadStockUniverse(false));
       document.getElementById("tushareRefreshStocksBtn")?.addEventListener("click", () => loadStockUniverse(true));
       document.getElementById("tushareStockSearch")?.addEventListener("input", (event) => {
@@ -457,6 +482,33 @@
     } catch (error) {
       if (status) status.textContent = error.message;
       window.showToast?.(error.message);
+    }
+  }
+
+  async function importAdminConfig(file) {
+    if (!file) return;
+    const status = document.getElementById("tushareAdminStatus");
+    const form = new FormData();
+    form.append("file", file);
+    try {
+      if (status) status.textContent = `正在导入配置文件：${file.name}...`;
+      const res = await fetch("/api/admin/tushare/import", {
+        method: "POST",
+        credentials: "include",
+        body: form
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.error || payload.detail || "配置文件导入失败");
+      renderAdmin(payload.settings || {});
+      const imported = payload.imported || {};
+      if (status) status.textContent = `${payload.message || "配置已导入"}：指数 ${imported.indexCount || 0} 个，股票 ${imported.stockCount || 0} 个，Token ${imported.hasToken ? "已导入" : "未包含"}。`;
+      window.showToast?.("TuShare 配置已导入");
+    } catch (error) {
+      if (status) status.textContent = error.message;
+      window.showToast?.(error.message);
+    } finally {
+      const input = document.getElementById("tushareConfigFile");
+      if (input) input.value = "";
     }
   }
 

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import re
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi.responses import Response
 
 import ai_router
 import db
@@ -25,6 +28,69 @@ THEME_KEYWORDS = {
     "金融地产": ["银行", "券商", "保险", "地产", "房贷"],
     "消费": ["消费", "白酒", "食品", "零售", "旅游"],
 }
+
+
+def _split_codes(value: Any) -> list[str]:
+    if isinstance(value, list):
+        raw_items = value
+    else:
+        raw_items = re.split(r"[\s,，;；]+", str(value or ""))
+    result: list[str] = []
+    for item in raw_items:
+        code = str(item or "").strip().upper()
+        if code and code not in result:
+            result.append(code)
+    return result
+
+
+def _truthy(value: Any, default: bool = False) -> bool:
+    if value is None or value == "":
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on", "启用", "是"}
+
+
+def _parse_env_config(text: str) -> dict[str, Any]:
+    data: dict[str, Any] = {}
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        data[key.strip()] = value.strip().strip('"').strip("'")
+    return data
+
+
+def _pick(data: dict[str, Any], *keys: str) -> Any:
+    for key in keys:
+        if key in data:
+            return data.get(key)
+    return None
+
+
+def _normalize_imported_tushare_settings(raw: dict[str, Any]) -> dict[str, Any]:
+    data = raw.get("tushare") if isinstance(raw.get("tushare"), dict) else raw
+    settings = data.get("settings") if isinstance(data.get("settings"), dict) else data
+    return {
+        "enabled": _truthy(_pick(settings, "enabled", "schedulerEnabled", "TUSHARE_ENABLED", "TUSHARE_SCHEDULER_ENABLED"), True),
+        "token": str(_pick(settings, "token", "apiKey", "TUSHARE_TOKEN", "TUSHARE_API_TOKEN") or "").strip(),
+        "intervalMinutes": _pick(settings, "intervalMinutes", "interval", "TUSHARE_INTERVAL_MINUTES") or 60,
+        "indexCodes": _split_codes(_pick(settings, "indexCodes", "indexes", "TUSHARE_INDEX_CODES") or tushare_market.DEFAULT_INDEX_CODES),
+        "stockCodes": _split_codes(_pick(settings, "stockCodes", "stocks", "TUSHARE_STOCK_CODES") or tushare_market.DEFAULT_STOCK_CODES),
+    }
+
+
+def _parse_uploaded_tushare_config(content: bytes, filename: str = "") -> dict[str, Any]:
+    text = content.decode("utf-8-sig").strip()
+    if not text:
+        raise ValueError("配置文件为空")
+    if filename.lower().endswith(".json") or text[:1] in {"{", "["}:
+        loaded = json.loads(text)
+        if not isinstance(loaded, dict):
+            raise ValueError("JSON 配置顶层必须是对象")
+        return _normalize_imported_tushare_settings(loaded)
+    return _normalize_imported_tushare_settings(_parse_env_config(text))
 
 
 @router.get("/api/market/overview")
@@ -185,6 +251,76 @@ async def put_tushare_settings(request: Request, session: dict = Depends(securit
     incoming = body.get("settings") if isinstance(body.get("settings"), dict) else body
     saved = tushare_market.save_settings(incoming if isinstance(incoming, dict) else {}, session.get("username", ""))
     return {"ok": True, "settings": tushare_market.mask_settings(saved)}
+
+
+@router.get("/api/admin/tushare/export")
+def export_tushare_settings(_: dict = Depends(security.require_admin)) -> Response:
+    settings = tushare_market.get_settings()
+    payload = {
+        "type": "finvue-tushare-config",
+        "version": 1,
+        "exportedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "tushare": {
+            "enabled": settings.get("enabled"),
+            "token": settings.get("token"),
+            "intervalMinutes": settings.get("intervalMinutes"),
+            "indexCodes": settings.get("indexCodes"),
+            "stockCodes": settings.get("stockCodes"),
+        },
+    }
+    return Response(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="finvue-tushare-config.json"'},
+    )
+
+
+@router.get("/api/admin/tushare/template")
+def export_tushare_template(_: dict = Depends(security.require_admin)) -> Response:
+    payload = {
+        "type": "finvue-tushare-config",
+        "version": 1,
+        "tushare": {
+            "enabled": True,
+            "token": "填入你的 TuShare Token",
+            "intervalMinutes": 60,
+            "indexCodes": tushare_market.DEFAULT_INDEX_CODES,
+            "stockCodes": tushare_market.DEFAULT_STOCK_CODES,
+        },
+    }
+    return Response(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="finvue-tushare-config-template.json"'},
+    )
+
+
+@router.post("/api/admin/tushare/import")
+async def import_tushare_settings(
+    file: UploadFile = File(...),
+    session: dict = Depends(security.require_admin),
+) -> dict:
+    content = await file.read()
+    try:
+        settings = _parse_uploaded_tushare_config(content, file.filename or "")
+        current = tushare_market.get_settings()
+        token = str(settings.get("token") or "").strip()
+        if not token or token == "********" or token.startswith("填入"):
+            settings["token"] = current.get("token", "")
+        saved = tushare_market.save_settings(settings, session.get("username", ""))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"配置文件导入失败：{exc}") from exc
+    return {
+        "ok": True,
+        "message": "TuShare 配置已导入并保存",
+        "settings": tushare_market.mask_settings(saved),
+        "imported": {
+            "indexCount": len(saved.get("indexCodes") or []),
+            "stockCount": len(saved.get("stockCodes") or []),
+            "enabled": bool(saved.get("enabled")),
+            "hasToken": bool(saved.get("token")),
+        },
+    }
 
 
 @router.post("/api/admin/tushare/test")
