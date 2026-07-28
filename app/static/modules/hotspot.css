@@ -190,3 +190,220 @@
 @media(max-width:1180px){.hotspot-stock-grid,.hotspot-stock-ai-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:1180px){.hotspot-sector-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:760px){.hotspot-stock-hd,.hotspot-sector-hero{flex-direction:column;align-items:flex-start}.hotspot-stock-grid,.hotspot-stock-ai-grid,.hotspot-sector-grid{grid-template-columns:1fr;}.hotspot-stock-ai-head{flex-direction:column;}.hotspot-sector-score{width:100%;height:auto;padding:10px;}}
+
+/* Unified tech terminal skin */
+.hotspot-platform-card,
+.hotspot-summary-panel,
+.hotspot-stock-panel,
+.hotspot-config-head,
+.hotspot-config-section{
+  border-color:var(--border2);
+  background:
+    radial-gradient(circle at top left, rgba(63,216,255,.08), transparent 38%),
+    linear-gradient(180deg, rgba(10,15,24,.96), rgba(6,9,15,.94));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+.hotspot-card-header,
+.hotspot-summary-hd,
+.hotspot-stock-hd{
+  border-bottom-color:var(--border2);
+  background:linear-gradient(90deg, rgba(63,216,255,.12), rgba(10,15,24,.72));
+}
+.hotspot-card-title,
+.hotspot-summary-title,
+.hotspot-stock-title,
+.hotspot-summary-kicker,
+.hotspot-focus-rank,
+.hotspot-stock-ai-kicker,
+.hotspot-sector-kicker,
+.hotspot-sector-score span,
+.hotspot-sector-badge,
+.hotspot-stock-ai-title span,
+.hotspot-stock-confidence,
+.hotspot-stock-industry span,
+.hotspot-stock-themes span{
+  color:var(--cyan);
+}
+.hotspot-item-main,
+.hotspot-platform-option,
+.hotspot-stock-ai-card,
+.hotspot-stock-card,
+.hotspot-sector-card,
+.hotspot-sector-stock-row,
+.hotspot-stock-quote,
+.hotspot-stock-detail summary{
+  border:1px solid var(--border);
+  background:rgba(63,216,255,.035);
+}
+.hotspot-item-main:hover,
+.hotspot-platform-option:hover,
+.hotspot-stock-detail[open] summary{
+  border-color:var(--border2);
+  background:var(--cyan-dim);
+}
+.hotspot-item-title:hover,
+.tag:hover,
+.tag.active{
+  color:var(--cyan);
+  border-color:var(--cyan);
+}
+.tag.active{
+  background:var(--cyan-dim);
+}
+.hotspot-action-btn{
+  border:1px solid rgba(63,216,255,.24);
+  background:rgba(63,216,255,.08);
+  color:var(--cyan);
+}
+.hotspot-action-btn:hover{
+  background:var(--cyan);
+  color:#04121A;
+}
+.hotspot-summary-panel{
+  border-color:rgba(63,216,255,.30);
+}
+.hotspot-summary-hero,
+.hotspot-sector-hero{
+  border-color:var(--border2);
+  background:
+    linear-gradient(135deg, rgba(63,216,255,.14), rgba(242,193,78,.06) 56%, rgba(10,15,24,.54));
+}
+.hotspot-focus-card{
+  border-color:var(--border2);
+  background:rgba(10,15,24,.66);
+}
+.hotspot-focus-card::before{
+  background:var(--cyan);
+  box-shadow:0 0 18px rgba(63,216,255,.42);
+}
+.hotspot-focus-card.is-primary,
+.hotspot-stock-card.is-top,
+.hotspot-sector-card.is-primary{
+  border-color:rgba(63,216,255,.38);
+  background:linear-gradient(180deg, rgba(63,216,255,.13), rgba(10,15,24,.76));
+}
+.hotspot-stock-ai,
+.hotspot-summary-box,
+.hotspot-noise-strip{
+  border-color:var(--border2);
+  background:rgba(63,216,255,.055);
+}
+.hotspot-summary-box.is-warning{
+  border-color:rgba(255,90,95,.32);
+  background:rgba(255,90,95,.06);
+}
+.hotspot-stock-ai-reason,
+.hotspot-sector-evidence{
+  border-left-color:rgba(63,216,255,.45);
+}
+.hotspot-analysis-content{
+  padding:18px;
+  background:
+    radial-gradient(circle at top left, rgba(63,216,255,.10), transparent 35%),
+    linear-gradient(180deg, rgba(10,15,24,.96), rgba(5,7,12,.96));
+}
+.hotspot-analysis-content .report-shell{
+  max-width:none;
+  margin:0;
+  background:linear-gradient(180deg, rgba(10,15,24,.84), rgba(6,9,15,.80));
+  border:1px solid var(--border2);
+  border-radius:18px;
+  padding:22px;
+}
+.hotspot-analysis-content .report-shell-header{
+  text-align:left;
+  margin-bottom:16px;
+  padding:0 0 14px;
+  border-bottom:1px solid var(--border2);
+}
+.hotspot-analysis-content .report-shell-header::after{
+  left:0;
+  transform:none;
+  width:116px;
+  background:linear-gradient(90deg, var(--cyan), transparent);
+}
+.hotspot-analysis-content .report-shell-header h1{
+  font-family:var(--font-display);
+  font-size:22px;
+  letter-spacing:.03em;
+  margin:0 0 10px;
+  border-left:4px solid var(--cyan);
+  padding-left:14px;
+  color:var(--text0);
+}
+.hotspot-analysis-content .report-shell-meta{
+  justify-content:flex-start;
+  gap:8px;
+  font-size:11px;
+}
+.hotspot-analysis-content .report-shell-meta span{
+  color:var(--cyan);
+  border-color:var(--border2);
+  background:var(--cyan-dim);
+}
+.hotspot-analysis-content .report-shell-body{
+  padding:20px;
+  background:rgba(10,15,24,.62);
+  border:1px solid var(--border2);
+  border-radius:14px;
+}
+.hotspot-analysis-content .report-shell-body h1,
+.hotspot-analysis-content .report-shell-body h2{
+  color:var(--cyan);
+  border-left-color:var(--cyan);
+  border-bottom-color:var(--border2);
+}
+.hotspot-analysis-content .report-shell-body h3,
+.hotspot-analysis-content .report-shell-body h4,
+.hotspot-analysis-content .report-shell-body strong{
+  color:var(--text0);
+}
+.hotspot-analysis-content .report-shell-body p,
+.hotspot-analysis-content .report-shell-body li{
+  color:var(--text1);
+}
+.hotspot-analysis-content .report-shell-body li::marker{
+  color:var(--cyan);
+}
+.hotspot-analysis-content .report-shell-footer{
+  display:none;
+}
+[data-theme="light"] .hotspot-platform-card,
+[data-theme="light"] .hotspot-summary-panel,
+[data-theme="light"] .hotspot-stock-panel,
+[data-theme="light"] .hotspot-config-head,
+[data-theme="light"] .hotspot-config-section,
+[data-theme="light"] .hotspot-analysis-content .report-shell{
+  background:
+    radial-gradient(circle at top left, rgba(3,105,161,.07), transparent 38%),
+    linear-gradient(180deg, rgba(255,255,255,.94), rgba(246,248,252,.92));
+  box-shadow:0 12px 28px rgba(15,23,42,.06);
+}
+[data-theme="light"] .hotspot-card-header,
+[data-theme="light"] .hotspot-summary-hd,
+[data-theme="light"] .hotspot-stock-hd{
+  background:linear-gradient(90deg, rgba(3,105,161,.09), rgba(255,255,255,.80));
+}
+[data-theme="light"] .hotspot-item-main,
+[data-theme="light"] .hotspot-platform-option,
+[data-theme="light"] .hotspot-stock-ai-card,
+[data-theme="light"] .hotspot-stock-card,
+[data-theme="light"] .hotspot-sector-card,
+[data-theme="light"] .hotspot-sector-stock-row,
+[data-theme="light"] .hotspot-stock-quote,
+[data-theme="light"] .hotspot-stock-detail summary,
+[data-theme="light"] .hotspot-analysis-content .report-shell-body{
+  background:rgba(255,255,255,.72);
+}
+[data-theme="light"] .hotspot-analysis-content{
+  background:
+    radial-gradient(circle at top left, rgba(3,105,161,.08), transparent 35%),
+    linear-gradient(180deg, rgba(255,255,255,.82), rgba(246,248,252,.92));
+}
+[data-theme="light"] .hotspot-summary-hero,
+[data-theme="light"] .hotspot-sector-hero,
+[data-theme="light"] .hotspot-focus-card.is-primary,
+[data-theme="light"] .hotspot-stock-card.is-top,
+[data-theme="light"] .hotspot-sector-card.is-primary{
+  background:linear-gradient(135deg, rgba(3,105,161,.08), rgba(183,121,31,.05) 56%, rgba(255,255,255,.78));
+}

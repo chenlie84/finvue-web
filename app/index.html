@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <script src="/static/modules/report-export.js"></script>
-<link rel="stylesheet" href="/static/modules/hotspot.css" />
+<link rel="stylesheet" href="/static/modules/hotspot.css?v=20260728a" />
 <link rel="stylesheet" href="/static/modules/market.css?v=20260728b" />
 <link rel="stylesheet" href="/static/modules/daily-review.css?v=20260721c" />
 <link rel="stylesheet" href="/static/modules/backtest.css" />
@@ -878,6 +878,99 @@
   .report-shell.style-incubation .difficulty-fill.hard{background:#e11d48;}
   .report-shell.style-incubation .divider{height:1px;background:linear-gradient(90deg, transparent, rgba(225,29,72,.3), transparent);margin:26px 0;}
   .report-shell.style-incubation .footnote{font-size:13px;color:#64748b;margin-top:24px;}
+
+  /* ══════════════ Unified Tech Report Shell ══════════════ */
+  .live-report-view{
+    background:
+      radial-gradient(circle at top left, rgba(63,216,255,.13), transparent 34%),
+      linear-gradient(180deg, rgba(10,15,24,.98), rgba(5,7,12,.98));
+    border-color:var(--border2);
+    box-shadow:0 18px 60px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.025);
+  }
+  .report-shell:not([class*="style-"]){
+    background:linear-gradient(180deg, rgba(10,15,24,.78), rgba(5,7,12,.72));
+    border:1px solid var(--border2);
+    border-radius:18px;
+    padding:22px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+  }
+  .report-shell:not([class*="style-"]) .report-shell-header{
+    text-align:left;
+    margin-bottom:18px;
+    padding:0 0 16px;
+    border-bottom:1px solid var(--border2);
+  }
+  .report-shell:not([class*="style-"]) .report-shell-header::after{
+    left:0;
+    transform:none;
+    width:120px;
+    height:2px;
+    background:linear-gradient(90deg, var(--cyan), transparent);
+  }
+  .report-shell:not([class*="style-"]) .report-shell-header h1{
+    font-family:var(--font-display);
+    font-size:22px;
+    letter-spacing:.03em;
+    border-left:4px solid var(--cyan);
+    padding-left:14px;
+    margin:0 0 10px;
+    color:var(--text0);
+  }
+  .report-shell:not([class*="style-"]) .report-shell-meta{
+    justify-content:flex-start;
+    gap:8px;
+  }
+  .report-shell:not([class*="style-"]) .report-shell-meta span{
+    color:var(--cyan);
+    border:1px solid var(--border2);
+    background:var(--cyan-dim);
+  }
+  .report-shell:not([class*="style-"]) .report-shell-body{
+    background:rgba(10,15,24,.62);
+    border:1px solid var(--border2);
+    border-radius:14px;
+    color:var(--text0);
+  }
+  .report-shell:not([class*="style-"]) .report-shell-body h1,
+  .report-shell:not([class*="style-"]) .report-shell-body h2{
+    color:var(--cyan);
+    border-left-color:var(--cyan);
+    border-bottom-color:var(--border2);
+  }
+  .report-shell:not([class*="style-"]) .report-shell-body h3,
+  .report-shell:not([class*="style-"]) .report-shell-body h4,
+  .report-shell:not([class*="style-"]) .report-shell-body strong{color:var(--text0);}
+  .report-shell:not([class*="style-"]) .report-shell-body p,
+  .report-shell:not([class*="style-"]) .report-shell-body li{color:var(--text1);}
+  .report-shell:not([class*="style-"]) .report-shell-body li::marker{color:var(--cyan);}
+  .report-shell:not([class*="style-"]) .report-shell-body blockquote{
+    border-left-color:var(--cyan);
+    background:var(--cyan-dim);
+  }
+  .report-shell:not([class*="style-"]) .report-shell-body table{border-color:var(--border2);}
+  .report-shell:not([class*="style-"]) .report-shell-body thead th{
+    background:linear-gradient(135deg, rgba(3,105,161,.96), rgba(63,216,255,.72));
+    color:#fff;
+  }
+  .report-shell:not([class*="style-"]) .report-shell-body tbody td{border-bottom-color:var(--border);color:var(--text1);}
+  .report-shell:not([class*="style-"]) .report-shell-body tbody tr:nth-child(even){background:rgba(63,216,255,.035);}
+  .report-shell:not([class*="style-"]) .report-shell-footer{
+    border-top-color:var(--border);
+    color:var(--text2);
+  }
+  [data-theme="light"] .live-report-view{
+    background:
+      radial-gradient(circle at top left, rgba(3,105,161,.09), transparent 34%),
+      linear-gradient(180deg, rgba(255,255,255,.94), rgba(246,248,252,.96));
+    box-shadow:0 18px 44px rgba(15,23,42,.08);
+  }
+  [data-theme="light"] .report-shell:not([class*="style-"]){
+    background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(246,248,252,.90));
+    box-shadow:0 14px 34px rgba(15,23,42,.07);
+  }
+  [data-theme="light"] .report-shell:not([class*="style-"]) .report-shell-body{
+    background:rgba(255,255,255,.78);
+  }
 </style>
   <link rel="stylesheet" href="/static/modules/anchor-dashboard.css">
 </head>
@@ -3481,8 +3574,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.52";
+const APP_VERSION = "0.1.53";
 const APP_RELEASES = [
+  {
+    version: "0.1.53",
+    date: "2026-07-28",
+    title: "全页面科技风格统一",
+    permissions: ["hotspot", "notify"],
+    summary: "热点追踪、AI 分析结果和通用报告输出统一到青蓝科技终端风格，减少页面之间的视觉割裂。",
+    items: [
+      "热点追踪列表、平台卡片、标签筛选和分析按钮改为青蓝描边与轻量玻璃层。",
+      "AI 分析结果不再套用老的黑金报告壳，标题、分隔线、正文卡片统一使用当前主题变量。",
+      "浅色主题下热点卡片和 AI 报告采用浅色玻璃底，不再出现突兀的大块黑色区域。",
+      "通用 report-shell 增加科技终端覆盖样式，后续 AI 输出默认继承统一视觉。",
+      "hotspot.css 静态资源版本更新到 20260728a，避免浏览器继续加载旧样式。"
+    ]
+  },
   {
     version: "0.1.52",
     date: "2026-07-28",
