@@ -11,7 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <script src="/static/modules/report-export.js"></script>
 <link rel="stylesheet" href="/static/modules/hotspot.css" />
-<link rel="stylesheet" href="/static/modules/market.css?v=20260721b" />
+<link rel="stylesheet" href="/static/modules/market.css?v=20260728a" />
 <link rel="stylesheet" href="/static/modules/daily-review.css?v=20260721c" />
 <link rel="stylesheet" href="/static/modules/backtest.css" />
 <link rel="stylesheet" href="/static/modules/feishu.css?v=20260721b" />
@@ -3457,8 +3457,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.49";
+const APP_VERSION = "0.1.50";
 const APP_RELEASES = [
+  {
+    version: "0.1.50",
+    date: "2026-07-28",
+    title: "实时行情主题色优化",
+    permissions: ["market"],
+    summary: "实时行情模块新增独立明暗主题变量，修复浅色主题下板块卡片、AI 归因和行情表格视觉过暗或过散的问题。",
+    items: [
+      "浅色主题下，热门板块卡片改为浅金与蓝灰渐变，不再显示成过重的黑色卡片。",
+      "AI 消息面归因面板跟随主题切换，浅色模式阅读更清晰。",
+      "指数、股票表格和行情卡片统一使用实时行情模块专属表面色。",
+      "深色主题继续保留原有暗色金融科技风格，不受浅色样式影响。",
+      "market.css 静态资源版本更新到 20260728a，避免浏览器继续加载旧样式。"
+    ]
+  },
   {
     version: "0.1.49",
     date: "2026-07-21",
