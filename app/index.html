@@ -66,24 +66,37 @@
   .badge.gray{background:var(--border);color:var(--text1);}
 
   /* ── LOGIN ── */
-  #pg-login{align-items:center;justify-content:center;background:var(--bg0);position:relative;overflow:hidden;}
-  .login-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:42px 42px;pointer-events:none;}
-  .login-glow{position:absolute;width:680px;height:680px;background:radial-gradient(circle,rgba(63,214,255,0.08) 0%,transparent 62%);top:50%;left:50%;transform:translate(-50%,-60%);pointer-events:none;}
-  .login-card{position:relative;width:420px;background:linear-gradient(180deg,rgba(10,15,24,.96),rgba(5,7,12,.96));border:1px solid var(--border2);border-radius:16px;padding:44px 40px 40px;box-shadow:0 32px 90px rgba(0,0,0,0.5);animation:fadeUp .5s ease;}
+  #pg-login{align-items:center;justify-content:center;background:#05070C;position:relative;overflow:hidden;color:#EEF3FB;}
+  #pg-login::before{content:"";position:absolute;inset:0;background:radial-gradient(760px 420px at 50% 32%,rgba(63,216,255,.13),transparent 62%),radial-gradient(580px 360px at 68% 68%,rgba(242,193,78,.06),transparent 64%);pointer-events:none;}
+  #pg-login::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 0 42%,rgba(63,216,255,.05) 50%,transparent 58% 100%);opacity:.9;pointer-events:none;}
+  .login-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(120,170,255,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(120,170,255,.10) 1px,transparent 1px);background-size:42px 42px;mask-image:radial-gradient(circle at center,black 0%,rgba(0,0,0,.76) 48%,transparent 82%);pointer-events:none;}
+  .login-glow{position:absolute;width:760px;height:760px;background:radial-gradient(circle,rgba(63,216,255,.10) 0%,transparent 64%);top:50%;left:50%;transform:translate(-50%,-58%);pointer-events:none;filter:blur(2px);}
+  .login-card{position:relative;width:430px;background:linear-gradient(180deg,rgba(10,15,24,.90),rgba(5,7,12,.96));border:1px solid rgba(120,170,255,.24);border-radius:20px;padding:42px 38px 36px;box-shadow:0 30px 90px rgba(0,0,0,.38),0 0 0 1px rgba(63,216,255,.04),inset 0 1px 0 rgba(255,255,255,.035);animation:fadeUp .5s ease;overflow:hidden;}
+  .login-card::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,transparent,var(--cyan),var(--gold),transparent);opacity:.9;}
+  .login-card::after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(63,216,255,.08),transparent 30%,rgba(242,193,78,.035) 70%,transparent);pointer-events:none;}
+  .login-card>*{position:relative;z-index:1;}
   @keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
-  .logo-mark{width:34px;height:34px;border:1px solid rgba(63,214,255,.35);border-radius:8px;background:linear-gradient(135deg,var(--cyan),#1c6fa8);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;font-size:17px;color:#04121A;box-shadow:0 0 14px var(--cyan-dim);}
-  .logo-name{font-family:var(--font-display);font-size:21px;letter-spacing:.02em;}
-  .logo-name span{color:var(--cyan);}
-  .form-label{font-size:11px;color:var(--text1);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase;}
-  .form-input{width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:11px 14px;color:var(--text0);font-size:14px;outline:none;transition:border-color .2s;}
-  .form-input:focus{border-color:var(--cyan);}
-  .form-input::placeholder{color:var(--text2);}
-  .btn-primary{width:100%;background:var(--gold);color:#0A0B0E;border:none;border-radius:var(--r);padding:12px;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.03em;transition:background .2s,transform .1s;}
-  .btn-primary:hover{background:var(--gold2);}
+  .logo-mark{width:34px;height:34px;border:1px solid rgba(63,214,255,.45);border-radius:9px;background:linear-gradient(135deg,var(--cyan),#1c6fa8);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:700;font-size:17px;color:#04121A;box-shadow:0 0 18px rgba(63,216,255,.22);}
+  .logo-name{font-family:var(--font-display);font-size:21px;letter-spacing:.04em;color:#EEF3FB;}
+  .logo-name span{color:var(--cyan);text-shadow:0 0 18px rgba(63,216,255,.34);}
+  #pg-login .form-label{font-size:11px;color:#9FB0C8;margin-bottom:6px;letter-spacing:.08em;text-transform:uppercase;font-family:var(--font-display);}
+  #pg-login .form-input{width:100%;background:rgba(14,20,32,.88);border:1px solid rgba(120,170,255,.22);border-radius:10px;padding:12px 14px;color:#EEF3FB;font-size:14px;outline:none;transition:border-color .2s,box-shadow .2s,background .2s;}
+  #pg-login .form-input:focus{border-color:var(--cyan);background:rgba(14,20,32,.96);box-shadow:0 0 0 3px rgba(63,216,255,.10);}
+  #pg-login .form-input::placeholder{color:#5C6B82;}
+  .login-help-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+  .login-remember{display:flex;align-items:center;gap:7px;font-size:13px;color:#9FB0C8;cursor:pointer;}
+  .login-remember input{accent-color:var(--cyan);}
+  .login-forgot{font-size:13px;color:var(--cyan);cursor:pointer;}
+  .login-actions{display:flex;gap:10px;}
+  #pg-login .btn-primary{width:100%;background:linear-gradient(135deg,var(--cyan),#1c6fa8);color:#04121A;border:1px solid rgba(63,216,255,.54);border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.08em;transition:transform .1s,box-shadow .2s,filter .2s;font-family:var(--font-display);}
+  #pg-login .btn-primary:hover{filter:brightness(1.07);box-shadow:0 0 22px rgba(63,216,255,.20);}
+  #pg-login .btn-primary.btn-secondary{background:rgba(63,216,255,.04);color:var(--cyan);border-color:rgba(63,216,255,.40);}
+  #pg-login .btn-primary.btn-secondary:hover{background:rgba(63,216,255,.10);}
   .btn-primary:active{transform:scale(.98);}
-  .role-chip{flex:1;padding:9px 4px;border:1px solid var(--border2);border-radius:var(--r);text-align:center;cursor:pointer;font-size:12px;color:var(--text1);background:var(--bg2);transition:all .15s;}
-  .role-chip:hover,.role-chip.active{border-color:var(--cyan);color:var(--cyan);background:rgba(63,214,255,.08);}
-  .role-chip .ri{font-size:18px;margin-bottom:4px;}
+  #pg-login .role-chip{flex:1;padding:10px 4px;border:1px solid rgba(120,170,255,.22);border-radius:10px;text-align:center;cursor:pointer;font-size:12px;color:#9FB0C8;background:rgba(14,20,32,.76);transition:all .15s;font-family:var(--font-display);letter-spacing:.03em;}
+  #pg-login .role-chip:hover,#pg-login .role-chip.active{border-color:var(--cyan);color:var(--cyan);background:rgba(63,216,255,.10);box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 0 18px rgba(63,216,255,.08);}
+  #pg-login .role-chip .ri{font-size:18px;margin-bottom:4px;}
+  #pg-login #loginStatus{color:#9FB0C8!important;}
 
   /* ── APP SHELL ── */
   .topnav{height:58px;background:rgba(10,15,24,.72);backdrop-filter:blur(8px);border-bottom:1px solid var(--border2);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;position:sticky;top:0;z-index:100;}
@@ -976,7 +989,7 @@
 </head>
 <body>
 <!-- ══════════════ LOGIN ══════════════ -->
-<div id="pg-login" class="app-page active" style="align-items:center;justify-content:center;background:var(--bg0);position:relative;overflow:hidden;">
+<div id="pg-login" class="app-page active">
   <div class="login-grid"></div>
   <div class="login-glow"></div>
   <div class="login-card">
@@ -997,13 +1010,13 @@
     </div>
     <div style="margin-bottom:14px;"><div class="form-label">账号</div><input class="form-input" id="inp-u" type="text" placeholder="邮箱或账号" value="" autocomplete="off"/></div>
     <div style="margin-bottom:14px;"><div class="form-label">密码</div><input class="form-input" id="inp-p" type="password" placeholder="密码" value="" autocomplete="new-password"/></div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:18px;">
-      <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text1);cursor:pointer;"><input type="checkbox" style="accent-color:var(--gold);"> 记住我</label>
-      <span style="font-size:13px;color:var(--gold);cursor:pointer;">忘记密码？</span>
+    <div class="login-help-row">
+      <label class="login-remember"><input type="checkbox"> 记住我</label>
+      <span class="login-forgot">忘记密码？</span>
     </div>
-    <div style="display:flex;gap:10px;">
+    <div class="login-actions">
       <button class="btn-primary" id="loginBtn" onclick="doLogin()">登 录</button>
-      <button class="btn-primary" id="registerBtn" onclick="doRegister()" style="background:transparent;color:var(--gold);border:1px solid var(--gold);">注 册</button>
+      <button class="btn-primary btn-secondary" id="registerBtn" onclick="doRegister()">注 册</button>
     </div>
     <div id="loginStatus" style="margin-top:14px;font-size:12px;color:var(--text1);">输入已有账号登录，或注册新账号。</div>
   </div>
@@ -3574,8 +3587,21 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.53";
+const APP_VERSION = "0.1.54";
 const APP_RELEASES = [
+  {
+    version: "0.1.54",
+    date: "2026-07-28",
+    title: "登录页科技入口统一",
+    permissions: ["dashboard", "notify"],
+    summary: "登录页重做为深色青蓝科技入口，和当前 FinVue 终端风格保持一致。",
+    items: [
+      "登录页背景改为深色数据网格、青蓝光晕和斜向扫描光。",
+      "登录卡片加入顶部能量线、玻璃暗面和细描边，不再浮在浅色背景上显得割裂。",
+      "角色选择、账号密码输入框、记住我、忘记密码、登录和注册按钮统一使用青蓝主色。",
+      "移除登录页关键区域的旧行内金色样式，避免主题切换后被旧样式覆盖。"
+    ]
+  },
   {
     version: "0.1.53",
     date: "2026-07-28",
