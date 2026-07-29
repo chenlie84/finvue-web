@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <script src="/static/modules/report-export.js"></script>
-<link rel="stylesheet" href="/static/modules/hotspot.css?v=20260728a" />
+<link rel="stylesheet" href="/static/modules/hotspot.css?v=20260729a" />
 <link rel="stylesheet" href="/static/modules/market.css?v=20260728b" />
 <link rel="stylesheet" href="/static/modules/daily-review.css?v=20260721c" />
 <link rel="stylesheet" href="/static/modules/backtest.css" />
@@ -1943,14 +1943,14 @@
       
       <!-- ══ 热点追踪（直接展示热搜） ══ -->
       <div class="sec" id="sec-hotspot">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div class="hotspot-page-head">
           <div>
             <div class="page-title" style="margin-bottom:4px;">热搜追踪</div>
             <div style="font-size:12px;color:var(--text2);">
               更新于 <span id="hotspotUpdateTime" style="color:var(--green);">--</span> · 共 <span id="hotspotTotalCount" style="color:var(--gold);font-family:var(--font-mono);">--</span> 条
             </div>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;">
+          <div class="hotspot-toolbar">
             <input class="inp" id="hotspotSearchInput" placeholder="搜索关键词..." style="width:180px;" onkeydown="if(event.key==='Enter')hotspotSearch()">
             <button class="btn btn-outline" onclick="hotspotSearch()">🔍</button>
             <button class="btn btn-outline" id="hotspotSummaryBtn" onclick="analyzeHotspotSummaryMain()">✨ AI总览</button>
@@ -1962,7 +1962,7 @@
 
         <div id="hotspotMainContent">
         <!-- 平台筛选 -->
-        <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;" id="hotspotPlatformBtns">
+        <div class="hotspot-platform-filter" id="hotspotPlatformBtns">
           <button class="tag active" data-platform="" onclick="filterHotspotPlatform('')">全部</button>
         </div>
 
@@ -1991,17 +1991,17 @@
         </div>
 
         <!-- 热搜列表（按平台分组） -->
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;" id="hotspotGridMain">
+        <div class="hotspot-grid-main" id="hotspotGridMain">
           <div style="grid-column:span 3;text-align:center;padding:30px;color:var(--text1);">
             正在加载热搜数据...
           </div>
         </div>
 
         <!-- AI 分析结果容器 -->
-        <div id="hotspotAnalysisPanel" style="display:none;margin-top:16px;">
-          <div class="panel" style="border-color:var(--gold);">
+        <div id="hotspotAnalysisPanel" class="hotspot-analysis-panel" style="display:none;">
+          <div class="panel">
             <div class="panel-hd">
-              <div class="panel-title" style="color:var(--gold);">🤖 AI 分析结果</div>
+              <div class="panel-title">🤖 AI 分析结果</div>
               <button class="btn btn-outline-sm" onclick="closeHotspotAnalysis()">关闭</button>
             </div>
             <div class="hotspot-analysis-content" id="hotspotAnalysisContent"></div>
@@ -3587,8 +3587,22 @@ const DASHBOARD_PERMISSION_LABELS = {
   "admin-api": "管理后台：API 管理"
 };
 
-const APP_VERSION = "0.1.54";
+const APP_VERSION = "0.1.55";
 const APP_RELEASES = [
+  {
+    version: "0.1.55",
+    date: "2026-07-29",
+    title: "热搜追踪信息密度优化",
+    permissions: ["hotspot", "notify"],
+    summary: "参考成熟热榜和资讯监控面板的列表密度与扫描路径，重排热搜追踪页面。",
+    items: [
+      "热搜平台卡片取消 15 条截断，按平台完整展示当前返回的热榜数据。",
+      "每条热搜改为排名、标题、热度、时间和分析动作同一行布局，提高扫读效率。",
+      "平台卡片头部新增副标题和条数数字化展示，减少信息层级混乱。",
+      "热点追踪顶部工具区、平台筛选和 AI 分析面板统一为当前青蓝科技风格。",
+      "hotspot.css 静态资源版本更新到 20260729a，避免浏览器继续加载旧样式。"
+    ]
+  },
   {
     version: "0.1.54",
     date: "2026-07-28",

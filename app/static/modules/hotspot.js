@@ -59,17 +59,30 @@ function renderHotspotGridMain(byPlatform) {
   for (const [pid, items] of Object.entries(byPlatform)) {
     const meta = PLATFORM_META[pid] || hotspotState.platforms.find(p=>p.id===pid) || { name: pid, icon: '🔥' };
     html += `<div class="hotspot-platform-card">
-      <div class="hotspot-card-header"><div class="hotspot-card-title">${meta.icon} ${meta.name}</div><div class="hotspot-card-count">${items.length}条</div></div>
-      <div class="hotspot-card-body">${items.slice(0,15).map(i => {
+      <div class="hotspot-card-header">
+        <div>
+          <div class="hotspot-card-title">${meta.icon} ${meta.name}</div>
+          <div class="hotspot-card-sub">实时热榜 · 按平台排名</div>
+        </div>
+        <div class="hotspot-card-count"><strong>${items.length}</strong><span>条</span></div>
+      </div>
+      <div class="hotspot-card-body">${items.map(i => {
         const r = i.rank||0, rc = r===1?'r1':r===2?'r2':r===3?'r3':'';
+        const titleText = escapeHtml(i.title || '');
+        const safeIdArg = escapeHtmlAttr(JSON.stringify(String(i.id || '')));
+        const safeTitleArg = escapeHtmlAttr(JSON.stringify(String(i.title || '')));
+        const hotText = i.hotValue ? `<span class="hotspot-item-hot">${escapeHtml(String(i.hotValue))}</span>` : '<span class="hotspot-item-hot muted">--</span>';
         return `<div class="hotspot-item-main"><div class="hotspot-item-row">
           <div class="hotspot-item-rank ${rc}">#${r||'--'}</div>
           <div class="hotspot-item-content">
-            ${i.url ? `<a class="hotspot-item-title" href="${i.url}" target="_blank">${i.title}<span class="arrow">↗</span></a>` : `<span class="hotspot-item-title">${i.title}</span>`}
-            <div class="hotspot-item-meta">${i.hotValue ? `<span class="hotspot-item-hot">${i.hotValue}</span> · ` : ''}${formatTimeShort(new Date(i.lastSeenAt))}</div>
-            <div class="hotspot-actions">
-              <button class="hotspot-action-btn" onclick="analyzeHotspotMain('${i.id}', '${i.title.replace(/'/g, "\\'")}')">🤖 分析</button>
+            ${i.url ? `<a class="hotspot-item-title" href="${escapeHtmlAttr(i.url)}" target="_blank">${titleText}<span class="arrow">↗</span></a>` : `<span class="hotspot-item-title">${titleText}</span>`}
+            <div class="hotspot-item-meta">
+              ${hotText}
+              <span>${formatTimeShort(new Date(i.lastSeenAt))}</span>
             </div>
+          </div>
+          <div class="hotspot-actions">
+            <button class="hotspot-action-btn" onclick="analyzeHotspotMain(${safeIdArg}, ${safeTitleArg})">分析</button>
           </div>
         </div></div>`;
       }).join('')}</div></div>`;
