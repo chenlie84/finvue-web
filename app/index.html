@@ -17,7 +17,7 @@
 <link rel="stylesheet" href="/static/modules/backtest.css" />
 <link rel="stylesheet" href="/static/modules/feishu.css?v=20260721b" />
 <link rel="stylesheet" href="/static/modules/data-collection.css?v=20260714c" />
-<link rel="stylesheet" href="/static/modules/theme-system.css?v=20260729a" />
+<link rel="stylesheet" href="/static/modules/theme-system.css?v=20260731b" />
   <link rel="stylesheet" href="/static/modules/anchor-dashboard.css">
 </head>
 <body>
@@ -1923,17 +1923,18 @@
         <div class="panel-title" id="releaseModalTitle">版本更新</div>
         <div class="muted" id="releaseModalSub" style="font-size:12px;margin-top:4px;">以下是与你当前权限相关的更新内容</div>
       </div>
-      <button class="btn btn-outline" id="releaseModalClose" type="button" style="font-size:12px;padding:6px 12px;">稍后再看</button>
+      <button class="btn btn-outline" id="releaseModalClose" type="button" onclick="closeReleaseModal(false)" style="font-size:12px;padding:6px 12px;">稍后再看</button>
     </div>
     <div class="release-list" id="releaseModalList"></div>
     <div class="release-modal-actions">
-      <button class="btn-primary" id="releaseModalAck" type="button" style="font-size:13px;padding:8px 18px;">知道了</button>
+      <button class="btn-primary" id="releaseModalAck" type="button" onclick="closeReleaseModal(this.dataset.markRead !== '0')" style="font-size:13px;padding:8px 18px;">知道了</button>
     </div>
   </div>
 </div>
 
 <div id="toast"></div>
 
+<script src="/static/modules/ui-core.js?v=20260731a"></script>
 <script>
 // 主题切换
 function setTheme(theme) {
@@ -2834,6 +2835,7 @@ function showReleaseModal(releases, { markAsReadOnAck = true } = {}) {
   if (!list.length || !els.releaseModal || !els.releaseModalList) return;
   state.pendingReleaseVersions = list.map((release) => release.version);
   els.releaseModalList.innerHTML = renderReleaseCards(list);
+  els.releaseModalList.scrollTop = 0;
   if (els.releaseModalTitle) {
     els.releaseModalTitle.textContent = list.length === 1 ? `v${list[0].version} 更新` : "版本更新";
   }
@@ -10521,7 +10523,6 @@ window.addEventListener("resize", () => {
   drawSpark("homeChart");
 });
 </script>
-<script src="/static/modules/ui-core.js?v=20260731a"></script>
 <script src="/static/modules/live-analysis.js?v=20260731a"></script>
 <script src="/static/modules/admin-core.js?v=20260729a"></script>
 <script src="/static/modules/admin-config.js?v=20260729a"></script>
