@@ -29,11 +29,15 @@ _load_env_file(BASE_DIR / ".env")
 
 
 ENV = os.environ.get("ENV") or os.environ.get("NODE_ENV") or os.environ.get("environment", "DEV")
+IS_PRODUCTION = ENV.lower() in {"prod", "production", "online"}
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "8080"))
 RELOAD = os.environ.get("RELOAD", "false").lower() == "true"
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://localhost:8080")
-ALLOW_OPEN_REGISTRATION = os.environ.get("ALLOW_OPEN_REGISTRATION", "true").lower() == "true"
+ALLOW_OPEN_REGISTRATION = os.environ.get(
+    "ALLOW_OPEN_REGISTRATION",
+    "false" if IS_PRODUCTION else "true",
+).lower() == "true"
 AUTH_SECRET = os.environ.get("AUTH_SECRET") or "dev-only-local-auth-secret"
 SESSION_COOKIE_NAME = "lab_session"
 SESSION_TTL_SECONDS = 7 * 24 * 60 * 60
@@ -47,6 +51,8 @@ MYSQL_USER = os.environ.get("MYSQL_USER", "")
 MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "")
 
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", str(50 * 1024 * 1024)))
+DATA_COLLECTION_COMMENT_MAX_BYTES = int(os.environ.get("DATA_COLLECTION_COMMENT_MAX_BYTES", str(10 * 1024 * 1024)))
+DATA_COLLECTION_TEMP_TTL_HOURS = int(os.environ.get("DATA_COLLECTION_TEMP_TTL_HOURS", "24"))
 OBJECT_STORAGE_DIR = Path(os.environ.get("OBJECT_STORAGE_DIR", str(BASE_DIR / ".objects")))
 ANCHOR_DASHBOARD_PYTHON = os.environ.get("ANCHOR_DASHBOARD_PYTHON", "/usr/bin/python3")
 DAILY_MARKET_REVIEW_ROOT = Path(os.environ.get("DAILY_MARKET_REVIEW_ROOT", str(OBJECT_STORAGE_DIR / "market-review")))
@@ -60,6 +66,7 @@ DAILY_MARKET_REVIEW_SCHEDULER_ENABLED = os.environ.get("DAILY_MARKET_REVIEW_SCHE
 DAILY_MARKET_REVIEW_SCHEDULE_TIME = os.environ.get("DAILY_MARKET_REVIEW_SCHEDULE_TIME", "17:40")
 DAILY_MARKET_REVIEW_RETRY_MINUTES = int(os.environ.get("DAILY_MARKET_REVIEW_RETRY_MINUTES", "30"))
 DAILY_MARKET_REVIEW_WEEKDAY_ONLY = os.environ.get("DAILY_MARKET_REVIEW_WEEKDAY_ONLY", "true").lower() == "true"
+DAILY_MARKET_REVIEW_TIMEOUT_SECONDS = int(os.environ.get("DAILY_MARKET_REVIEW_TIMEOUT_SECONDS", "420"))
 
 
 def _proxy_url(value: str) -> str:

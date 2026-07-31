@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import asyncio
+import logging
+from uuid import uuid4
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
@@ -17,6 +19,9 @@ from api import admin, ai, auth, customers, daily_review, data_collection, files
 from api import operation as api_operation
 
 
+logger = logging.getLogger(__name__)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     hotspot_stop_event: asyncio.Event | None = None
@@ -28,6 +33,8 @@ async def lifespan(_: FastAPI):
     daily_review_stop_event: asyncio.Event | None = None
     daily_review_task: asyncio.Task | None = None
     print(f"[lifespan] AUTO_MIGRATE={config.AUTO_MIGRATE}, ENV={config.ENV}, has_mysql={config.has_mysql_config()}")
+    if config.IS_PRODUCTION and config.AUTH_SECRET == "dev-only-local-auth-secret":
+        logger.critical("[security] AUTH_SECRET is using the development default in production; override it immediately.")
     if config.AUTO_MIGRATE and config.has_mysql_config() and config.ENV.lower() != "test":
         print("[lifespan] Running migrations...")
         try:
@@ -116,13 +123,36 @@ app.include_router(feishu.router)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
-    detail = exc.detail if isinstance(exc.detail, str) else "请求失败"
-    return JSONResponse(status_code=exc.status_code, content={"ok": False, "error": detail, "detail": exc.detail})
+    detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail.get("message") or "请求失败") if isinstance(exc.detail, dict) else "请求失败"
+    error_code = exc.detail.get("error_code") if isinstance(exc.detail, dict) else f"HTTP_{exc.status_code}"
+    stage = exc.detail.get("stage") if isinstance(exc.detail, dict) else ""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "ok": False,
+            "error": detail,
+            "message": detail,
+            "detail": exc.detail,
+            "error_code": error_code or f"HTTP_{exc.status_code}",
+            "stage": stage,
+        },
+    )
 
 
 @app.exception_handler(Exception)
-async def generic_exception_handler(_: Request, exc: Exception) -> JSONResponse:
-    return JSONResponse(status_code=500, content={"ok": False, "error": str(exc) or "服务端处理失败"})
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    request_id = uuid4().hex[:12]
+    logger.exception("[request:%s] unhandled error path=%s", request_id, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "ok": False,
+            "error_code": "INTERNAL_ERROR",
+            "stage": "http:unhandled",
+            "message": "服务端处理失败",
+            "request_id": request_id,
+        },
+    )
 
 
 def _page(request: Request, name: str) -> HTMLResponse:

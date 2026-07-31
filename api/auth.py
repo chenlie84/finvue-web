@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Response
 
 import config
@@ -10,6 +12,9 @@ from services import feishu_push
 
 
 router = APIRouter()
+LOGIN_FAILURE_LIMIT = 5
+LOGIN_LOCK_MINUTES = 10
+_LOGIN_FAILURES: dict[str, dict] = {}
 
 
 def get_client_ip(request: Request) -> str:
@@ -18,6 +23,37 @@ def get_client_ip(request: Request) -> str:
     if forwarded:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else ""
+
+
+def _login_key(ip: str, username: str) -> str:
+    return f"{ip or 'unknown'}:{username or 'unknown'}".lower()
+
+
+def _check_login_limit(ip: str, username: str) -> None:
+    key = _login_key(ip, username)
+    entry = _LOGIN_FAILURES.get(key) or {}
+    locked_until = entry.get("locked_until")
+    now = datetime.now(timezone.utc)
+    if isinstance(locked_until, datetime) and now < locked_until:
+        remain = int((locked_until - now).total_seconds() // 60) + 1
+        raise HTTPException(status_code=429, detail=f"登录失败次数过多，请 {remain} 分钟后再试")
+    if isinstance(locked_until, datetime) and now >= locked_until:
+        _LOGIN_FAILURES.pop(key, None)
+
+
+def _record_login_failure(ip: str, username: str) -> None:
+    key = _login_key(ip, username)
+    now = datetime.now(timezone.utc)
+    entry = _LOGIN_FAILURES.get(key) or {"count": 0}
+    count = int(entry.get("count") or 0) + 1
+    payload = {"count": count, "last_failed_at": now}
+    if count >= LOGIN_FAILURE_LIMIT:
+        payload["locked_until"] = now + timedelta(minutes=LOGIN_LOCK_MINUTES)
+    _LOGIN_FAILURES[key] = payload
+
+
+def _clear_login_failures(ip: str, username: str) -> None:
+    _LOGIN_FAILURES.pop(_login_key(ip, username), None)
 
 
 DEFAULT_REGISTER_PERMISSIONS = {
@@ -40,15 +76,18 @@ async def login(request: Request, response: Response) -> dict:
     username = security.normalize_username(body.get("username"))
     password = str(body.get("password") or "")
     ip = get_client_ip(request)
+    _check_login_limit(ip, username)
     
     user = store.get_user_by_username(username)
     if not user or not security.verify_password(password, user["passwordSalt"], user["passwordHash"]):
+        _record_login_failure(ip, username)
         # 记录登录失败
         logger.log_login(username=username, request_ip=ip, status="failed", error_message="账号或密码错误")
         raise HTTPException(status_code=401, detail="账号或密码错误")
     
     sanitized = security.sanitize_user(user)
     security.set_session_cookie(request, response, sanitized)
+    _clear_login_failures(ip, username)
     
     # 记录登录成功
     logger.log_login(username=username, user_id=user.get("id"), request_ip=ip, status="success")

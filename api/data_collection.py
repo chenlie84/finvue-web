@@ -48,7 +48,14 @@ async def collect_douyin(request: Request, _: dict = Depends(security.require_pe
             source,
         )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error_code": "DATA_COLLECTION_FAILED",
+                "stage": "data-collection:collect",
+                "message": "数据采集失败，请稍后重试或查看服务日志",
+            },
+        ) from exc
 
 
 @router.get("/api/data-collection/douyin/{aweme_id}/audio")
@@ -58,7 +65,14 @@ async def download_audio(aweme_id: str, _: dict = Depends(security.require_permi
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error_code": "DATA_COLLECTION_AUDIO_FAILED",
+                "stage": "data-collection:audio",
+                "message": "音频临时生成失败，请稍后重试或查看服务日志",
+            },
+        ) from exc
     return FileResponse(
         audio_path,
         media_type="audio/mp4",

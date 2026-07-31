@@ -12,6 +12,7 @@ from fastapi import HTTPException
 import config
 import store
 from api import daily_review
+from services import scheduler_guard
 from services import tushare_market
 
 
@@ -142,10 +143,22 @@ def run_once_if_due() -> dict[str, Any]:
     due, reason = _is_due(settings, state)
     if not due:
         return {"ok": True, "ran": False, "reason": reason, "settings": settings, "state": state}
+    db_lock_owner = scheduler_guard.acquire_lock("daily-review", ttl_seconds=max(600, int(config.DAILY_MARKET_REVIEW_TIMEOUT_SECONDS or 420) + 120))
+    if not db_lock_owner:
+        scheduler_guard.record_status("daily-review", status="skipped", skippedReason="lock busy", source="daily-review-scheduler")
+        return {"ok": True, "ran": False, "reason": "database lock busy", "settings": settings, "state": state}
     if not _RUN_LOCK.acquire(blocking=False):
+        scheduler_guard.release_lock("daily-review", db_lock_owner)
         return {"ok": True, "ran": False, "reason": "lock busy", "settings": settings, "state": state}
     local_date = _local_now().strftime("%Y-%m-%d")
     try:
+        scheduler_guard.record_status(
+            "daily-review",
+            status="running",
+            startedAt=_now_iso(),
+            lastError="",
+            source="daily-review-scheduler",
+        )
         _set_state(
             status="running",
             localDate=local_date,
@@ -174,6 +187,14 @@ def run_once_if_due() -> dict[str, Any]:
             result={},
         )
         logger.warning("[daily-review-scheduler] generation failed: %s", message)
+        scheduler_guard.record_status(
+            "daily-review",
+            status="failed",
+            finishedAt=_now_iso(),
+            lastError=message,
+            diagnostics=diagnostics,
+            source="daily-review-scheduler",
+        )
         return {"ok": False, "ran": True, "error": message, "state": final_state}
     except Exception as exc:
         message = str(exc) or "自动行情复盘生成失败"
@@ -187,9 +208,17 @@ def run_once_if_due() -> dict[str, Any]:
             result={},
         )
         logger.exception("[daily-review-scheduler] generation crashed")
+        scheduler_guard.record_status(
+            "daily-review",
+            status="failed",
+            finishedAt=_now_iso(),
+            lastError=message,
+            source="daily-review-scheduler",
+        )
         return {"ok": False, "ran": True, "error": message, "state": final_state}
     finally:
         _RUN_LOCK.release()
+        scheduler_guard.release_lock("daily-review", db_lock_owner)
 
     final_state = _set_state(
         status="completed",
@@ -204,6 +233,15 @@ def run_once_if_due() -> dict[str, Any]:
             "dateFallback": result.get("dateFallback"),
             "latest": result.get("latest"),
         },
+    )
+    scheduler_guard.record_status(
+        "daily-review",
+        status="completed",
+        finishedAt=_now_iso(),
+        lastError="",
+        tradeDate=store.text(result.get("resolvedTradeDate")),
+        result=final_state.get("result", {}),
+        source="daily-review-scheduler",
     )
     logger.info("[daily-review-scheduler] generation completed trade_date=%s", result.get("resolvedTradeDate"))
     return {"ok": True, "ran": True, "state": final_state}

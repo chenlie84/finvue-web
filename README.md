@@ -223,6 +223,9 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 | `MYSQL_PASSWORD` | MySQL 密码 |
 | `ADMIN_USERNAME` | 初始化管理员用户名 |
 | `ADMIN_PASSWORD` | 初始化管理员密码 |
+| `DAILY_MARKET_REVIEW_TIMEOUT_SECONDS` | 行情复盘生成脚本超时阈值，默认 420 秒 |
+| `DATA_COLLECTION_COMMENT_MAX_BYTES` | 数据采集评论 JSON 下载大小上限，默认 10MB |
+| `DATA_COLLECTION_TEMP_TTL_HOURS` | 数据采集临时音频和临时文件清理时长，默认 24 小时 |
 | `USE_CEPH_S3` | 是否启用 CEPH S3 |
 | `OBJECT_STORAGE_DIR` | 本地对象文件目录 |
 | `MAX_UPLOAD_BYTES` | 最大上传大小 |
@@ -231,6 +234,41 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 | `HOTSPOT_API_URL` | 热点接口地址 |
 
 生产环境不要把真实密码、密钥、对象存储凭据写进 Dockerfile 或提交到 Git。请通过 `.env`、`.env.production`、Docker Compose environment、服务器密钥管理或 CI/CD secret 注入。
+
+生产环境默认建议设置 `ALLOW_OPEN_REGISTRATION=false`。首个管理员请优先使用 `scripts/seed_admin.py` 初始化；如果确实需要开放注册，再在管理后台或环境变量中显式开启。
+
+## 前端主题与模块边界
+
+FinVue 前端不依赖构建步骤，因此静态资源边界要尽量清楚。后续不要把新的全局样式继续追加到 `app/index.html`。
+
+| 文件 | 维护范围 |
+| --- | --- |
+| `app/static/modules/theme-system.css` | 全站主题变量、应用壳、侧边栏、顶栏、登录页、按钮、卡片、表格、表单、弹窗、报告壳等通用视觉基座 |
+| `app/static/modules/releases.js` | 全站版本号、通知中心版本记录和版本弹窗数据 |
+| `app/static/modules/ui-core.js` | Toast、通用提示和后续可复用的空状态/加载态交互入口 |
+| `app/static/modules/live-analysis.js` | 直播分析的生成请求、流式进度状态、AI 报告渲染和复制动作 |
+| `app/static/modules/admin-core.js` | 管理后台分区切换、后台概览摘要、用户管理和模块权限授权 |
+| `app/static/modules/admin-config.js` | 管理后台 API 路由池、AI 配置导入导出、FinVue 总配置包导入导出 |
+| `app/static/modules/live-report-export.js` | 直播分析页当前报告、主播历史快照和 AI 提升总结的 HTML/PDF 直接导出 |
+| `app/static/modules/export-center.js` | 报告导出中心的报告记录收集、历史列表、预览和选中报告下载 |
+| `app/static/modules/ai-chat.js` | AI 对话、会话历史、提示词/知识库管理和右侧快捷 AI 助手抽屉 |
+| `app/static/modules/hotspot.css` | 热点追踪专属布局、平台卡片、热搜列表和 AI 分析面板 |
+| `app/static/modules/market.css` | 实时行情专属布局、行情卡片、板块与个股行情表现 |
+| `app/static/modules/daily-review.css` | 行情复盘专属布局、桑基图区域、复盘诊断和生成状态 |
+| `app/static/modules/data-collection.css` | 数据采集专属布局、采集结果、主播收集库和下载入口 |
+
+维护原则：
+
+- 跨页面共用的颜色、字号、按钮、卡片、输入框、表格、弹窗和报告外壳，优先放进 `theme-system.css`。
+- 版本公告和通知中心更新记录统一维护在 `releases.js`，不要继续写入 `index.html`。
+- 管理后台导航、概览摘要、用户和权限相关逻辑统一维护在 `admin-core.js`。
+- 管理后台 API 路由池、AI 配置文件和总配置包相关逻辑统一维护在 `admin-config.js`。
+- 直播分析页的当前报告、主播历史快照和提升复盘直接导出链路统一维护在 `live-report-export.js`。
+- 报告导出中心的列表、预览和选中报告下载逻辑统一维护在 `export-center.js`。
+- AI 对话相关前端逻辑统一维护在 `ai-chat.js`，不要继续写入 `index.html`。
+- 单个业务模块的特殊布局和信息密度，放进对应模块 CSS。
+- 业务逻辑继续放在 `app/static/modules/*.js`，不要新增大段内联脚本。
+- 修改静态资源后同步更新 `app/index.html` 中的版本 query，避免浏览器继续使用旧缓存。
 
 ## 热点追踪模块
 

@@ -6,11 +6,14 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import requests
+
+import config
 
 
 ROOT = Path(os.getenv("FINVUE_DATA_COLLECTION_ROOT", str(Path.home() / "Documents" / "抖音数据")))
@@ -32,6 +35,34 @@ def _ensure_dirs() -> None:
     METADATA_DIR.mkdir(parents=True, exist_ok=True)
     CREATORS_DIR.mkdir(parents=True, exist_ok=True)
     COMMENTS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def cleanup_temp_files(max_age_hours: int | None = None) -> dict[str, Any]:
+    ttl_hours = max(1, int(max_age_hours or config.DATA_COLLECTION_TEMP_TTL_HOURS or 24))
+    cutoff = time.time() - ttl_hours * 3600
+    removed = 0
+    scanned = 0
+    for path in Path(tempfile.gettempdir()).glob("finvue-douyin-audio-*"):
+        scanned += 1
+        try:
+            if path.stat().st_mtime < cutoff:
+                shutil.rmtree(path, ignore_errors=True)
+                removed += 1
+        except FileNotFoundError:
+            continue
+    if DOWNLOAD_DIR.exists():
+        for path in DOWNLOAD_DIR.glob("*"):
+            scanned += 1
+            try:
+                if path.stat().st_mtime < cutoff:
+                    if path.is_dir():
+                        shutil.rmtree(path, ignore_errors=True)
+                    else:
+                        path.unlink(missing_ok=True)
+                    removed += 1
+            except FileNotFoundError:
+                continue
+    return {"ok": True, "scanned": scanned, "removed": removed, "ttlHours": ttl_hours}
 
 
 def _first_url(value: str) -> str:
@@ -505,6 +536,7 @@ def _extract_audio_from_url(play_url: str, aweme_id: str) -> Path:
 
 def collect_douyin_video(source: str) -> dict[str, Any]:
     _ensure_dirs()
+    cleanup_temp_files()
     share_url, hinted_id = resolve_douyin_url(source)
     html = _request_get(share_url, timeout=25).text
     router_data = _extract_router_data(html)
@@ -598,6 +630,10 @@ def comments_file_for_aweme(aweme_id: str) -> Path:
             "comments": [],
         }
         _write_json(path, payload)
+    max_bytes = int(config.DATA_COLLECTION_COMMENT_MAX_BYTES or 10 * 1024 * 1024)
+    size = path.stat().st_size
+    if size > max_bytes:
+        raise RuntimeError(f"评论文件超过大小上限 {max_bytes // 1024 // 1024}MB，请缩小采集范围后重试")
     return path
 
 

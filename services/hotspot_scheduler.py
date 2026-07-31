@@ -8,6 +8,7 @@ from typing import Any
 
 import config
 import db
+from services import scheduler_guard
 from services.hotspot_fetcher import sync_fetch_all_platforms
 
 
@@ -51,7 +52,12 @@ def _refresh_if_due() -> None:
 
     platforms = settings["platforms"]
     logger.info("[hotspot_scheduler] refresh due interval=%s platforms=%s", interval_minutes, platforms)
-    result = sync_fetch_all_platforms(platforms)
+    result = scheduler_guard.run_guarded(
+        "hotspot-refresh",
+        sync_fetch_all_platforms,
+        source="hotspot-scheduler",
+        platforms=platforms,
+    )
     logger.info("[hotspot_scheduler] refresh result=%s", result)
 
 

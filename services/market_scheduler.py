@@ -4,6 +4,7 @@ import asyncio
 from datetime import datetime, timezone
 
 import store
+from services import scheduler_guard
 from services import tushare_market
 
 
@@ -24,7 +25,13 @@ async def run_scheduler(stop_event: asyncio.Event) -> None:
             if settings.get("enabled") and settings.get("token"):
                 cache = store.safe_object(tushare_market.get_cached_snapshot())
                 if _age_minutes(str(cache.get("updatedAt") or "")) >= int(settings.get("intervalMinutes") or 60):
-                    await asyncio.to_thread(tushare_market.fetch_market_snapshot, settings)
+                    await asyncio.to_thread(
+                        scheduler_guard.run_guarded,
+                        "market-refresh",
+                        tushare_market.fetch_market_snapshot,
+                        source="tushare-market-scheduler",
+                        settings=settings,
+                    )
         except Exception as exc:
             print(f"[market-scheduler] fetch failed: {exc}")
         try:

@@ -4,9 +4,11 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Request, Query
 
+import config
 import db
 import security
 import store
+from services import daily_review_scheduler, scheduler_guard
 
 
 router = APIRouter()
@@ -15,6 +17,61 @@ router = APIRouter()
 @router.get("/api/health")
 def health() -> dict:
     return {"ok": True, "runtime": "fastapi", "database": "mysql"}
+
+
+@router.get("/healthz")
+def healthz() -> dict:
+    return {"ok": True, "status": "alive", "runtime": "fastapi"}
+
+
+@router.get("/readyz")
+def readyz() -> dict:
+    checks: dict[str, dict] = {}
+    ok = True
+    try:
+        if config.has_mysql_config():
+            db.fetch_one("SELECT 1 AS ok")
+            checks["database"] = {"ok": True, "configured": True}
+        else:
+            checks["database"] = {"ok": False, "configured": False, "message": "MySQL is not configured"}
+            ok = False
+    except Exception as exc:
+        checks["database"] = {"ok": False, "configured": True, "message": str(exc)}
+        ok = False
+
+    try:
+        if config.has_ceph_config():
+            checks["objectStorage"] = {"ok": True, "type": "ceph"}
+        else:
+            config.OBJECT_STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+            checks["objectStorage"] = {
+                "ok": config.OBJECT_STORAGE_DIR.exists(),
+                "type": "local",
+                "path": str(config.OBJECT_STORAGE_DIR),
+            }
+    except Exception as exc:
+        checks["objectStorage"] = {"ok": False, "message": str(exc)}
+        ok = False
+
+    checks["authSecret"] = {
+        "ok": bool(config.AUTH_SECRET and config.AUTH_SECRET != "dev-only-local-auth-secret"),
+        "production": bool(config.IS_PRODUCTION),
+        "message": "生产环境请覆盖 AUTH_SECRET" if config.AUTH_SECRET == "dev-only-local-auth-secret" else "",
+    }
+    if config.IS_PRODUCTION and not checks["authSecret"]["ok"]:
+        ok = False
+
+    return {"ok": ok, "checks": checks}
+
+
+@router.get("/api/admin/scheduler/status")
+def scheduler_status(_: dict = Depends(security.require_admin)) -> dict:
+    items = scheduler_guard.list_status()
+    items["daily-review"] = {
+        **items.get("daily-review", {}),
+        "dailyReview": daily_review_scheduler.scheduler_status(),
+    }
+    return {"ok": True, "items": items}
 
 
 @router.get("/api/anchor-dashboard/weekly")

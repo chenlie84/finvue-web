@@ -24,6 +24,8 @@ import pandas as pd
 import requests
 import tushare as ts
 
+from daily_market_review_pipeline.diagnostics import build_progress_event
+
 
 ROOT = Path(__file__).resolve().parents[1]
 STOCK_PROJECT = Path(os.getenv("DAILY_MARKET_REVIEW_STOCK_PROJECT", str(ROOT / "30_Quant" / "stock_analysis")))
@@ -55,12 +57,7 @@ def env_int(name: str, default: int, min_value: int | None = None, max_value: in
 
 
 def progress(stage: str, **fields: Any) -> None:
-    payload = {
-        "event": "daily_market_review_progress",
-        "stage": stage,
-        "ts": datetime.now().isoformat(timespec="seconds"),
-        **fields,
-    }
+    payload = build_progress_event(stage, **fields)
     print(json.dumps(payload, ensure_ascii=False, default=str), file=sys.stderr, flush=True)
 
 BOARD_EXCLUDE_PATTERNS = re.compile(

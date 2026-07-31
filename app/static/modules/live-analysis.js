@@ -1,0 +1,511 @@
+// FinVue live analysis request, streaming status, and report rendering helpers.
+(function () {
+function sanitizeProgressInsightMarkdown(markdown) {
+  const text = String(markdown || "").trim();
+  if (!text) return "";
+  const normalized = text.replace(/\r/g, "");
+  const firstMeaningfulLine = normalized
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line && line.length >= 8);
+  if (!firstMeaningfulLine) return normalized;
+  const firstIndex = normalized.indexOf(firstMeaningfulLine);
+  const secondIndex = normalized.indexOf(firstMeaningfulLine, firstIndex + firstMeaningfulLine.length);
+  if (secondIndex > 0) {
+    const suffix = normalized.slice(secondIndex, secondIndex + 240);
+    if (/已经改善|仍待优化|下次训练建议|总体判断/.test(suffix)) {
+      return normalized.slice(0, secondIndex).trim();
+    }
+  }
+  return normalized;
+}
+
+function renderLiveReport(markdown) {
+  const now = new Date().toLocaleString("zh-CN");
+  els.liveResult.innerHTML = buildReportShellHtml(markdown, {
+    title: getCurrentReportTitle(),
+    timestamp: now,
+    model: state.lastAiMeta?.providerLabel ? `${state.lastAiMeta.providerLabel} / ${state.lastAiMeta.model}` : (state.lastAiMeta?.model || "后台路由")
+  });
+  updateEvaluationTags(markdown);
+}
+
+let runProgressStartedAt = 0;
+let runProgressEstimateSec = 45;
+
+function updateLiveAnalysisNavBadge(status = state.liveAnalysisNavStatus) {
+  state.liveAnalysisNavStatus = status || "";
+  if (!els.liveAnalysisNavBadge) return;
+  els.liveAnalysisNavBadge.classList.remove("running", "done", "error");
+  if (!status) {
+    els.liveAnalysisNavBadge.textContent = "";
+    els.liveAnalysisNavBadge.style.display = "none";
+    return;
+  }
+  const labelMap = { running: "进行中", done: "已完成", error: "失败" };
+  els.liveAnalysisNavBadge.textContent = labelMap[status] || "";
+  els.liveAnalysisNavBadge.classList.add(status);
+  els.liveAnalysisNavBadge.style.display = "inline-flex";
+}
+
+function setRunProgress(percent, label, note) {
+  const safePercent = Math.max(0, Math.min(100, percent));
+  els.runProgressCard.classList.add("active");
+  els.runProgressFill.style.width = `${safePercent}%`;
+  if (label) els.runProgressLabel.textContent = label;
+  if (note) els.runProgressNote.textContent = note;
+  const elapsedSec = runProgressStartedAt ? Math.max(0, Math.round((Date.now() - runProgressStartedAt) / 1000)) : 0;
+  if (safePercent >= 100) {
+    els.runProgressEta.textContent = "即将完成";
+    return;
+  }
+  const remaining = Math.max(3, runProgressEstimateSec - elapsedSec);
+  els.runProgressEta.textContent = `预计剩余 ${remaining}s`;
+}
+
+function estimateRunSeconds() {
+  const transcript = mergeTextInputs(state.fileData.ts, els.tsText.value);
+  const resume = (els.rsText.value.trim() || state.fileData.rs || "");
+  const totalChars = transcript.length + resume.length;
+  return Math.max(25, Math.min(180, 28 + Math.round(totalChars / 260)));
+}
+
+function showLiveResultGenerating() {
+  els.liveResultWrap.classList.add("visible", "generating");
+  els.liveResultShell.classList.add("generating");
+  els.liveResult.innerHTML = "";
+  els.evalTagRow.style.display = "none";
+  els.evalTagRow.innerHTML = "";
+}
+
+function showLiveResultReady() {
+  els.liveResultWrap.classList.add("visible");
+  els.liveResultWrap.classList.remove("generating");
+  els.liveResultShell.classList.remove("generating");
+}
+
+function startRunProgress() {
+  runProgressStartedAt = Date.now();
+  runProgressEstimateSec = estimateRunSeconds();
+  updateLiveAnalysisNavBadge("running");
+  setRunProgress(6, "正在整理输入内容", "检查逐字稿、热点和提示词结构。");
+  showLiveResultGenerating();
+}
+
+function finishRunProgress(success = true, message = "") {
+  updateLiveAnalysisNavBadge(success ? "done" : "error");
+  setRunProgress(100, success ? "分析完成" : "分析中断", message || (success ? "报告已生成，可继续查看和复制。" : "本次分析未完成，请检查提示后重试。"));
+  setTimeout(() => {
+    els.runProgressCard.classList.remove("active");
+    els.runProgressFill.style.width = "0%";
+  }, 1400);
+}
+
+function resetBatchRunResults() {
+  state.batchRunResults = [];
+  state.currentBatchResultId = "";
+  renderBatchRunResults();
+}
+
+function renderBatchRunResults() {
+  const list = Array.isArray(state.batchRunResults) ? state.batchRunResults : [];
+  if (!els.batchRunResultsPanel || !els.batchRunResultsList || !els.batchRunResultsMeta) return;
+  if (!list.length) {
+    els.batchRunResultsPanel.style.display = "none";
+    els.batchRunResultsMeta.textContent = "暂无记录";
+    els.batchRunResultsList.innerHTML = "";
+    return;
+  }
+  els.batchRunResultsPanel.style.display = "block";
+  const successCount = list.filter((item) => item.status === "success").length;
+  const failCount = list.filter((item) => item.status === "error").length;
+  els.batchRunResultsMeta.textContent = `共 ${list.length} 份 · 成功 ${successCount} · 失败 ${failCount}`;
+  const activeId = state.currentBatchResultId || list[list.length - 1]?.id || "";
+  state.currentBatchResultId = activeId;
+  els.batchRunResultsList.innerHTML = list.map((item) => {
+    const isActive = item.id === activeId;
+    const accent = item.status === "success" ? "var(--gold)" : "var(--red)";
+    return `
+      <button class="analyst-row" style="width:100%;text-align:left;background:${isActive ? "rgba(200,146,42,0.08)" : "var(--bg1)"};border:1px solid ${isActive ? "rgba(200,146,42,0.42)" : "var(--border)"};box-shadow:${isActive ? "0 0 0 1px rgba(200,146,42,0.16) inset" : "none"};border-radius:var(--r);padding:12px 14px;cursor:pointer;color:var(--text0);" onclick="openBatchRunResult('${encodeURIComponent(item.id)}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:700;color:var(--text0);line-height:1.4;">${escapeHtml(item.label || item.fileName || "未命名结果")}</div>
+            <div style="font-size:12px;color:${accent};margin-top:6px;line-height:1.6;">${escapeHtml(item.status === "success" ? "分析成功" : "分析失败")}</div>
+            <div style="font-size:12px;color:var(--text1);margin-top:6px;line-height:1.6;">${escapeHtml(item.summary || item.errorMessage || "暂无摘要")}</div>
+          </div>
+          <div style="text-align:right;white-space:nowrap;">
+            <div style="font-size:11px;color:var(--text2);">${escapeHtml(formatDateTime(item.createdAt))}</div>
+          </div>
+        </div>
+      </button>
+    `;
+  }).join("");
+  refreshDerivedViews();
+}
+
+function openBatchRunResult(resultId) {
+  const safeId = decodeURIComponent(String(resultId || ""));
+  const item = (Array.isArray(state.batchRunResults) ? state.batchRunResults : []).find((entry) => entry.id === safeId) || null;
+  if (!item) return;
+  state.currentBatchResultId = safeId;
+  renderBatchRunResults();
+  if (item.status === "success") {
+    state.lastMarkdown = item.markdown || "";
+    renderLiveReport(item.markdown || "未获得分析结果");
+  } else {
+    renderLiveReport([
+      "## 生成失败",
+      "",
+      `当前文件：${item.fileName || item.label || "未命名文件"}`,
+      "",
+      `错误信息：${item.errorMessage || "生成失败"}`
+    ].join("\n"));
+  }
+  showLiveResultReady();
+}
+
+function pushBatchRunResult(result) {
+  const list = Array.isArray(state.batchRunResults) ? state.batchRunResults.slice() : [];
+  list.push(result);
+  state.batchRunResults = list;
+  state.currentBatchResultId = result.id;
+  renderBatchRunResults();
+}
+
+async function runLiveStream(payload) {
+  const response = await apiFetch("/api/generate-stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => ({}));
+    throw new Error(errorPayload.error || "生成失败");
+  }
+  if (!response.body) {
+    throw new Error("当前浏览器不支持流式读取");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let markdown = "";
+  let sawChunk = false;
+  let aiMeta = null;
+
+  const updateStreamProgress = (chars) => {
+    const elapsedSec = Math.max(1, Math.round((Date.now() - runProgressStartedAt) / 1000));
+    const speed = Math.max(1, Math.round(chars / elapsedSec));
+    const charProgress = Math.min(0.72, Math.log10(chars + 10) / 5);
+    const timeProgress = Math.min(0.2, elapsedSec / Math.max(25, runProgressEstimateSec * 1.4));
+    const percent = Math.min(94, 22 + Math.round((charProgress + timeProgress) * 100));
+    setRunProgress(percent, "正在生成分析报告", `已生成 ${chars} 字，当前约 ${speed} 字/秒`);
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      let event;
+      try {
+        event = JSON.parse(trimmed);
+      } catch {
+        continue;
+      }
+      if (event.type === "status") {
+        if (event.stage === "connecting") {
+          setRunProgress(12, "正在连接模型", event.message || "模型服务连接中");
+        } else if (event.stage === "accepted") {
+          setRunProgress(18, "模型已受理请求", event.message || "正在等待首段内容返回");
+        } else if (event.stage === "streaming") {
+          setRunProgress(20, "模型已开始输出", event.message || "正在逐步生成报告正文");
+          showLiveResultGenerating();
+        }
+        continue;
+      }
+      if (event.aiMeta) {
+        aiMeta = event.aiMeta;
+        state.lastAiMeta = aiMeta;
+      }
+      if (event.type === "chunk") {
+        sawChunk = true;
+        markdown += event.delta || "";
+        state.lastMarkdown = markdown;
+        updateStreamProgress(markdown.length);
+        continue;
+      }
+      if (event.type === "done") {
+        const finalMarkdown = event.markdown || markdown;
+        state.lastMarkdown = finalMarkdown;
+        state.lastAiMeta = event.aiMeta || aiMeta || null;
+        renderLiveReport(finalMarkdown || "未获得分析结果");
+        showLiveResultReady();
+        return finalMarkdown;
+      }
+      if (event.type === "error") {
+        const providerPart = event.providerLabel ? `路由：${event.providerLabel}${event.model ? ` / ${event.model}` : ""}` : "";
+        throw new Error([event.error || "流式生成失败", providerPart, event.hint || ""].filter(Boolean).join("｜"));
+      }
+    }
+  }
+
+  if (sawChunk) {
+    renderLiveReport(markdown || "未获得分析结果");
+    showLiveResultReady();
+    return markdown;
+  }
+  throw new Error("模型未返回有效内容");
+}
+
+async function runLiveOnce(payload) {
+  const response = await apiFetch("/api/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const attempts = Array.isArray(result.attempts) ? result.attempts : [];
+    const attemptSummary = attempts.length
+      ? `已尝试：${attempts.map((item) => `${item.providerLabel}/${item.model}：${item.error}`).join("；")}`
+      : "";
+    throw new Error([result.error || "生成失败", attemptSummary].filter(Boolean).join("｜"));
+  }
+  const markdown = result.markdown || "";
+  state.lastAiMeta = result.aiMeta || null;
+  state.lastMarkdown = markdown;
+  renderLiveReport(markdown || "未获得分析结果");
+  showLiveResultReady();
+  return markdown;
+}
+
+function shouldFallbackToNonStream(error) {
+  const message = String(error?.message || "");
+  return [
+    "模型长时间未开始输出",
+    "模型长时间未继续返回内容",
+    "当前浏览器不支持流式读取",
+    "模型未返回有效内容"
+  ].some((keyword) => message.includes(keyword));
+}
+
+function buildLivePrompt() {
+  // 单一提示词模式：用户在 taskPrompt 中编辑完整提示词
+  const mainPrompt = normalizeLiveAnalysisPrompt(els.taskPrompt.value.trim());
+  const transcript = mergeTextInputs(state.fileData.ts, els.tsText.value);
+  const hotTopics = state.hotArr.length ? state.hotArr.join("、") : "";
+  const reportType = getSelectedReportType();
+  const resume = reportType === "newbieInterview" ? (els.rsText.value.trim() || state.fileData.rs || "") : "";
+  const reportMeta = REPORT_TYPE_META[reportType] || REPORT_TYPE_META.anchorEvaluation;
+  const transcriptLabel = reportType === "newbieInterview" ? "【面试逐字稿】" : "【逐字稿】";
+  const resumeLabel = reportType === "newbieInterview" ? "【候选人简历】" : "【主播简历】";
+  const transcriptNotes = els.transcriptNotes?.value.trim() || "";
+  const evaluationNotes = els.evaluationNotes?.value.trim() || "";
+  const metricsRawText = els.metricsRawText.value.trim();
+
+  const htmlFormatGuard = [
+    "【输出格式约束】",
+    "如果上面的提示词要求输出 HTML，请输出可直接渲染的 HTML 报告；可以包含 <style>，但不要包含 <script>。",
+    "HTML 报告要使用深色主题或自带完整配色，不能只输出解释文字。",
+    "不要把 HTML 放进 ```html 代码块里；直接输出 HTML 内容即可。",
+    "如果上面的提示词没有要求 HTML，则输出 Markdown。"
+  ].join("\n");
+
+  return [
+    "请严格根据以下唯一提示生成结果，只输出一份最终完整报告，不要重复输出。",
+    mainPrompt ? `【分析提示词】\n${mainPrompt}` : "",
+    htmlFormatGuard,
+    hotTopics ? `【外部热点】\n${hotTopics}` : "",
+    reportType === "anchorEvaluation" && evaluationNotes ? `【补充背景说明】\n${evaluationNotes}` : "",
+    reportType === "anchorEvaluation" && metricsRawText ? `【直播数据原始摘要】\n${metricsRawText}` : "",
+    resume ? `${resumeLabel}\n${resume}` : "",
+    `${transcriptLabel}\n${transcript}`,
+    transcriptNotes ? `【补充备注】\n${transcriptNotes}` : "",
+    "再次强调：最终只允许输出一份完整报告。"
+  ].filter(Boolean).join("\n\n");
+}
+
+function buildLiveSystemPrompt() {
+  return "你是一个严格执行单一提示词的报告生成助手。提示词要求 HTML 时直接输出可渲染的 HTML 报告；不要拆成多版输出，不要重复报告，不要补写第二份结果。";
+}
+
+async function executeSingleLiveRun() {
+  // 获取选择的模型
+  const modelSelect = document.getElementById("live-model-select");
+  const selectedModelId = modelSelect?.value || null;
+
+  const requestPayload = {
+    systemPrompt: buildLiveSystemPrompt() || "你是一位专业的投顾直播内容分析专家。",
+    userPrompt: buildLivePrompt(),
+    model: selectedModelId
+  };
+  setRunProgress(18, "模型已受理请求", "当前路由为非流式生成，完成后会一次性返回报告。");
+  state.lastMarkdown = await runLiveOnce(requestPayload);
+  showLiveResultReady();
+  await persistCurrentAnalysisBundle(state.lastMarkdown);
+}
+
+async function runLive() {
+  const transcript = els.tsText.value.trim() || state.fileData.ts || "";
+  const resume = els.rsText.value.trim() || state.fileData.rs || "";
+  const reportType = getSelectedReportType();
+  if (state.fileLoading.ts || state.fileLoading.rs) {
+    showToast("文件仍在读取中，请稍等几秒再开始分析");
+    return;
+  }
+  if (!transcript) {
+    if (state.fileMeta.ts && !state.fileData.ts && !els.tsText.value.trim()) {
+      showToast("你已上传逐字稿文件，但系统未提取到文本，请改用 txt/docx 或直接粘贴逐字稿");
+      return;
+    }
+    showToast(reportType === "newbieInterview" ? "请先上传或粘贴面试逐字稿" : "请先上传或粘贴逐字稿");
+    return;
+  }
+  if (reportType === "newbieInterview" && !resume) {
+    if (state.fileMeta.rs && !state.fileData.rs && !els.rsText.value.trim()) {
+      showToast("你已上传简历文件，但系统未提取到文本，请改用 txt/docx 或直接粘贴简历内容");
+      return;
+    }
+    showToast("新人面试分析必须同时提供候选人简历");
+    return;
+  }
+  try {
+    els.runBtn.disabled = true;
+    els.runBtn.innerHTML = '<span class="spinner"></span> 分析中…';
+    state.lastAiMeta = null;
+    resetBatchRunResults();
+    const queue = Array.isArray(state.transcriptBatchQueue) ? state.transcriptBatchQueue.slice() : [];
+    if (queue.length > 1) {
+      const failures = [];
+      for (let index = 0; index < queue.length; index += 1) {
+        const item = queue[index];
+        state.fileMeta.ts = item.name;
+        state.fileData.ts = item.text;
+        updateTranscriptBatchStatus({
+          mode: "running",
+          currentIndex: index + 1,
+          total: queue.length,
+          currentName: item.name
+        });
+        startRunProgress();
+        setRunProgress(6, `准备处理第 ${index + 1}/${queue.length} 份`, item.name);
+        try {
+          await executeSingleLiveRun();
+          pushBatchRunResult({
+            id: `batch-result-${Date.now()}-${index}`,
+            status: "success",
+            fileName: item.name,
+            label: item.name,
+            summary: extractSnapshotConclusion(state.lastMarkdown),
+            markdown: state.lastMarkdown,
+            createdAt: new Date().toISOString()
+          });
+          finishRunProgress(true, `第 ${index + 1}/${queue.length} 份已完成`);
+        } catch (itemError) {
+          const itemMessage = String(itemError?.message || "生成失败");
+          failures.push(`${item.name}：${itemMessage}`);
+          pushBatchRunResult({
+            id: `batch-result-${Date.now()}-${index}`,
+            status: "error",
+            fileName: item.name,
+            label: item.name,
+            summary: "本次生成失败",
+            errorMessage: itemMessage,
+            createdAt: new Date().toISOString()
+          });
+          renderLiveReport([
+            "## 生成失败",
+            "",
+            `当前文件：${item.name}`,
+            "",
+            `错误信息：${itemMessage}`
+          ].join("\n"));
+          showLiveResultReady();
+          finishRunProgress(false, `第 ${index + 1}/${queue.length} 份失败`);
+        }
+      }
+      const lastItem = queue[queue.length - 1];
+      state.transcriptBatchQueue = [];
+      state.fileMeta.ts = lastItem?.name || state.fileMeta.ts;
+      state.fileData.ts = lastItem?.text || state.fileData.ts;
+      updateUploadedFileUi("ts");
+      if (failures.length) {
+        updateTranscriptBatchStatus({ mode: "done", total: queue.length, currentName: state.fileMeta.ts });
+        showToast(`批量分析完成：成功 ${queue.length - failures.length}，失败 ${failures.length}`);
+      } else {
+        updateTranscriptBatchStatus({ mode: "done", total: queue.length, currentName: state.fileMeta.ts });
+        showToast(`批量分析完成：${queue.length} 份全部成功`);
+      }
+    } else {
+      startRunProgress();
+      await executeSingleLiveRun();
+      pushBatchRunResult({
+        id: `batch-result-${Date.now()}`,
+        status: "success",
+        fileName: state.fileMeta.ts || "当前逐字稿",
+        label: state.fileMeta.ts || "当前逐字稿",
+        summary: extractSnapshotConclusion(state.lastMarkdown),
+        markdown: state.lastMarkdown,
+        createdAt: new Date().toISOString()
+      });
+      finishRunProgress(true, "报告已生成，可继续查看和复制。");
+      showToast("分析完成");
+    }
+  } catch (error) {
+    const friendlyMessage = String(error?.message || "生成失败");
+    pushBatchRunResult({
+      id: `batch-result-${Date.now()}`,
+      status: "error",
+      fileName: state.fileMeta.ts || "当前逐字稿",
+      label: state.fileMeta.ts || "当前逐字稿",
+      summary: "本次生成失败",
+      errorMessage: friendlyMessage,
+      createdAt: new Date().toISOString()
+    });
+    renderLiveReport([
+      "## 生成失败",
+      "",
+      `错误信息：${friendlyMessage}`,
+      "",
+      "排查建议：",
+      "- 检查后端服务是否仍在运行",
+      "- 确认 API Key 和模型名称可用",
+      "- 如果刚修改过代码，先刷新页面后再试",
+      "- 如果是长内容，先重试一次，观察是否切换到兼容模式"
+    ].join("\n"));
+    showLiveResultReady();
+    finishRunProgress(false, friendlyMessage);
+    showToast(friendlyMessage);
+  } finally {
+    els.runBtn.disabled = false;
+    els.runBtn.innerHTML = "▶ 开始 AI 分析";
+  }
+}
+
+async function copyLiveResult() {
+  if (!state.lastMarkdown) {
+    showToast("暂无可复制内容");
+    return;
+  }
+  await navigator.clipboard.writeText(state.lastMarkdown);
+  showToast("已复制到剪贴板");
+}
+
+  window.sanitizeProgressInsightMarkdown = sanitizeProgressInsightMarkdown;
+  window.renderLiveReport = renderLiveReport;
+  window.startRunProgress = startRunProgress;
+  window.finishRunProgress = finishRunProgress;
+  window.runLiveStream = runLiveStream;
+  window.runLiveOnce = runLiveOnce;
+  window.shouldFallbackToNonStream = shouldFallbackToNonStream;
+  window.buildLivePrompt = buildLivePrompt;
+  window.buildLiveSystemPrompt = buildLiveSystemPrompt;
+  window.executeSingleLiveRun = executeSingleLiveRun;
+  window.runLive = runLive;
+  window.copyLiveResult = copyLiveResult;
+})();
