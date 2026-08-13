@@ -10,15 +10,15 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
 <script src="/static/modules/report-export.js"></script>
-<script src="/static/modules/releases.js?v=20260731a"></script>
-<link rel="stylesheet" href="/static/modules/hotspot.css?v=20260729a" />
-<link rel="stylesheet" href="/static/modules/market.css?v=20260728b" />
-<link rel="stylesheet" href="/static/modules/daily-review.css?v=20260721c" />
-<link rel="stylesheet" href="/static/modules/backtest.css" />
-<link rel="stylesheet" href="/static/modules/feishu.css?v=20260721b" />
-<link rel="stylesheet" href="/static/modules/data-collection.css?v=20260714c" />
-<link rel="stylesheet" href="/static/modules/theme-system.css?v=20260731b" />
-  <link rel="stylesheet" href="/static/modules/anchor-dashboard.css">
+<script src="/static/modules/releases.js?v=20260813q"></script>
+<link rel="stylesheet" href="/static/modules/hotspot.css?v=20260813q" />
+<link rel="stylesheet" href="/static/modules/market.css?v=20260813q" />
+<link rel="stylesheet" href="/static/modules/daily-review.css?v=20260813q" />
+<link rel="stylesheet" href="/static/modules/backtest.css?v=20260813q" />
+<link rel="stylesheet" href="/static/modules/feishu.css?v=20260813q" />
+<link rel="stylesheet" href="/static/modules/data-collection.css?v=20260813q" />
+<link rel="stylesheet" href="/static/modules/theme-system.css?v=20260813q" />
+  <link rel="stylesheet" href="/static/modules/anchor-dashboard.css?v=20260813q">
 </head>
 <body>
 <!-- ══════════════ LOGIN ══════════════ -->
@@ -36,12 +36,12 @@
     <div style="margin-bottom:18px;">
       <div class="form-label" style="margin-bottom:8px;">选择角色</div>
       <div style="display:flex;gap:8px;">
-        <div class="role-chip active" onclick="selectRole(this)"><div class="ri">📊</div><div>分析师</div></div>
-        <div class="role-chip" onclick="selectRole(this)"><div class="ri">💼</div><div>投顾</div></div>
-        <div class="role-chip" onclick="selectRole(this)"><div class="ri">⚙️</div><div>管理员</div></div>
+        <div class="role-chip active" onclick="selectRole(this)"><div class="ri">A</div><div>分析师</div></div>
+        <div class="role-chip" onclick="selectRole(this)"><div class="ri">C</div><div>投顾</div></div>
+        <div class="role-chip" onclick="selectRole(this)"><div class="ri">M</div><div>管理员</div></div>
       </div>
     </div>
-    <div style="margin-bottom:14px;"><div class="form-label">账号</div><input class="form-input" id="inp-u" type="text" placeholder="邮箱或账号" value="" autocomplete="off"/></div>
+    <div style="margin-bottom:14px;"><div class="form-label">账号</div><input class="form-input" id="inp-u" type="text" placeholder="邮箱或账号" value="admin" autocomplete="off" autocapitalize="none" spellcheck="false"/></div>
     <div style="margin-bottom:14px;"><div class="form-label">密码</div><input class="form-input" id="inp-p" type="password" placeholder="密码" value="" autocomplete="new-password"/></div>
     <div class="login-help-row">
       <label class="login-remember"><input type="checkbox"> 记住我</label>
@@ -59,14 +59,14 @@
 <div id="pg-dashboard" class="app-page">
   <!-- TOPNAV -->
   <div class="topnav">
-    <div style="display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-size:18px;">
+    <div class="topnav-brand">
       <div class="logo-mark" style="width:28px;height:28px;font-size:14px;">F</div>
-      Fin<span style="color:var(--cyan);">Vue</span>
+      <span>Fin<b>Vue</b></span>
     </div>
     <div class="topnav-sep"></div>
     <span id="dashboardHealth" class="badge green">● 系统正常</span>
-    <button class="theme-btn active" id="theme-dark" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
-    <button class="theme-btn" id="theme-light" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
+    <button class="theme-btn active" id="theme-dark" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">D</button>
+    <button class="theme-btn" id="theme-light" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">L</button>
     <div class="account-chip">
       <div id="dashboardAvatar" style="width:26px;height:26px;border-radius:50%;background:rgba(63,214,255,.10);border:1px solid rgba(63,214,255,.45);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--cyan);font-weight:600;">AD</div>
       <span id="dashboardUser" style="font-size:13px;">Admin</span>
@@ -80,25 +80,25 @@
     <!-- SIDEBAR -->
     <nav class="sidebar">
       <div class="s-section">市场数据</div>
+      <button class="nav-item" data-sec="hotspot" data-permission="hotspot" onclick="showSec('hotspot',this)"><span class="ni">⊞</span> 热点追踪</button>
       <button class="nav-item" data-sec="market" data-permission="market" onclick="showSec('market',this)"><span class="ni">↗</span> 实时行情</button>
       <button class="nav-item" data-sec="daily-review" data-permission="research" onclick="showSec('daily-review',this)"><span class="ni">▥</span> 行情复盘</button>
       <button class="nav-item" data-sec="research" data-permission="research" onclick="showSec('research',this)"><span class="ni">≡</span> 研报库</button>
       <button class="nav-item" data-sec="backtest" data-permission="backtest" onclick="showSec('backtest',this)"><span class="ni">◷</span> 历史回测</button>
       <div class="s-section">分析工具</div>
       <button class="nav-item active" data-sec="home" data-permission="home" onclick="showSec('home',this)"><span class="ni">◈</span> 工作台概览</button>
-      <button class="nav-item" data-sec="ai-chat" data-permission="ai-chat" onclick="showSec('ai-chat',this)"><span class="ni">🤖</span> AI 对话</button>
+      <button class="nav-item" data-sec="ai-chat" data-permission="ai-chat" onclick="showSec('ai-chat',this)"><span class="ni">AI</span> AI 对话</button>
       <button class="nav-item" data-sec="live" data-permission="live" onclick="showSec('live',this)"><span class="ni">▶</span> 直播分析 <span class="nav-badge live-status" id="liveAnalysisNavBadge"></span></button>
       <button class="nav-item" data-sec="data-collection" data-permission="data-collection" onclick="showSec('data-collection',this)"><span class="ni">⤓</span> 数据采集</button>
       <button class="nav-item" data-sec="anchor-library" data-permission="anchor-library" onclick="showSec('anchor-library',this)"><span class="ni">▣</span> 主播资料库</button>
       <button class="nav-item" data-sec="customer-library" data-permission="customer-library" onclick="showSec('customer-library',this)"><span class="ni">◉</span> 客户库</button>
-      <button class="nav-item" data-permission="operation" onclick="goOperationDashboard()"><span class="ni">📊</span> 运营数据中心</button>
+      <button class="nav-item" data-permission="operation" onclick="goOperationDashboard()"><span class="ni">OP</span> 运营数据中心</button>
       <button class="nav-item" data-sec="transcript-library" data-permission="transcript-library" onclick="showSec('transcript-library',this)"><span class="ni">☰</span> 逐字稿库</button>
       <button class="nav-item" data-sec="distill-library" data-permission="distill-library" onclick="showSec('distill-library',this)"><span class="ni">⌘</span> 主播蒸馏库</button>
       <button class="nav-item" data-sec="sop" data-permission="sop" onclick="showSec('sop',this)"><span class="ni">▤</span> 带新SOP</button>
       <button class="nav-item" data-sec="compliance-library" data-permission="compliance-library" onclick="showSec('compliance-library',this)"><span class="ni">⚑</span> 合规库</button>
       <button class="nav-item" data-sec="case-library" data-permission="case-library" onclick="showSec('case-library',this)"><span class="ni">✦</span> 案例库</button>
       <button class="nav-item" data-sec="portrait" data-permission="portrait" onclick="showSec('portrait',this)"><span class="ni">◎</span> 主播画像</button>
-      <button class="nav-item" data-sec="hotspot" data-permission="hotspot" onclick="showSec('hotspot',this)"><span class="ni">⊞</span> 热点追踪</button>
       <div class="s-section">输出</div>
       <button class="nav-item" data-sec="export" data-permission="export" onclick="showSec('export',this)"><span class="ni">↓</span> 报告导出</button>
       <button class="nav-item" data-sec="notify" data-permission="notify" onclick="showSec('notify',this)"><span class="ni">✉</span> 通知中心 <span class="nav-badge red-b" id="notifyNavBadge">0</span></button>
@@ -163,15 +163,15 @@
               <select id="ai-knowledge-select" class="sel" style="font-size:12px;min-width:160px;" onchange="selectKnowledgeBase()">
                 <option value="">选择知识库...</option>
               </select>
-              <button class="btn btn-outline-sm" onclick="editCurrentPrompt()" style="font-size:11px;padding:4px 8px;" title="编辑当前提示词">✏️</button>
-              <button class="btn btn-outline-sm" onclick="managePrompts()" style="font-size:11px;padding:4px 8px;" title="管理提示词">📝</button>
-              <button class="btn btn-outline-sm" onclick="manageKnowledge()" style="font-size:11px;padding:4px 8px;" title="管理知识库">📚</button>
+              <button class="btn btn-outline-sm" onclick="editCurrentPrompt()" style="font-size:11px;padding:4px 8px;" title="编辑当前提示词">EDIT</button>
+              <button class="btn btn-outline-sm" onclick="managePrompts()" style="font-size:11px;padding:4px 8px;" title="管理提示词">PROMPT</button>
+              <button class="btn btn-outline-sm" onclick="manageKnowledge()" style="font-size:11px;padding:4px 8px;" title="管理知识库">KB</button>
             </div>
             
             <!-- 对话记录区域 -->
             <div id="ai-chat-messages" class="ai-chat-msgs">
               <div class="ai-msg ai-msg-assistant" style="max-width:80%;">
-                <div style="font-size:12px;color:var(--text1);margin-bottom:4px;">🤖 AI 助手</div>
+                <div style="font-size:12px;color:var(--text1);margin-bottom:4px;">AI 助手</div>
                 <div style="background:var(--bg2);padding:12px;border-radius:var(--r);line-height:1.6;">你好！我是 AI 助手。<br>你可以：<br>• 选择提示词模板改变我的角色<br>• 上传知识库让我基于文档回答<br>• 创建新对话进行不同主题的讨论</div>
               </div>
             </div>
@@ -252,7 +252,7 @@
       <!-- AI 快速对话侧边栏 -->
       <div id="ai-sidebar-drawer" style="position:fixed;right:-380px;top:0;width:380px;height:100vh;background:var(--bg1);border-left:1px solid var(--border);z-index:9000;transition:right .3s ease;display:flex;flex-direction:column;">
         <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
-          <div style="font-size:14px;font-weight:500;">🤖 AI 助手</div>
+          <div style="font-size:14px;font-weight:500;">AI 助手</div>
           <div style="display:flex;gap:8px;">
             <button class="btn btn-outline-sm" onclick="openFullAiChat()" style="font-size:11px;">全屏</button>
             <button class="btn btn-outline-sm" onclick="closeAiDrawer()" style="font-size:11px;">×</button>
@@ -329,11 +329,11 @@
           <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;">
             <label class="report-mode-option active">
               <input type="radio" name="liveReportType" value="anchorEvaluation" checked style="accent-color:var(--gold);margin-top:2px;">
-              <div><div style="font-size:13px;font-weight:500;">🧭 主播评价体系</div><div style="font-size:11px;color:var(--text1);">六维评分、画像标签、合规与转化归因</div></div>
+              <div><div style="font-size:13px;font-weight:500;">主播评价体系</div><div style="font-size:11px;color:var(--text1);">六维评分、画像标签、合规与转化归因</div></div>
             </label>
             <label class="report-mode-option">
               <input type="radio" name="liveReportType" value="newbieInterview" style="accent-color:var(--gold);margin-top:2px;">
-              <div><div style="font-size:13px;font-weight:500;">🧑‍💼 新人面试分析</div><div style="font-size:11px;color:var(--text1);">结合简历与面试逐字稿评估胜任力</div></div>
+              <div><div style="font-size:13px;font-weight:500;">新人面试分析</div><div style="font-size:11px;color:var(--text1);">结合简历与面试逐字稿评估胜任力</div></div>
             </label>
           </div>
         </div>
@@ -343,13 +343,13 @@
           <div class="panel-hd"><div class="panel-title">报告风格</div><div class="muted" style="font-size:12px;">选择报告的视觉配色风格</div></div>
           <div style="display:flex;flex-direction:column;gap:10px;">
             <select class="sel" id="reportStyleSelect" style="width:100%;" onchange="handleReportStyleChange()">
-              <option value="evaluation">🎨 蓝金版本</option>
-              <option value="compare">🎨 靛蓝版本</option>
-              <option value="comprehensive">🎨 青蓝版本</option>
-              <option value="liveAnalysis">🎨 深紫版本</option>
-              <option value="incubation">🎨 玫瑰版本</option>
-              <option value="compliance">🎨 红色版本</option>
-              <option value="newbie">🎨 橙色版本</option>
+              <option value="evaluation">蓝金版本</option>
+              <option value="compare">靛蓝版本</option>
+              <option value="comprehensive">青蓝版本</option>
+              <option value="liveAnalysis">深紫版本</option>
+              <option value="incubation">玫瑰版本</option>
+              <option value="compliance">红色版本</option>
+              <option value="newbie">橙色版本</option>
             </select>
             <div id="reportStyleDesc" class="muted" style="font-size:12px;padding:10px 12px;border:1px solid var(--border2);border-radius:12px;background:var(--bg2);">
               蓝金配色，专业稳重的经典风格
@@ -443,7 +443,7 @@
               </div>
             </div>
             <div style="display:flex;justify-content:flex-end;">
-              <button class="btn btn-gold" id="runBtn" onclick="runLive()" style="padding:12px 40px;font-size:15px;letter-spacing:.04em;">▶ 开始 AI 分析</button>
+              <button class="btn btn-gold" id="runBtn" onclick="runLive()" style="padding:12px 40px;font-size:15px;letter-spacing:.04em;">RUN 开始分析</button>
             </div>
             <div class="progress-card" id="runProgressCard">
               <div class="progress-head">
@@ -457,7 +457,7 @@
               <div class="panel-hd"><div class="panel-title" id="transcriptPanelTitle">逐字稿上传</div></div>
               <div class="upload-zone mb" style="margin-bottom:10px;">
                 <input id="tsFileInput" type="file" accept=".txt,.pdf,.docx" multiple onchange="handleFile('ts',this)"/>
-                <div style="font-size:22px;">📄</div>
+                <div class="upload-code">DOC</div>
                 <div style="font-size:13px;color:var(--text1);" id="transcriptUploadHint">点击上传 / 拖拽文件</div>
                 <div style="font-size:11px;color:var(--text2);">.txt .pdf .docx · 支持多选排队</div>
                 <div id="tsName" style="font-size:12px;color:var(--gold);"></div>
@@ -511,7 +511,7 @@
                     <div class="lbl">直播数据文件（可选）</div>
                     <div class="upload-zone mb" style="margin-bottom:10px;">
                       <input id="metricsFileInput" type="file" accept=".xlsx,.xls,.csv" onchange="handleMetricsFile(this)"/>
-                      <div style="font-size:22px;">📊</div>
+                      <div class="upload-code">DATA</div>
                       <div style="font-size:13px;color:var(--text1);">上传直播数据 Excel / CSV</div>
                       <div style="font-size:11px;color:var(--text2);">自动抽取前几行数据摘要，和逐字稿一起分析</div>
                       <div id="metricsFileName" style="font-size:12px;color:var(--gold);"></div>
@@ -523,7 +523,7 @@
                     <div class="lbl">融合报告补充（可选）</div>
                     <div class="upload-zone mb" style="margin-bottom:10px;">
                       <input id="metricsSupplementFileInput" type="file" accept=".txt,.md,.markdown,.pdf" onchange="handleMetricsSupplementFile(this)"/>
-                      <div style="font-size:22px;">🧩</div>
+                      <div class="upload-code">NOTE</div>
                       <div style="font-size:13px;color:var(--text1);">上传补充融合报告</div>
                       <div style="font-size:11px;color:var(--text2);">适合补充分钟级趋势、关键时刻、互动玩法等已接入接口缺少的信息</div>
                       <div id="metricsSupplementName" style="font-size:12px;color:var(--gold);"></div>
@@ -544,7 +544,7 @@
               <div class="panel-hd"><div class="panel-title" id="resumePanelTitle">主播简历</div></div>
               <div class="upload-zone" style="margin-bottom:10px;">
                 <input type="file" accept=".txt,.pdf,.docx" onchange="handleFile('rs',this)"/>
-                <div style="font-size:22px;">👤</div>
+                <div class="upload-code">BIO</div>
                 <div style="font-size:13px;color:var(--text1);" id="resumeUploadHint">上传简历文件</div>
                 <div id="rsName" style="font-size:12px;color:var(--gold);"></div>
               </div>
@@ -985,11 +985,11 @@
           </div>
           <div class="hotspot-toolbar">
             <input class="inp" id="hotspotSearchInput" placeholder="搜索关键词..." style="width:180px;" onkeydown="if(event.key==='Enter')hotspotSearch()">
-            <button class="btn btn-outline" onclick="hotspotSearch()">🔍</button>
-            <button class="btn btn-outline" id="hotspotSummaryBtn" onclick="analyzeHotspotSummaryMain()">✨ AI总览</button>
+            <button class="btn btn-outline" onclick="hotspotSearch()">搜索</button>
+            <button class="btn btn-outline" id="hotspotSummaryBtn" onclick="analyzeHotspotSummaryMain()">AI 总览</button>
             <button class="btn btn-outline" id="hotspotStockBtn" onclick="analyzeHotspotRelatedStocks()">板块雷达</button>
-            <button class="btn btn-gold" id="hotspotFetchBtn" onclick="fetchHotspotsMain()">📥 刷新</button>
-            <button class="btn btn-outline" onclick="openHotspotConfigPage()">⚙ 配置</button>
+            <button class="btn btn-gold" id="hotspotFetchBtn" onclick="fetchHotspotsMain()">刷新</button>
+            <button class="btn btn-outline" onclick="openHotspotConfigPage()">配置</button>
           </div>
         </div>
 
@@ -1003,7 +1003,7 @@
         <div id="hotspotSummaryPanel" class="hotspot-summary-panel" style="display:none;">
           <div class="hotspot-summary-hd">
             <div>
-              <div class="hotspot-summary-title">✨ AI 热点总览</div>
+              <div class="hotspot-summary-title">AI 热点总览</div>
               <div class="hotspot-summary-meta" id="hotspotSummaryMeta">根据最新热搜生成</div>
             </div>
             <button class="btn btn-outline-sm" onclick="closeHotspotSummary()">关闭</button>
@@ -1034,7 +1034,7 @@
         <div id="hotspotAnalysisPanel" class="hotspot-analysis-panel" style="display:none;">
           <div class="panel">
             <div class="panel-hd">
-              <div class="panel-title">🤖 AI 分析结果</div>
+              <div class="panel-title">AI 分析结果</div>
               <button class="btn btn-outline-sm" onclick="closeHotspotAnalysis()">关闭</button>
             </div>
             <div class="hotspot-analysis-content" id="hotspotAnalysisContent"></div>
@@ -1199,13 +1199,13 @@
         <!-- 研报卡片 -->
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;">
           <div class="report-card" onclick="showToast('打开研报：AI算力超级周期')">
-            <div class="report-icon" style="background:rgba(155,127,232,0.12);color:var(--purple);">📑</div>
+            <div class="report-icon" style="background:rgba(155,127,232,0.12);color:var(--purple);">RPT</div>
             <div style="font-size:13px;font-weight:500;margin-bottom:5px;">AI算力超级周期——弹性测算</div>
             <div style="font-size:11px;color:var(--text1);margin-bottom:8px;">中金证券 · 2026-04-01</div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;"><span class="badge purple">AI</span><span class="badge blue">算力</span><span class="badge gold">推荐</span></div>
           </div>
           <div class="report-card" onclick="showToast('打开研报：黄金配置策略')">
-            <div class="report-icon" style="background:var(--gold-dim);color:var(--gold);">📊</div>
+            <div class="report-icon" style="background:var(--gold-dim);color:var(--gold);">DATA</div>
             <div style="font-size:13px;font-weight:500;margin-bottom:5px;">2026年黄金中期配置策略报告</div>
             <div style="font-size:11px;color:var(--text1);margin-bottom:8px;">高盛 · 2026-03-28</div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;"><span class="badge gold">黄金</span><span class="badge blue">大宗</span></div>
@@ -1357,10 +1357,10 @@
         <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
           <div style="display:flex;gap:6px;flex-wrap:wrap;" id="notifyFilterTabs">
             <button class="bt-chip active" onclick="setNotifyFilter('all',this)" style="font-size:12px;">全部 <span id="notifyAllBadge" style="background:var(--gold-dim);color:var(--gold);padding:1px 6px;border-radius:10px;margin-left:4px;">0</span></button>
-            <button class="bt-chip" onclick="setNotifyFilter('risk',this)" style="font-size:12px;">⚠ 风险预警</button>
-            <button class="bt-chip" onclick="setNotifyFilter('analysis',this)" style="font-size:12px;">📄 分析结果</button>
-            <button class="bt-chip" onclick="setNotifyFilter('library',this)" style="font-size:12px;">📚 沉淀更新</button>
-            <button class="bt-chip" onclick="setNotifyFilter('system',this)" style="font-size:12px;">🖥 系统</button>
+            <button class="bt-chip" onclick="setNotifyFilter('risk',this)" style="font-size:12px;"><span class="chip-code">RISK</span> 风险预警</button>
+            <button class="bt-chip" onclick="setNotifyFilter('analysis',this)" style="font-size:12px;"><span class="chip-code">ANA</span> 分析结果</button>
+            <button class="bt-chip" onclick="setNotifyFilter('library',this)" style="font-size:12px;"><span class="chip-code">LIB</span> 沉淀更新</button>
+            <button class="bt-chip" onclick="setNotifyFilter('system',this)" style="font-size:12px;"><span class="chip-code">SYS</span> 系统</button>
           </div>
           <div style="flex:1;"></div>
           <span class="muted" style="font-size:12px;align-self:center;" id="notifyMeta">0 条动态</span>
@@ -1379,15 +1379,15 @@
 <!-- ══════════════ ADMIN ══════════════ -->
 <div id="pg-admin" class="app-page">
   <div class="topnav">
-    <div style="display:flex;align-items:center;gap:8px;font-family:var(--font-display);font-size:18px;">
+    <div class="topnav-brand">
       <div class="logo-mark" style="width:28px;height:28px;font-size:14px;">F</div>
-      Fin<span style="color:var(--cyan);">Vue</span>
+      <span>Fin<b>Vue</b></span>
     </div>
     <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:rgba(63,214,255,.10);color:var(--cyan);border:1px solid rgba(63,214,255,.22);">管理后台</span>
     <div class="topnav-sep"></div>
-    <span class="badge gold" id="appVersionBadge">⚙ v0.1.32</span>
-    <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">🌙</button>
-    <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">☀️</button>
+    <span class="badge gold" id="appVersionBadge">v0.1.32</span>
+    <button class="theme-btn active" id="theme-dark-admin" onclick="setTheme('dark')" title="深色主题" style="width:32px;height:32px;font-size:14px;">D</button>
+    <button class="theme-btn" id="theme-light-admin" onclick="setTheme('light')" title="浅色主题" style="width:32px;height:32px;font-size:14px;">L</button>
     <div class="account-chip">
       <div id="adminAvatar" style="width:26px;height:26px;border-radius:50%;background:rgba(63,214,255,.10);border:1px solid rgba(63,214,255,.45);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--cyan);font-weight:600;">AD</div>
       <span id="adminUser" style="font-size:13px;">超级管理员</span>
@@ -1400,18 +1400,18 @@
     <nav class="sidebar">
       <div class="s-section">系统管理</div>
       <button class="nav-item active" onclick="showAdminSec('console',this)"><span class="ni">◈</span> 控制台</button>
-      <button class="nav-item" onclick="showAdminSec('users',this)"><span class="ni">👥</span> 用户管理</button>
-      <button class="nav-item" onclick="showAdminSec('roles',this)"><span class="ni">🔒</span> 权限配置</button>
+      <button class="nav-item" onclick="showAdminSec('users',this)"><span class="ni">U</span> 用户管理</button>
+      <button class="nav-item" onclick="showAdminSec('roles',this)"><span class="ni">R</span> 权限配置</button>
       <button class="nav-item" onclick="showAdminSec('updates',this)"><span class="ni">◎</span> 更新记录</button>
       <button class="nav-item" onclick="showAdminSec('settings',this)"><span class="ni">⚙</span> 系统设置</button>
       <div class="s-section">数据与安全</div>
       <button class="nav-item" onclick="showAdminSec('logs',this)"><span class="ni">≡</span> 操作日志</button>
-      <button class="nav-item" onclick="showAdminSec('operation-import',this)"><span class="ni">📊</span> 运营数据导入</button>
+      <button class="nav-item" onclick="showAdminSec('operation-import',this)"><span class="ni">OP</span> 运营数据导入</button>
       <button class="nav-item" onclick="showAdminSec('remote-db',this)"><span class="ni">▦</span> 远程数据库</button>
       <button class="nav-item" onclick="showAdminSec('tushare',this)"><span class="ni">↗</span> TuShare配置</button>
       <button class="nav-item" onclick="showAdminSec('feishu',this)"><span class="ni">✉</span> 飞书推送</button>
       <button class="nav-item" onclick="showAdminSec('api',this)"><span class="ni">↯</span> API管理 <span class="nav-badge red-b">!</span></button>
-      <button class="nav-item" onclick="showAdminSec('backup',this)"><span class="ni">☁</span> 备份管理</button>
+      <button class="nav-item" onclick="showAdminSec('backup',this)"><span class="ni">BK</span> 备份管理</button>
       <div class="s-section">监控</div>
       <button class="nav-item" onclick="showAdminSec('monitor',this)"><span class="ni">◷</span> 性能监控</button>
     </nav>
@@ -1420,10 +1420,10 @@
         <div class="page-title">控制台</div>
         <div class="page-sub" id="adminPageSub">系统运行状态 · 正在汇总本地管理数据</div>
         <div class="g4 mb">
-          <div class="kpi" style="--accent:var(--gold)"><div class="kpi-ico">👥</div><div class="kpi-lbl">注册用户</div><div class="kpi-val gold" id="adminUserCount">0</div><div class="kpi-delta">本地账号</div></div>
-          <div class="kpi" style="--accent:var(--green)"><div class="kpi-ico">🧩</div><div class="kpi-lbl">角色 / 任务配置</div><div class="kpi-val green" id="adminPromptCount">0/0</div><div class="kpi-delta">当前工作台规则</div></div>
-          <div class="kpi" style="--accent:var(--blue)"><div class="kpi-ico">📚</div><div class="kpi-lbl">资料条目总数</div><div class="kpi-val blue" id="adminAssetCount">0</div><div class="kpi-delta">人物 / 稿件 / 合规 / 案例</div></div>
-          <div class="kpi" style="--accent:var(--red)"><div class="kpi-ico">⚠</div><div class="kpi-lbl">灰区 / 红区条目</div><div class="kpi-val red" id="adminRiskCount">0</div><div class="kpi-delta">需优先复查</div></div>
+          <div class="kpi" style="--accent:var(--gold)"><div class="kpi-ico">USR</div><div class="kpi-lbl">注册用户</div><div class="kpi-val gold" id="adminUserCount">0</div><div class="kpi-delta">本地账号</div></div>
+          <div class="kpi" style="--accent:var(--green)"><div class="kpi-ico">CFG</div><div class="kpi-lbl">角色 / 任务配置</div><div class="kpi-val green" id="adminPromptCount">0/0</div><div class="kpi-delta">当前工作台规则</div></div>
+          <div class="kpi" style="--accent:var(--blue)"><div class="kpi-ico">LIB</div><div class="kpi-lbl">资料条目总数</div><div class="kpi-val blue" id="adminAssetCount">0</div><div class="kpi-delta">人物 / 稿件 / 合规 / 案例</div></div>
+          <div class="kpi" style="--accent:var(--red)"><div class="kpi-ico">RISK</div><div class="kpi-lbl">灰区 / 红区条目</div><div class="kpi-val red" id="adminRiskCount">0</div><div class="kpi-delta">需优先复查</div></div>
         </div>
         <div class="g4 mb">
           <div class="panel" style="padding:14px 16px;"><div class="muted" style="font-size:11px;margin-bottom:8px;">人物资料</div><div id="adminProfilesCount" style="font-family:var(--font-mono);font-size:26px;color:var(--gold);font-weight:600;">0</div><div class="muted" style="font-size:12px;">主播 / 候选人档案数</div></div>
@@ -1453,10 +1453,10 @@
         <div class="panel">
           <div class="panel-hd"><div class="panel-title">快捷操作</div><span class="panel-act" onclick="goDashboard()">查看工作台 →</span></div>
           <div class="admin-quick-grid">
-            <button class="admin-quick-btn" onclick="showAdminSec('users',null)"><div style="font-size:20px;margin-bottom:8px;">👥</div><div style="font-size:13px;font-weight:600;">用户管理</div><div class="muted" style="font-size:12px;margin-top:4px;">账号、角色与权限状态</div></button>
-            <button class="admin-quick-btn" onclick="showAdminSec('updates',null)"><div style="font-size:20px;margin-bottom:8px;">◎</div><div style="font-size:13px;font-weight:600;">更新记录</div><div class="muted" style="font-size:12px;margin-top:4px;">版本变更与权限范围</div></button>
-            <button class="admin-quick-btn" onclick="showAdminSec('settings',null)"><div style="font-size:20px;margin-bottom:8px;">⚙</div><div style="font-size:13px;font-weight:600;">系统设置</div><div class="muted" style="font-size:12px;margin-top:4px;">提示词、热点与输出说明</div></button>
-            <button class="admin-quick-btn" onclick="showAdminSec('api',null)"><div style="font-size:20px;margin-bottom:8px;">↯</div><div style="font-size:13px;font-weight:600;">API 管理</div><div class="muted" style="font-size:12px;margin-top:4px;">AI 路由池、回退与健康</div></button>
+            <button class="admin-quick-btn" onclick="showAdminSec('users',null)"><div class="quick-code">USR</div><div style="font-size:13px;font-weight:600;">用户管理</div><div class="muted" style="font-size:12px;margin-top:4px;">账号、角色与权限状态</div></button>
+            <button class="admin-quick-btn" onclick="showAdminSec('updates',null)"><div class="quick-code">LOG</div><div style="font-size:13px;font-weight:600;">更新记录</div><div class="muted" style="font-size:12px;margin-top:4px;">版本变更与权限范围</div></button>
+            <button class="admin-quick-btn" onclick="showAdminSec('settings',null)"><div class="quick-code">SET</div><div style="font-size:13px;font-weight:600;">系统设置</div><div class="muted" style="font-size:12px;margin-top:4px;">提示词、热点与输出说明</div></button>
+            <button class="admin-quick-btn" onclick="showAdminSec('api',null)"><div class="quick-code">API</div><div style="font-size:13px;font-weight:600;">API 管理</div><div class="muted" style="font-size:12px;margin-top:4px;">AI 路由池、回退与健康</div></button>
           </div>
         </div>
       </div>
@@ -1702,16 +1702,16 @@
           </div>
           <div class="muted" style="font-size:12px;margin-top:8px;">增量导入会追加/更新数据，覆盖导入会先清空表再导入（谨慎使用）</div>
         </div>
-        <div class="panel mb" style="padding:16px;background:linear-gradient(135deg,#fef3c7,#fde68a);">
-          <div class="panel-hd" style="margin-bottom:12px;"><div class="panel-title" style="color:#92400e;">⚡ 在线导入</div></div>
-          <div class="muted" style="font-size:12px;margin-bottom:12px;color:#a16207;">直接从远程数据库拉取直播、短视频和客户数据，无需上传 CSV 文件。远程库连接可在后台“远程数据库”页面维护。</div>
+        <div class="panel mb online-import-panel" style="padding:16px;">
+          <div class="panel-hd" style="margin-bottom:12px;"><div class="panel-title">在线导入</div></div>
+          <div class="muted" style="font-size:12px;margin-bottom:12px;">直接从远程数据库拉取直播、短视频和客户数据，无需上传 CSV 文件。远程库连接可在后台“远程数据库”页面维护。</div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;">
-            <button class="btn btn-outline" style="background:#fff;border-color:#d97706;color:#92400e;" onclick="onlineImportLiveData()">导入直播数据</button>
-            <button class="btn btn-outline" style="background:#fff;border-color:#d97706;color:#92400e;" onclick="onlineImportVideoData()">导入短视频数据</button>
-            <button class="btn btn-outline" style="background:#fff;border-color:#d97706;color:#92400e;" onclick="onlineImportCustomerProfiles()">导入客户档案</button>
-            <button class="btn btn-outline" style="background:#fff;border-color:#d97706;color:#92400e;" onclick="onlineImportCustomerSessions()">导入客户会话</button>
-            <button class="btn btn-gold" style="background:#d97706;color:#fff;" onclick="onlineImportAllData()">一键导入全部数据</button>
-            <button class="btn btn-outline" style="background:#fff;border-color:#d97706;color:#92400e;" onclick="showAdminSec('remote-db',null)">配置远程库</button>
+            <button class="btn btn-outline" onclick="onlineImportLiveData()">导入直播数据</button>
+            <button class="btn btn-outline" onclick="onlineImportVideoData()">导入短视频数据</button>
+            <button class="btn btn-outline" onclick="onlineImportCustomerProfiles()">导入客户档案</button>
+            <button class="btn btn-outline" onclick="onlineImportCustomerSessions()">导入客户会话</button>
+            <button class="btn btn-gold online-import-primary" onclick="onlineImportAllData()">一键导入全部数据</button>
+            <button class="btn btn-outline" onclick="showAdminSec('remote-db',null)">配置远程库</button>
           </div>
           <div id="online-import-result" style="margin-top:12px;font-size:13px;"></div>
         </div>
@@ -1719,14 +1719,14 @@
           <div class="panel">
             <div class="panel-hd"><div class="panel-title">直播数据导入</div><button class="btn btn-outline-sm" onclick="downloadLiveTemplate()">下载模板</button></div>
             <div class="muted" style="font-size:12px;margin-bottom:12px;">支持字段：账号名称、直播ID、开播时间、观看人数、涨粉数等。自动识别中英字段名。</div>
-            <input type="file" id="op-live-csv-input" accept=".csv" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);color:var(--text0);margin-bottom:12px;">
+            <input class="op-csv-input" type="file" id="op-live-csv-input" accept=".csv">
             <button class="btn btn-gold" style="width:100%;" onclick="uploadOperationLiveCSV()">上传直播数据 CSV</button>
             <div id="op-live-result" style="margin-top:12px;font-size:13px;"></div>
           </div>
           <div class="panel">
             <div class="panel-hd"><div class="panel-title">短视频数据导入</div><button class="btn btn-outline-sm" onclick="downloadVideoTemplate()">下载模板</button></div>
             <div class="muted" style="font-size:12px;margin-bottom:12px;">支持字段：账号名称、作品名称、发布时间、播放量、涨粉数等。</div>
-            <input type="file" id="op-video-csv-input" accept=".csv" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);color:var(--text0);margin-bottom:12px;">
+            <input class="op-csv-input" type="file" id="op-video-csv-input" accept=".csv">
             <button class="btn btn-gold" style="width:100%;" onclick="uploadOperationVideoCSV()">上传短视频数据 CSV</button>
             <div id="op-video-result" style="margin-top:12px;font-size:13px;"></div>
           </div>
@@ -1735,14 +1735,14 @@
           <div class="panel">
             <div class="panel-hd"><div class="panel-title">客户档案导入</div><button class="btn btn-outline-sm" onclick="downloadCustomerProfileTemplate()">下载模板</button></div>
             <div class="muted" style="font-size:12px;margin-bottom:12px;">支持字段：客户ID、客户名称、主播名称、最近分析时间、最佳排名、平均观看时长等。</div>
-            <input type="file" id="customer-profile-csv-input" accept=".csv" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);color:var(--text0);margin-bottom:12px;">
+            <input class="op-csv-input" type="file" id="customer-profile-csv-input" accept=".csv">
             <button class="btn btn-gold" style="width:100%;" onclick="uploadCustomerProfileCSV()">上传客户档案 CSV</button>
             <div id="customer-profile-result" style="margin-top:12px;font-size:13px;"></div>
           </div>
           <div class="panel">
             <div class="panel-hd"><div class="panel-title">客户会话导入</div><button class="btn btn-outline-sm" onclick="downloadCustomerSessionTemplate()">下载模板</button></div>
             <div class="muted" style="font-size:12px;margin-bottom:12px;">支持字段：场次ID、客户ID、主播名称、直播间ID、观看排名、观看时长秒等。</div>
-            <input type="file" id="customer-session-csv-input" accept=".csv" style="width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);color:var(--text0);margin-bottom:12px;">
+            <input class="op-csv-input" type="file" id="customer-session-csv-input" accept=".csv">
             <button class="btn btn-gold" style="width:100%;" onclick="uploadCustomerSessionCSV()">上传客户会话 CSV</button>
             <div id="customer-session-result" style="margin-top:12px;font-size:13px;"></div>
           </div>
@@ -2623,6 +2623,11 @@ const DASHBOARD_PERMISSION_LABELS = {
 
 const APP_VERSION = window.FinVueReleaseData?.version || "0.1.56";
 const APP_RELEASES = Array.isArray(window.FinVueReleaseData?.releases) ? window.FinVueReleaseData.releases : [];
+const DEFAULT_LOGIN_USERNAME = "admin";
+
+function libraryRowClass(isActive = false) {
+  return `analyst-row library-row${isActive ? " is-active" : ""}`;
+}
 
 function getAuthPermissions() {
   if (isAdmin()) return Object.fromEntries(Object.keys(DASHBOARD_PERMISSION_LABELS).map((key) => [key, true]));
@@ -3352,7 +3357,7 @@ els.releaseModalTitle = document.getElementById("releaseModalTitle");
 els.releaseModalList = document.getElementById("releaseModalList");
 els.releaseModalClose = document.getElementById("releaseModalClose");
 els.releaseModalAck = document.getElementById("releaseModalAck");
-if (els.appVersionBadge) els.appVersionBadge.textContent = `⚙ v${APP_VERSION}`;
+if (els.appVersionBadge) els.appVersionBadge.textContent = `v${APP_VERSION}`;
 
 function showPage(id) {
   document.querySelectorAll(".app-page").forEach((p) => p.classList.remove("active"));
@@ -3363,8 +3368,27 @@ function showPage(id) {
 }
 
 function clearLoginForm() {
-  if (els.username) els.username.value = "";
+  if (els.username) {
+    delete els.username.dataset.userEdited;
+    setDefaultLoginUsername(true);
+  }
   if (els.password) els.password.value = "";
+}
+
+function setDefaultLoginUsername(force = false) {
+  if (!els.username) return;
+  if (!force && els.username.dataset.userEdited === "1") return;
+  els.username.value = DEFAULT_LOGIN_USERNAME;
+}
+
+function keepDefaultLoginUsernameAgainstAutofill() {
+  [80, 350, 900].forEach((delay) => {
+    setTimeout(() => {
+      const loginPage = document.getElementById("pg-login");
+      if (!loginPage?.classList.contains("active")) return;
+      setDefaultLoginUsername(false);
+    }, delay);
+  });
 }
 
 function goDashboard() {
@@ -4779,7 +4803,7 @@ async function loadMetricsAnchorHistory(account) {
     historyEl.innerHTML = `
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px;">
         <div style="font-size:12px;color:var(--text1);margin-bottom:8px;">
-          <span style="color:var(--gold);">📊 历史直播数据</span> · 
+          <span style="color:var(--ticket-green);font-family:var(--font-mono);font-size:11px;font-weight:800;">LIVE DATA</span> ·
           ${summary.total_lives} 场直播 · 
           ${summary.first_live || '—'} ~ ${summary.last_live || '—'}
         </div>
@@ -6346,7 +6370,7 @@ async function loadHomeOverview() {
     if (anchors.length === 0) {
       document.getElementById('homeAnchorList').innerHTML = `
         <div style="text-align:center;padding:40px;">
-          <div style="font-size:48px;color:var(--text2);margin-bottom:16px;">📊</div>
+          <div class="empty-code">DATA</div>
           <div style="color:var(--text1);margin-bottom:12px;">暂无主播数据</div>
           <div style="color:var(--text2);font-size:13px;">请在 <a href="/operation-dashboard.html" style="color:var(--gold);">运营数据中心</a> 导入直播数据 CSV</div>
         </div>`;
@@ -7373,7 +7397,7 @@ function renderTranscriptLibraryDetail(anchorTarget) {
   const transcriptListHtml = anchorEntries.map((item) => {
     const isActive = item.id === state.currentTranscriptEntryId;
     return `
-      <button class="analyst-row" style="width:100%;text-align:left;background:${isActive ? "rgba(200,146,42,0.08)" : "var(--bg1)"};border:1px solid ${isActive ? "rgba(200,146,42,0.42)" : "var(--border)"};box-shadow:${isActive ? "0 0 0 1px rgba(200,146,42,0.16) inset" : "none"};border-radius:var(--r);padding:12px 14px;cursor:pointer;color:var(--text0);" onclick="openTranscriptRecord('${encodeURIComponent(item.id)}')">
+      <button class="${libraryRowClass(isActive)}" onclick="openTranscriptRecord('${encodeURIComponent(item.id)}')">
         <div style="flex:1;">
           <div style="font-size:14px;font-weight:700;color:var(--text0);line-height:1.4;">${escapeHtml(item.liveTheme || REPORT_TYPE_META[item.reportType]?.title || "逐字稿记录")}</div>
           <div style="font-size:12px;color:var(--text1);margin-top:6px;line-height:1.6;">${escapeHtml(item.sourceFileName || "手动粘贴逐字稿")}</div>
@@ -7479,8 +7503,8 @@ function renderTranscriptLibraryList() {
     const item = group.latest;
     const isActive = group.anchorName === activeAnchorName;
     return `
-    <button class="analyst-row" style="width:100%;text-align:left;background:${isActive ? "rgba(200,146,42,0.08)" : "var(--bg1)"};border:1px solid ${isActive ? "rgba(200,146,42,0.42)" : "var(--border)"};box-shadow:${isActive ? "0 0 0 1px rgba(200,146,42,0.16) inset" : "none"};border-radius:var(--r);padding:14px 16px;cursor:pointer;color:var(--text0);" onclick="openTranscriptEntry('${encodeURIComponent(item.id)}')">
-      <div class="a-avatar" style="background:var(--gold-dim);color:var(--gold)">${escapeHtml((item.anchorName || "稿").slice(0, 1))}</div>
+    <button class="${libraryRowClass(isActive)}" onclick="openTranscriptEntry('${encodeURIComponent(item.id)}')">
+      <div class="a-avatar">${escapeHtml((item.anchorName || "稿").slice(0, 1))}</div>
       <div class="library-card-main">
         <div class="library-card-head">
           <div class="library-card-title">${escapeHtml(group.anchorName)}</div>
@@ -7600,7 +7624,7 @@ function renderDistillLibraryDetail(anchorName) {
     ? selected.transcripts.map((item) => {
         const isActive = item.id === state.currentDistillTranscriptId;
         return `
-          <button class="analyst-row" style="width:100%;text-align:left;background:${isActive ? "rgba(200,146,42,0.08)" : "var(--bg1)"};border:1px solid ${isActive ? "rgba(200,146,42,0.42)" : "var(--border)"};box-shadow:${isActive ? "0 0 0 1px rgba(200,146,42,0.16) inset" : "none"};border-radius:var(--r);padding:12px 14px;cursor:pointer;color:var(--text0);" onclick="openDistillTranscript('${encodeURIComponent(selected.anchorName)}','${encodeURIComponent(item.id)}')">
+          <button class="${libraryRowClass(isActive)}" onclick="openDistillTranscript('${encodeURIComponent(selected.anchorName)}','${encodeURIComponent(item.id)}')">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
               <div style="flex:1;min-width:0;">
                 <div style="font-size:14px;font-weight:700;color:var(--text0);line-height:1.4;">${escapeHtml(item.liveTheme || item.sourceFileName || "逐字稿记录")}</div>
@@ -7618,7 +7642,7 @@ function renderDistillLibraryDetail(anchorName) {
         const reportKey = `${item.analyzedAt || ""}-${item.reportType || ""}`;
         const isActive = reportKey === state.currentDistillSnapshotKey;
         return `
-          <button class="analyst-row" style="width:100%;text-align:left;background:${isActive ? "rgba(200,146,42,0.08)" : "var(--bg1)"};border:1px solid ${isActive ? "rgba(200,146,42,0.42)" : "var(--border)"};box-shadow:${isActive ? "0 0 0 1px rgba(200,146,42,0.16) inset" : "none"};border-radius:var(--r);padding:12px 14px;cursor:pointer;color:var(--text0);" onclick="openDistillReport('${encodeURIComponent(selected.anchorName)}','${encodeURIComponent(reportKey)}')">
+          <button class="${libraryRowClass(isActive)}" onclick="openDistillReport('${encodeURIComponent(selected.anchorName)}','${encodeURIComponent(reportKey)}')">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
               <div style="flex:1;min-width:0;">
                 <div style="font-size:14px;font-weight:700;color:var(--text0);line-height:1.4;">${escapeHtml(REPORT_TYPE_META[item.reportType]?.title || item.reportType || "融合报告")}</div>
@@ -7750,8 +7774,8 @@ function renderDistillLibrary() {
   els.distillLibraryList.innerHTML = entries.map((item) => {
     const isActive = item.anchorName === activeAnchorName;
     return `
-      <button class="analyst-row" style="width:100%;text-align:left;background:${isActive ? "rgba(200,146,42,0.08)" : "var(--bg1)"};border:1px solid ${isActive ? "rgba(200,146,42,0.42)" : "var(--border)"};box-shadow:${isActive ? "0 0 0 1px rgba(200,146,42,0.16) inset" : "none"};border-radius:var(--r);padding:14px 16px;cursor:pointer;color:var(--text0);" onclick="openDistillAnchor('${encodeURIComponent(item.anchorName)}')">
-        <div class="a-avatar" style="background:var(--gold-dim);color:var(--gold)">${escapeHtml((item.anchorName || "蒸").slice(0, 1))}</div>
+      <button class="${libraryRowClass(isActive)}" onclick="openDistillAnchor('${encodeURIComponent(item.anchorName)}')">
+        <div class="a-avatar">${escapeHtml((item.anchorName || "蒸").slice(0, 1))}</div>
         <div class="library-card-main">
           <div class="library-card-head">
             <div class="library-card-title">${escapeHtml(item.anchorName)}</div>
@@ -8353,8 +8377,8 @@ function renderComplianceLibraryList() {
     const meta = getComplianceLevelMeta(item.level);
     const displayContext = normalizeComplianceContextDisplay(item.context, item.phrase);
     return `
-      <button class="analyst-row" style="width:100%;text-align:left;background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;cursor:pointer;color:var(--text0);" onclick="openComplianceEntry('${encodeURIComponent(item.id)}')">
-        <div class="a-avatar" style="background:var(--gold-dim);color:var(--gold)">${escapeHtml(meta.label.slice(0, 1))}</div>
+      <button class="${libraryRowClass(false)}" onclick="openComplianceEntry('${encodeURIComponent(item.id)}')">
+        <div class="a-avatar">${escapeHtml(meta.label.slice(0, 1))}</div>
         <div style="flex:1;">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span class="badge ${meta.badge}">${meta.label}</span>
@@ -8602,8 +8626,8 @@ function renderCaseLibraryList() {
     const isActive = item.id === state.currentCaseEntryId;
     const tagChips = (Array.isArray(item.tags) ? item.tags : []).slice(0, 4).map((tag) => `<span class="eval-tag">${escapeHtml(tag)}</span>`).join("");
     return `
-      <button class="analyst-row" style="width:100%;text-align:left;background:${isActive ? "rgba(200,146,42,0.08)" : "var(--bg1)"};border:1px solid ${isActive ? "rgba(200,146,42,0.42)" : "var(--border)"};box-shadow:${isActive ? "0 0 0 1px rgba(200,146,42,0.16) inset" : "none"};border-radius:var(--r);padding:14px 16px;cursor:pointer;color:var(--text0);" onclick="openCaseEntry('${encodeURIComponent(item.id)}')">
-        <div class="a-avatar" style="background:var(--gold-dim);color:var(--gold)">${escapeHtml(String(item.category || "案例").slice(0, 1))}</div>
+      <button class="${libraryRowClass(isActive)}" onclick="openCaseEntry('${encodeURIComponent(item.id)}')">
+        <div class="a-avatar">${escapeHtml(String(item.category || "案例").slice(0, 1))}</div>
         <div class="library-card-main">
           <div class="library-card-head">
             <div class="library-card-title">${escapeHtml(item.title || "未命名案例")}</div>
@@ -9209,7 +9233,7 @@ function renderAnchorLibraryDetail(profile) {
     const isActive = snapshotKey === state.currentAnchorSnapshotKey;
     const conclusion = extractSnapshotConclusion(item.markdown);
     return `
-      <button class="analyst-row" style="width:100%;text-align:left;background:${isActive ? "rgba(200,146,42,0.08)" : "var(--bg1)"};border:1px solid ${isActive ? "rgba(200,146,42,0.42)" : "var(--border)"};box-shadow:${isActive ? "0 0 0 1px rgba(200,146,42,0.16) inset" : "none"};border-radius:var(--r);padding:12px 14px;cursor:pointer;color:var(--text0);" onclick="openAnchorSnapshot('${encodeURIComponent(profile.id || "")}','${encodeURIComponent(snapshotKey)}')">
+      <button class="${libraryRowClass(isActive)}" onclick="openAnchorSnapshot('${encodeURIComponent(profile.id || "")}','${encodeURIComponent(snapshotKey)}')">
         <div style="flex:1;">
           <div style="font-size:14px;font-weight:700;color:var(--text0);line-height:1.4;">${escapeHtml(REPORT_TYPE_META[item.reportType]?.title || item.reportType || "未命名报告")}</div>
           <div style="font-size:13px;color:var(--text1);margin-top:6px;line-height:1.6;">${escapeHtml(conclusion)}</div>
@@ -9340,7 +9364,7 @@ function renderAnchorLibraryDetail(profile) {
               <div class="panel" style="margin:0;">
                 <div class="panel-hd"><div class="panel-title">有提升的部分</div></div>
                 ${progressSummary.improvements.length
-                  ? `<div style="display:flex;gap:8px;flex-wrap:wrap;">${progressSummary.improvements.map((item) => `<span class="eval-tag" style="border-color:rgba(61,209,156,0.42);color:var(--green);">${escapeHtml(item.label)} +${escapeHtml(String(item.delta))}</span>`).join("")}</div>`
+                  ? `<div style="display:flex;gap:8px;flex-wrap:wrap;">${progressSummary.improvements.map((item) => `<span class="eval-tag eval-tag-positive">${escapeHtml(item.label)} +${escapeHtml(String(item.delta))}</span>`).join("")}</div>`
                   : `<div class="muted">最近两次没有明显提升项。</div>`}
               </div>
               <div class="panel" style="margin:0;">
@@ -9534,8 +9558,8 @@ function renderAnchorLibraryList() {
     const isActive = item.id === activeId;
     const isCompared = state.currentAnchorCompareIds.includes(item.id);
     return `
-    <button class="analyst-row" style="width:100%;text-align:left;background:${isActive ? "rgba(200,146,42,0.08)" : "var(--bg1)"};border:1px solid ${isActive ? "rgba(200,146,42,0.42)" : "var(--border)"};box-shadow:${isActive ? "0 0 0 1px rgba(200,146,42,0.16) inset" : "none"};border-radius:var(--r);padding:14px 16px;cursor:pointer;color:var(--text0);" onclick="openAnchorProfile('${encodeURIComponent(item.id)}')">
-      <div class="a-avatar" style="background:var(--gold-dim);color:var(--gold)">${escapeHtml((item.anchorName || "未").slice(0, 1))}</div>
+    <button class="${libraryRowClass(isActive)}" onclick="openAnchorProfile('${encodeURIComponent(item.id)}')">
+      <div class="a-avatar">${escapeHtml((item.anchorName || "未").slice(0, 1))}</div>
       <div class="library-card-main">
         <div class="library-card-head">
           <div class="library-card-title">${escapeHtml(item.anchorName || "未命名主播")}</div>
@@ -9546,7 +9570,7 @@ function renderAnchorLibraryList() {
         </div>
         <div class="library-card-summary">${escapeHtml(item.coreSummary || item.contentSchool || "暂无画像总结")}</div>
         <div class="library-card-sub">${escapeHtml(item.liveTheme || "未填写主题")}</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">${(Array.isArray(item.tags) ? item.tags : []).slice(0, 5).map((tag) => `<span class="eval-tag">${escapeHtml(tag)}</span>`).join("")}${isCompared ? '<span class="eval-tag" style="border-color:rgba(61,209,156,0.45);color:var(--green);">对比中</span>' : ""}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">${(Array.isArray(item.tags) ? item.tags : []).slice(0, 5).map((tag) => `<span class="eval-tag">${escapeHtml(tag)}</span>`).join("")}${isCompared ? '<span class="eval-tag eval-tag-positive">对比中</span>' : ""}</div>
       </div>
     </button>
   `;
@@ -9948,8 +9972,8 @@ function renderCustomerAnchorDetail(anchorGroup) {
         <div class="panel-hd"><div class="panel-title">优先关注客户</div><span class="panel-act">${topCustomers.length} 位</span></div>
         <div style="display:flex;flex-direction:column;gap:10px;">
           ${topCustomers.map((item) => `
-            <a class="analyst-row" target="_blank" href="/customer-profile.html?customer=${encodeURIComponent(item.id || item.customerName)}&anchor=${encodeURIComponent(anchorGroup.anchorName)}" style="width:100%;text-align:left;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;cursor:pointer;color:var(--text0);text-decoration:none;">
-              <div class="a-avatar" style="background:var(--gold-dim);color:var(--gold)">${escapeHtml((item.customerName || "客").slice(0,1))}</div>
+            <a class="analyst-row library-row" target="_blank" href="/customer-profile.html?customer=${encodeURIComponent(item.id || item.customerName)}&anchor=${encodeURIComponent(anchorGroup.anchorName)}">
+              <div class="a-avatar">${escapeHtml((item.customerName || "客").slice(0,1))}</div>
               <div class="library-card-main">
                 <div class="library-card-head">
                   <div class="library-card-title">${escapeHtml(item.customerName || "未命名客户")}</div>
@@ -10088,8 +10112,8 @@ function renderCustomerLibraryList() {
     els.customerLibraryAnchorList.innerHTML = groups.map((group) => {
       const isActive = group.anchorName === activeAnchorName;
       return `
-        <button class="analyst-row" style="width:100%;text-align:left;background:${isActive ? "rgba(200,146,42,0.08)" : "var(--bg1)"};border:1px solid ${isActive ? "rgba(200,146,42,0.42)" : "var(--border)"};box-shadow:${isActive ? "0 0 0 1px rgba(200,146,42,0.16) inset" : "none"};border-radius:var(--r);padding:14px 16px;cursor:pointer;color:var(--text0);" onclick="openCustomerAnchor('${encodeURIComponent(group.anchorName)}')">
-          <div class="a-avatar" style="background:var(--gold-dim);color:var(--gold)">${escapeHtml((group.anchorName || "主").slice(0,1))}</div>
+        <button class="${libraryRowClass(isActive)}" onclick="openCustomerAnchor('${encodeURIComponent(group.anchorName)}')">
+          <div class="a-avatar">${escapeHtml((group.anchorName || "主").slice(0,1))}</div>
           <div class="library-card-main">
             <div class="library-card-head">
               <div class="library-card-title">${escapeHtml(group.anchorName)}</div>
@@ -10407,6 +10431,9 @@ function drawSpark(id, customData, color2) {
 document.getElementById("inp-p").addEventListener("keydown", (e) => {
   if (e.key === "Enter") doLogin();
 });
+els.username?.addEventListener("input", () => {
+  els.username.dataset.userEdited = "1";
+});
 
 els.rolePrompt?.addEventListener("input", refreshPromptSourcePanels);
 els.systemPrompt?.addEventListener("input", refreshPromptSourcePanels);
@@ -10450,24 +10477,24 @@ els.hotInp?.addEventListener("keydown", (event) => {
 });
 
 els.saveSettingsBtn?.addEventListener("click", saveSettings);
-els.refreshUsersBtn?.addEventListener("click", loadAdminUsers);
-els.openRegistrationToggle?.addEventListener("change", (event) => updateAccessSettings(Boolean(event.target.checked)));
-els.createUserBtn?.addEventListener("click", createAdminUser);
+els.refreshUsersBtn?.addEventListener("click", () => window.loadAdminUsers?.());
+els.openRegistrationToggle?.addEventListener("change", (event) => window.updateAccessSettings?.(Boolean(event.target.checked)));
+els.createUserBtn?.addEventListener("click", () => window.createAdminUser?.());
 els.saveRemoteDbBtn?.addEventListener("click", saveRemoteDbSettings);
 els.testRemoteDbBtn?.addEventListener("click", testRemoteDbConnection);
-els.permissionModalClose?.addEventListener("click", closePermissionModal);
+els.permissionModalClose?.addEventListener("click", () => window.closePermissionModal?.());
 els.permissionModal?.addEventListener("click", (event) => {
-  if (event.target === els.permissionModal) closePermissionModal();
+  if (event.target === els.permissionModal) window.closePermissionModal?.();
 });
 els.permissionSelectAllBtn?.addEventListener("click", () => setPermissionModalChecks(true));
 els.permissionClearBtn?.addEventListener("click", () => setPermissionModalChecks(false));
-els.permissionSaveBtn?.addEventListener("click", savePermissionModal);
+els.permissionSaveBtn?.addEventListener("click", () => window.savePermissionModal?.());
 els.releaseModalClose?.addEventListener("click", () => closeReleaseModal(false));
 els.releaseModalAck?.addEventListener("click", () => closeReleaseModal(els.releaseModalAck?.dataset.markRead !== "0"));
 els.releaseModal?.addEventListener("click", (event) => {
   if (event.target === els.releaseModal) closeReleaseModal(false);
 });
-els.adminUserSearch?.addEventListener("input", () => renderAdminUsers());
+els.adminUserSearch?.addEventListener("input", () => window.renderAdminUsers?.());
 els.anchorLibrarySearch?.addEventListener("input", renderAnchorLibraryList);
 els.customerLibrarySearch?.addEventListener("input", renderCustomerLibraryList);
 els.transcriptLibrarySearch?.addEventListener("input", renderTranscriptLibraryList);
@@ -10475,13 +10502,13 @@ els.distillLibrarySearch?.addEventListener("input", renderDistillLibrary);
 els.complianceLibrarySearch?.addEventListener("input", renderComplianceLibraryList);
 els.complianceLibraryLevelFilter?.addEventListener("change", renderComplianceLibraryList);
 els.caseLibrarySearch?.addEventListener("input", renderCaseLibraryList);
-els.anchorRolePrompt?.addEventListener("input", updateAdminDashboardSummary);
-els.userPrompt?.addEventListener("input", updateAdminDashboardSummary);
-els.systemPrompt?.addEventListener("input", updateAdminDashboardSummary);
-els.externalHotTopics?.addEventListener("input", updateAdminDashboardSummary);
-els.reportFormat?.addEventListener("input", updateAdminDashboardSummary);
-els.rolePrompt?.addEventListener("input", updateAdminDashboardSummary);
-els.taskPrompt?.addEventListener("input", updateAdminDashboardSummary);
+els.anchorRolePrompt?.addEventListener("input", () => window.updateAdminDashboardSummary?.());
+els.userPrompt?.addEventListener("input", () => window.updateAdminDashboardSummary?.());
+els.systemPrompt?.addEventListener("input", () => window.updateAdminDashboardSummary?.());
+els.externalHotTopics?.addEventListener("input", () => window.updateAdminDashboardSummary?.());
+els.reportFormat?.addEventListener("input", () => window.updateAdminDashboardSummary?.());
+els.rolePrompt?.addEventListener("input", () => window.updateAdminDashboardSummary?.());
+els.taskPrompt?.addEventListener("input", () => window.updateAdminDashboardSummary?.());
 els.aiRewriteComplianceBtn?.addEventListener("click", generateComplianceReplacementWithAi);
 els.adminUsersTable?.addEventListener("click", async (event) => {
   const deleteButton = event.target.closest("[data-delete-user]");
@@ -10508,6 +10535,7 @@ window.addEventListener("load", async () => {
     showToast(t.classList.contains("on") ? "已开启" : "已关闭");
   }));
   await bootstrap();
+  keepDefaultLoginUsernameAgainstAutofill();
   // 备用：确保下拉框和按钮被填充
   setTimeout(() => {
     renderRolePresetButtons();

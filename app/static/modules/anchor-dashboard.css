@@ -626,3 +626,223 @@
     text-align: left;
   }
 }
+
+/* v20260813c: restrained ticket system for creator/profile dashboards */
+.anchor-dashboard-grid,
+.anchor-profile-shell,
+.anchor-profile-detail,
+.anchor-roi-wrap,
+.roi-widget{
+  gap:12px;
+}
+
+.anchor-kpi-grid,
+.anchor-dashboard-two-col,
+.anchor-profile-layout,
+.anchor-profile-mini-grid,
+.anchor-hero-metrics,
+.roi-scenario-grid{
+  gap:12px;
+}
+
+.anchor-dashboard-section,
+.anchor-roi-card,
+.anchor-kpi-card,
+.anchor-summary-row,
+.anchor-queue-row,
+.anchor-risk-row,
+.anchor-profile-list,
+.anchor-profile-card,
+.anchor-profile-hero,
+.anchor-profile-mini,
+.anchor-hero-metric,
+.roi-control-group,
+.roi-scenario-col,
+.roi-verdict{
+  border:1.5px solid var(--border);
+  border-radius:4px;
+  background:var(--bg1);
+  box-shadow:4px 4px 0 rgba(0,0,0,.12);
+}
+
+[data-theme="light"] .anchor-dashboard-section,
+[data-theme="light"] .anchor-roi-card,
+[data-theme="light"] .anchor-kpi-card,
+[data-theme="light"] .anchor-summary-row,
+[data-theme="light"] .anchor-queue-row,
+[data-theme="light"] .anchor-risk-row,
+[data-theme="light"] .anchor-profile-list,
+[data-theme="light"] .anchor-profile-card,
+[data-theme="light"] .anchor-profile-hero,
+[data-theme="light"] .anchor-profile-mini,
+[data-theme="light"] .anchor-hero-metric,
+[data-theme="light"] .roi-control-group,
+[data-theme="light"] .roi-scenario-col,
+[data-theme="light"] .roi-verdict{
+  box-shadow:4px 4px 0 rgba(23,25,29,.08);
+}
+
+.anchor-dashboard-section,
+.anchor-roi-card,
+.anchor-profile-hero,
+.anchor-kpi-card{
+  position:relative;
+}
+
+.anchor-dashboard-section,
+.anchor-roi-card,
+.anchor-profile-hero{
+  padding:14px;
+}
+
+.anchor-kpi-card,
+.anchor-profile-mini,
+.anchor-hero-metric,
+.roi-control-group,
+.roi-scenario-col,
+.roi-verdict{
+  padding:12px;
+}
+
+.anchor-dashboard-section::before,
+.anchor-roi-card::before,
+.anchor-profile-hero::before,
+.anchor-kpi-card::before{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  height:4px;
+  background:var(--ticket-green);
+}
+
+.anchor-dashboard-head{
+  margin-bottom:10px;
+  padding-bottom:8px;
+  border-bottom:1px dashed var(--border2);
+}
+
+.anchor-dashboard-head h3,
+.anchor-profile-title,
+.anchor-profile-hero h2{
+  font-family:var(--font-display);
+  letter-spacing:.02em;
+}
+
+.anchor-kpi-label,
+.anchor-stat-label,
+.anchor-profile-mini .mini-label,
+.anchor-hero-metric span,
+.roi-section-title,
+.roi-s-label,
+.anchor-field span{
+  font-family:var(--font-display);
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+
+.anchor-kpi-value{
+  font-family:var(--font-mono);
+  font-size:26px;
+  color:var(--ticket-green);
+}
+
+.anchor-summary-row,
+.anchor-queue-row,
+.anchor-risk-row,
+.anchor-profile-card{
+  padding:10px;
+  border-color:var(--border2);
+  box-shadow:none;
+}
+
+.anchor-profile-card{
+  transition:border-color .15s ease,background .15s ease;
+}
+
+.anchor-profile-card:hover{
+  transform:none;
+  border-color:var(--ticket-green);
+}
+
+.anchor-profile-card.active{
+  border-color:var(--ticket-green);
+  background:var(--ticket-mint);
+}
+
+.anchor-pill,
+.anchor-status-pill,
+.roi-cvr-tag,
+.roi-scenario-head{
+  border:1px solid var(--border2);
+  border-radius:3px;
+  background:var(--ticket-mint);
+  color:var(--ticket-green);
+  font-family:var(--font-display);
+  font-size:11px;
+}
+
+.anchor-status-pill.red,
+.roi-cvr-tag.conservative,
+.roi-scenario-head.conservative{
+  color:var(--red);
+  background:rgba(224,82,82,.08);
+  border-color:rgba(224,82,82,.32);
+}
+
+.anchor-status-pill.yellow,
+.roi-cvr-tag.base,
+.roi-scenario-head.base{
+  color:var(--gold);
+  background:rgba(200,146,42,.10);
+  border-color:rgba(200,146,42,.34);
+}
+
+.anchor-status-pill.green,
+.roi-cvr-tag.optimistic,
+.roi-scenario-head.optimistic{
+  color:var(--ticket-green);
+  background:var(--ticket-mint);
+  border-color:rgba(45,138,99,.36);
+}
+
+.anchor-profile-list-body{
+  padding:8px;
+  gap:8px;
+}
+
+.anchor-profile-summary,
+.anchor-profile-hero-sub{
+  line-height:1.55;
+}
+
+.anchor-profile-title{
+  font-size:18px;
+}
+
+.anchor-profile-hero h2{
+  font-size:24px;
+}
+
+.anchor-profile-mini .mini-value,
+.anchor-hero-metric strong,
+.anchor-stat-value,
+.roi-s-value,
+.roi-s-roi{
+  font-family:var(--font-mono);
+}
+
+.roi-slider-row{
+  margin-bottom:8px;
+}
+
+.roi-cvr-input-wrap input{
+  border-radius:3px;
+  background:var(--bg0);
+  border-color:var(--border2);
+}
+
+.roi-pnl-row{
+  border-bottom:1px dashed var(--border2);
+}

@@ -64,3 +64,568 @@
 .daily-review-news>div:last-child{display:grid;grid-template-columns:1fr 1fr;column-gap:24px}.daily-review-news a,.daily-review-news-item{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);font-size:11px}.daily-review-news a:hover>span{color:var(--gold2)}.daily-review-news a b,.daily-review-news-item b{font-family:var(--font-mono);color:var(--text2)}.daily-review-news a time,.daily-review-news-item time{color:var(--text2);font-size:9px}.daily-review-news span small{display:block;margin-top:2px;color:var(--text2);font-size:9px}.daily-review-empty{padding:48px 18px;color:var(--text1);text-align:center;line-height:1.8}
 @media(max-width:1250px){.daily-review-metrics{grid-template-columns:repeat(3,1fr)}.daily-review-metric:nth-child(3){border-right:0}.daily-review-metric:nth-child(-n+3){border-bottom:1px solid var(--border)}.daily-review-stock-grid{grid-template-columns:repeat(3,1fr)}.daily-review-sector-tabs{grid-template-columns:repeat(3,1fr)}.daily-review-analysis-grid{grid-template-columns:1fr 1fr}.daily-review-driver-evidence>div:last-child{grid-template-columns:1fr 1fr}}
 @media(max-width:760px){.daily-review-summary,.daily-review-sector-head{align-items:flex-start;flex-direction:column}.daily-review-metrics{grid-template-columns:1fr 1fr}.daily-review-metric:nth-child(3){border-right:1px solid var(--border)}.daily-review-metric:nth-child(even){border-right:0}.daily-review-metric:nth-child(-n+4){border-bottom:1px solid var(--border)}.daily-review-sankey{height:540px}.daily-review-stock-grid,.daily-review-analysis-grid,.daily-review-news>div:last-child{grid-template-columns:1fr}.daily-review-subsector-table{overflow-x:auto}.daily-review-subsector-table .head,.daily-review-subsector-table .row{min-width:900px}.daily-review-sector-tabs{display:flex;overflow-x:auto}.daily-review-sector-tabs button{min-width:150px}}
+
+/* v20260813a: denser market-review layout for faster scan and less decorative weight. */
+.daily-review-page{
+  gap:10px;
+  max-width:1460px;
+  padding-bottom:34px;
+}
+.daily-review-header{gap:12px;margin-bottom:2px;}
+.daily-review-actions{gap:6px;}
+.daily-review-actions .inp{width:138px;}
+.daily-review-status{min-height:30px;padding:5px 9px;font-size:11px;}
+.daily-review-diagnostics{border-radius:6px;padding:7px 9px;}
+.daily-review-diagnostics pre{max-height:160px;padding:7px;font-size:9px;}
+.daily-review-historybar{gap:8px;padding:6px 0;}
+.daily-review-date-chip{height:26px;padding:0 8px;border-radius:5px;font-size:10px;}
+.daily-review-native{gap:14px;min-height:420px;}
+.daily-review-summary{gap:16px;padding:12px 0 2px;}
+.daily-review-summary h1{font-size:24px;margin:2px 0;}
+.daily-review-summary p{font-size:12px;line-height:1.55;max-width:960px;}
+.daily-review-eyebrow{font-size:9px;}
+.daily-review-ai-state{min-width:170px;padding:7px 9px;border-radius:6px;}
+.daily-review-ai-state span{font-size:11px;}
+.daily-review-ai-state small{font-size:9px;}
+.daily-review-metrics{border-radius:6px;}
+.daily-review-metric{padding:10px 11px;}
+.daily-review-metric-label{font-size:10px;margin-bottom:3px;}
+.daily-review-metric-value{font-size:18px;}
+.daily-review-metric-detail{font-size:9px;margin-top:2px;}
+.daily-review-section-head{gap:10px;padding-bottom:7px;}
+.daily-review-section-head h3{font-size:14px;}
+.daily-review-section-head>span{font-size:10px;}
+.daily-review-sankey{height:420px;margin-top:4px;background:rgba(63,214,255,.025);}
+.daily-review-sector-tabs{grid-template-columns:repeat(6,minmax(0,1fr));}
+.daily-review-sector-tabs button{gap:2px;padding:7px 9px;}
+.daily-review-sector-tabs button span{font-size:10px;}
+.daily-review-sector-tabs button b{font-size:11px;}
+.daily-review-sector-head{gap:14px;padding:14px 0 10px;}
+.daily-review-sector-head h2{font-size:19px;margin:2px 0 4px;}
+.daily-review-sector-head p{line-height:1.55;font-size:12px;}
+.daily-review-sector-score{min-width:96px;}
+.daily-review-sector-score b{font-size:21px;}
+.daily-review-analysis-grid{border-radius:6px;margin-bottom:14px;}
+.daily-review-analysis-grid article{padding:10px 11px;min-height:90px;}
+.daily-review-analysis-grid article p{font-size:11px;line-height:1.55;margin-top:4px;}
+.daily-review-driver-evidence{margin-bottom:14px;}
+.daily-review-driver-evidence>div:last-child{gap:8px;margin-top:8px;}
+.daily-review-driver-evidence article{padding:10px;border-radius:6px;}
+.daily-review-driver-evidence article>b{margin-bottom:5px;font-size:9px;}
+.daily-review-driver-evidence strong{font-size:11px;}
+.daily-review-driver-evidence p{margin:5px 0;font-size:10px;line-height:1.5;}
+.daily-review-driver-evidence small,
+.daily-review-driver-evidence article>a{font-size:9px;}
+.daily-review-subsector-table{font-size:10px;}
+.daily-review-subsector-table .head,
+.daily-review-subsector-table .row{gap:9px;padding:7px 8px;}
+.daily-review-subsector-table strong{font-size:11px;}
+.daily-review-stock-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:8px;}
+.daily-review-stock{min-height:196px;padding:10px;border-radius:6px;}
+.daily-review-stock-head strong{font-size:13px;}
+.daily-review-stock-head b{font-size:12px;}
+.daily-review-stock-tags{gap:4px;margin:7px 0;}
+.daily-review-stock-tags span{font-size:9px;padding:2px 5px;}
+.daily-review-stock dl{padding:6px 0;}
+.daily-review-stock dd{font-size:9px;}
+.daily-review-stock-scores{gap:8px;padding-top:5px;}
+.daily-review-stock>p{font-size:10px;line-height:1.5;margin:7px 0;}
+.daily-review-stock-risk{font-size:9px;padding-top:6px;}
+.daily-review-news>div:last-child{column-gap:18px;}
+.daily-review-news a,
+.daily-review-news-item{grid-template-columns:24px 1fr auto;gap:6px;padding:7px 0;font-size:10px;}
+.daily-review-empty{padding:34px 14px;}
+
+/* v20260813b: editorial ticket treatment for market-review reports. */
+.daily-review-status,
+.daily-review-ai-state,
+.daily-review-metrics,
+.daily-review-analysis-grid,
+.daily-review-driver-evidence article,
+.daily-review-stock,
+.daily-review-diagnostics{
+  border:1.5px solid var(--border2);
+  border-radius:3px;
+  background:var(--bg1);
+  box-shadow:4px 4px 0 rgba(0,0,0,.12);
+}
+[data-theme="light"] .daily-review-status,
+[data-theme="light"] .daily-review-ai-state,
+[data-theme="light"] .daily-review-metrics,
+[data-theme="light"] .daily-review-analysis-grid,
+[data-theme="light"] .daily-review-driver-evidence article,
+[data-theme="light"] .daily-review-stock,
+[data-theme="light"] .daily-review-diagnostics{
+  box-shadow:4px 4px 0 rgba(23,25,29,.08);
+}
+.daily-review-status{
+  border-left:5px solid var(--ticket-green);
+}
+.daily-review-eyebrow,
+.daily-review-section-head h3,
+.daily-review-metric-label,
+.daily-review-sector-tabs button span,
+.daily-review-driver-evidence article>b{
+  font-family:var(--font-display);
+  letter-spacing:.08em;
+}
+.daily-review-summary{
+  border-bottom:1px dashed var(--ticket-line);
+}
+.daily-review-section-head{
+  border-bottom:1px dashed var(--ticket-line);
+}
+.daily-review-metric{
+  border-right:1px dashed var(--border);
+}
+.daily-review-metric-value,
+.daily-review-sector-score b,
+.daily-review-stock-head b{
+  font-weight:800;
+}
+.daily-review-sector-tabs{
+  border-bottom:1.5px solid var(--border2);
+}
+.daily-review-sector-tabs button.active{
+  background:var(--gold-dim);
+  border-bottom-color:var(--ticket-green);
+}
+.daily-review-analysis-grid{
+  gap:0;
+  background:var(--border2);
+}
+.daily-review-analysis-grid article{
+  background:var(--bg1);
+}
+.daily-review-driver-evidence article>b,
+.daily-review-stock-tags span{
+  border:1px solid var(--ticket-line);
+  border-radius:2px;
+  background:transparent;
+  color:var(--ticket-green-2);
+}
+.daily-review-stock{
+  position:relative;
+  overflow:hidden;
+}
+.daily-review-stock::before{
+  content:"";
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  height:4px;
+  background:var(--ticket-green);
+}
+.daily-review-stock dl,
+.daily-review-stock-risk,
+.daily-review-news a,
+.daily-review-news-item{
+  border-color:var(--border);
+  border-style:dashed;
+}
+.daily-review-sankey{
+  border:1.5px solid var(--border2);
+  border-radius:3px;
+  background:
+    linear-gradient(var(--border) 1px,transparent 1px),
+    linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:28px 28px;
+}
+
+/* v20260813l: Bloomberg-like review density, reduced ornament for data reading. */
+.daily-review-page{
+  gap:8px;
+  max-width:1520px;
+}
+.daily-review-header{
+  gap:10px;
+}
+.daily-review-status,
+.daily-review-ai-state,
+.daily-review-metrics,
+.daily-review-analysis-grid,
+.daily-review-driver-evidence article,
+.daily-review-stock,
+.daily-review-diagnostics{
+  border-width:1px;
+  border-radius:2px;
+  box-shadow:none;
+}
+[data-theme="light"] .daily-review-status,
+[data-theme="light"] .daily-review-ai-state,
+[data-theme="light"] .daily-review-metrics,
+[data-theme="light"] .daily-review-analysis-grid,
+[data-theme="light"] .daily-review-driver-evidence article,
+[data-theme="light"] .daily-review-stock,
+[data-theme="light"] .daily-review-diagnostics{
+  box-shadow:none;
+}
+.daily-review-summary{
+  align-items:flex-start;
+  padding:9px 0 0;
+}
+.daily-review-summary h1{
+  font-size:22px;
+  letter-spacing:-.02em;
+}
+.daily-review-summary p{
+  font-size:11px;
+  line-height:1.5;
+}
+.daily-review-ai-state{
+  min-width:154px;
+}
+.daily-review-metrics{
+  grid-template-columns:repeat(6,minmax(0,1fr));
+}
+.daily-review-metric{
+  padding:8px 9px;
+}
+.daily-review-metric-value{
+  font-size:16px;
+}
+.daily-review-native{
+  gap:11px;
+}
+.daily-review-section-head{
+  padding-bottom:6px;
+}
+.daily-review-sankey{
+  height:390px;
+  border-width:1px;
+  border-radius:2px;
+  background-size:24px 24px;
+}
+.daily-review-sector-tabs button{
+  padding:6px 8px;
+}
+.daily-review-sector-head{
+  padding:11px 0 8px;
+}
+.daily-review-sector-head h2{
+  font-size:18px;
+}
+.daily-review-sector-head p{
+  font-size:11px;
+  line-height:1.5;
+}
+.daily-review-analysis-grid{
+  margin-bottom:11px;
+}
+.daily-review-analysis-grid article{
+  min-height:78px;
+  padding:9px 10px;
+}
+.daily-review-driver-evidence{
+  margin-bottom:11px;
+}
+.daily-review-driver-evidence>div:last-child{
+  gap:6px;
+}
+.daily-review-driver-evidence article{
+  padding:9px 10px;
+}
+.daily-review-subsector-table .head,
+.daily-review-subsector-table .row{
+  padding:6px 7px;
+}
+.daily-review-subsector-table .row:nth-child(odd){
+  background:rgba(255,255,255,.012);
+}
+[data-theme="light"] .daily-review-subsector-table .row:nth-child(odd){
+  background:rgba(17,24,39,.018);
+}
+.daily-review-stock-grid{
+  gap:6px;
+}
+.daily-review-stock{
+  min-height:176px;
+  padding:9px 10px;
+}
+.daily-review-stock::before{
+  height:3px;
+}
+.daily-review-stock>p{
+  font-size:10px;
+  line-height:1.45;
+}
+.daily-review-news a,
+.daily-review-news-item{
+  padding:6px 0;
+}
+
+/* v20260813p: second density pass for daily review terminals. */
+.daily-review-page{
+  max-width:1600px;
+  gap:6px;
+}
+.daily-review-page .page-title{
+  font-size:20px;
+  margin-bottom:3px;
+}
+.daily-review-page .page-sub{
+  font-size:11px;
+  margin-bottom:0;
+}
+.daily-review-header{
+  align-items:center;
+  gap:8px;
+  margin-bottom:0;
+}
+.daily-review-actions{
+  gap:5px;
+}
+.daily-review-actions .inp,
+.daily-review-actions .btn{
+  min-height:28px;
+  border-radius:2px;
+  padding:5px 9px;
+  font-size:10.5px;
+}
+.daily-review-page > .panel{
+  margin-bottom:8px!important;
+  padding:10px!important;
+  border-radius:2px!important;
+  border-color:var(--border2)!important;
+  box-shadow:none!important;
+}
+.daily-review-page .panel-hd{
+  margin-bottom:7px;
+  padding-bottom:6px;
+}
+.daily-review-page .panel-title{
+  font-size:11.5px;
+  letter-spacing:.06em;
+}
+.daily-review-page > .panel .muted,
+.daily-review-page > .panel label{
+  font-size:10.5px!important;
+}
+.daily-review-page > .panel label{
+  border-radius:2px!important;
+  padding:7px 8px!important;
+}
+.daily-review-page > .panel .inp{
+  min-height:28px!important;
+  border-radius:2px!important;
+  font-size:10.5px!important;
+}
+.daily-review-status{
+  min-height:26px;
+  padding:5px 8px;
+  font-size:10.5px;
+  line-height:1.4;
+}
+.daily-review-historybar{
+  gap:6px;
+  padding:4px 0;
+}
+.daily-review-history-label{
+  font-size:10px;
+}
+.daily-review-date-chip{
+  height:24px;
+  padding:0 7px;
+  border-radius:2px;
+  font-size:9.5px;
+}
+.daily-review-native{
+  gap:8px;
+}
+.daily-review-summary{
+  gap:10px;
+  padding:7px 0 0;
+}
+.daily-review-eyebrow{
+  font-size:8.5px;
+}
+.daily-review-summary h1{
+  font-size:20px;
+  margin:1px 0 3px;
+}
+.daily-review-summary p{
+  max-width:1040px;
+  font-size:10.5px;
+  line-height:1.45;
+}
+.daily-review-ai-state{
+  min-width:140px;
+  padding:6px 7px;
+  border-radius:2px;
+}
+.daily-review-ai-state span{
+  font-size:10.5px;
+}
+.daily-review-ai-state small{
+  font-size:8.5px;
+}
+.daily-review-metrics{
+  border-radius:2px;
+}
+.daily-review-metric{
+  padding:7px 8px;
+}
+.daily-review-metric-label{
+  font-size:9px;
+  margin-bottom:2px;
+}
+.daily-review-metric-value{
+  font-size:15px;
+  line-height:1.15;
+}
+.daily-review-metric-detail{
+  font-size:8.5px;
+  margin-top:1px;
+}
+.daily-review-section-head{
+  padding-bottom:5px;
+}
+.daily-review-section-head h3{
+  font-size:12.5px;
+}
+.daily-review-section-head>span{
+  font-size:9px;
+}
+.daily-review-sankey{
+  height:360px;
+  margin-top:3px;
+  background-size:20px 20px;
+}
+.daily-review-sector-tabs{
+  gap:0;
+}
+.daily-review-sector-tabs button{
+  padding:5px 7px;
+  border-radius:0;
+}
+.daily-review-sector-tabs button span{
+  font-size:9px;
+}
+.daily-review-sector-tabs button b{
+  font-size:10px;
+}
+.daily-review-sector-head{
+  gap:10px;
+  padding:8px 0 6px;
+}
+.daily-review-sector-head h2{
+  font-size:16px;
+  margin:1px 0 3px;
+}
+.daily-review-sector-head p{
+  font-size:10.5px;
+  line-height:1.45;
+}
+.daily-review-sector-score{
+  min-width:78px;
+}
+.daily-review-sector-score b{
+  font-size:18px;
+}
+.daily-review-analysis-grid{
+  margin-bottom:8px;
+}
+.daily-review-analysis-grid article{
+  min-height:66px;
+  padding:7px 8px;
+}
+.daily-review-analysis-grid article h4{
+  font-size:10px;
+}
+.daily-review-analysis-grid article p{
+  font-size:10px;
+  line-height:1.45;
+}
+.daily-review-driver-evidence{
+  margin-bottom:8px;
+}
+.daily-review-driver-evidence>div:last-child{
+  gap:5px;
+  margin-top:6px;
+}
+.daily-review-driver-evidence article{
+  padding:7px 8px;
+  border-radius:2px;
+}
+.daily-review-driver-evidence strong{
+  font-size:10.5px;
+}
+.daily-review-driver-evidence p{
+  font-size:9.5px;
+  line-height:1.42;
+}
+.daily-review-subsector-table{
+  font-size:9.5px;
+}
+.daily-review-subsector-table .head,
+.daily-review-subsector-table .row{
+  gap:7px;
+  padding:5px 6px;
+}
+.daily-review-subsector-table strong{
+  font-size:10.5px;
+}
+.daily-review-stock-grid{
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:5px;
+}
+.daily-review-stock{
+  min-height:154px;
+  padding:8px;
+  border-radius:2px;
+}
+.daily-review-stock-head strong{
+  font-size:11.5px;
+}
+.daily-review-stock-head span{
+  font-size:8.5px;
+}
+.daily-review-stock-head b{
+  font-size:11px;
+}
+.daily-review-stock-tags{
+  gap:3px;
+  margin:5px 0;
+}
+.daily-review-stock-tags span{
+  font-size:8px;
+  padding:1px 4px;
+}
+.daily-review-stock dl{
+  padding:5px 0;
+}
+.daily-review-stock dt{
+  font-size:8px;
+}
+.daily-review-stock dd{
+  font-size:8.5px;
+}
+.daily-review-stock-scores{
+  gap:6px;
+  font-size:8.5px;
+}
+.daily-review-stock>p{
+  font-size:9.5px;
+  line-height:1.42;
+  margin:5px 0;
+}
+.daily-review-stock-risk{
+  font-size:8.5px;
+  line-height:1.42;
+}
+.daily-review-news>div:last-child{
+  column-gap:14px;
+}
+.daily-review-news a,
+.daily-review-news-item{
+  grid-template-columns:22px 1fr auto;
+  gap:5px;
+  padding:5px 0;
+  font-size:9.5px;
+}
+@media(max-width:1280px){
+  .daily-review-stock-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+  }
+}

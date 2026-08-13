@@ -63,3 +63,181 @@
 .data-collection-recent-files{display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap;justify-content:flex-end;min-width:120px}
 .data-collection-recent-files a{border:1px solid rgba(71,139,209,.36);background:rgba(71,139,209,.12);color:var(--blue);border-radius:999px;padding:3px 9px;font-size:12px;text-decoration:none}
 @media(max-width:1100px){.data-collection-layout{grid-template-columns:1fr}.data-collection-creators,.data-collection-recent{grid-template-columns:1fr}.data-collection-metrics,.data-collection-creator-stats{grid-template-columns:repeat(2,1fr)}.data-collection-creator-form{grid-template-columns:1fr}.data-collection-creator-form label:nth-child(3){grid-column:auto}}
+
+/* v20260813c: ticket-style collection library */
+.data-collection-page{
+  gap:12px;
+}
+
+.data-collection-header{
+  padding-bottom:10px;
+  border-bottom:1px dashed var(--border2);
+}
+
+.data-collection-layout{
+  grid-template-columns:360px minmax(0,1fr);
+  gap:12px;
+}
+
+.data-collection-card,
+.data-collection-empty,
+.data-collection-creator-card,
+.data-collection-recent-item{
+  position:relative;
+  border:1.5px solid var(--border);
+  border-radius:4px;
+  background:var(--bg1);
+  box-shadow:4px 4px 0 rgba(0,0,0,.14);
+}
+
+[data-theme="light"] .data-collection-card,
+[data-theme="light"] .data-collection-empty,
+[data-theme="light"] .data-collection-creator-card,
+[data-theme="light"] .data-collection-recent-item{
+  box-shadow:4px 4px 0 rgba(23,25,29,.08);
+}
+
+.data-collection-card{
+  padding:14px;
+}
+
+.data-collection-card::before,
+.data-collection-creator-card::before,
+.data-collection-recent-item::before{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  height:4px;
+  background:var(--ticket-green);
+}
+
+.data-collection-card-title{
+  margin-bottom:12px;
+  padding-bottom:8px;
+  border-bottom:1px dashed var(--border2);
+  color:var(--ticket-green);
+  font-family:var(--font-display);
+  font-size:13px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+
+.data-collection-form{
+  gap:10px;
+}
+
+.data-collection-form label span,
+.data-collection-creator-form label,
+.data-collection-file span,
+.data-collection-metric span,
+.data-collection-info-grid span,
+.data-collection-creator-stats span{
+  font-family:var(--font-display);
+  letter-spacing:.05em;
+  text-transform:uppercase;
+}
+
+.data-collection-options input{
+  accent-color:var(--ticket-green);
+}
+
+.data-collection-empty{
+  border-style:dashed;
+  padding:22px;
+}
+
+.data-collection-profile{
+  margin-bottom:10px;
+  padding-bottom:10px;
+  border-bottom:1px dashed var(--border2);
+}
+
+.data-collection-profile img,
+.data-collection-profile>div:first-child,
+.data-collection-creator-main img,
+.data-collection-creator-main>div:first-child{
+  border-radius:4px;
+  border:1.5px solid var(--border);
+}
+
+.data-collection-profile-link,
+.data-collection-tags span,
+.data-collection-recent-files span,
+.data-collection-download,
+.data-collection-download.secondary,
+.data-collection-creator-actions a,
+.data-collection-video-stats span,
+.data-collection-recent-files a{
+  border-radius:3px;
+  border-color:var(--border2);
+  background:var(--ticket-mint);
+  color:var(--ticket-green);
+  font-family:var(--font-display);
+  font-size:11px;
+  font-weight:700;
+}
+
+.data-collection-result h2{
+  font-size:18px;
+  line-height:1.35;
+  margin-bottom:10px;
+}
+
+.data-collection-metrics,
+.data-collection-info-grid,
+.data-collection-creators,
+.data-collection-recent{
+  gap:8px;
+}
+
+.data-collection-metric,
+.data-collection-info-grid>div,
+.data-collection-creator-stats span{
+  border:1px solid var(--border2);
+  border-radius:3px;
+  background:var(--bg2);
+  padding:8px;
+}
+
+.data-collection-metric b,
+.data-collection-info-grid b,
+.data-collection-creator-stats b{
+  font-size:13px;
+  color:var(--text0);
+}
+
+.data-collection-risk,
+.data-collection-comment-status{
+  border-radius:3px;
+  padding:8px 10px;
+}
+
+.data-collection-file code,
+.data-collection-creator-form input,
+.data-collection-creator-form textarea{
+  border-radius:3px;
+  background:var(--bg0);
+  border-color:var(--border2);
+}
+
+.data-collection-creator-card{
+  padding:12px;
+  gap:10px;
+}
+
+.data-collection-creator-main h4,
+.data-collection-recent-item h4{
+  font-family:var(--font-display);
+  font-size:13px;
+  letter-spacing:.02em;
+}
+
+.data-collection-creator-latest{
+  border-top:1px dashed var(--border2);
+}
+
+.data-collection-recent-item{
+  padding:12px;
+}

@@ -623,3 +623,462 @@
   .hotspot-grid-main{grid-template-columns:1fr;}
   .hotspot-item-title{white-space:normal;}
 }
+
+/* v20260813a: market-data placement pass, more terminal-like and less decorative. */
+.hotspot-page-head{
+  padding:10px 0 12px;
+  margin-bottom:10px;
+  background:transparent;
+}
+.hotspot-page-title{font-size:22px;letter-spacing:0;}
+.hotspot-toolbar{gap:6px;}
+.hotspot-toolbar .inp{height:32px;}
+.hotspot-platform-filter{height:28px;padding:0 9px;font-size:11px;border-radius:999px;}
+.hotspot-grid-main{gap:8px;}
+.hotspot-platform-card{
+  border-color:rgba(120,170,255,.16);
+  border-radius:8px;
+  box-shadow:none;
+}
+.hotspot-card-header{
+  padding:7px 10px;
+  background:rgba(14,20,32,.72);
+}
+[data-theme="light"] .hotspot-card-header{background:rgba(248,250,252,.88);}
+.hotspot-card-title{font-size:12px;}
+.hotspot-card-count{font-size:10px;}
+.hotspot-card-body{
+  padding:7px;
+  max-height:430px;
+}
+.hotspot-item-main{
+  padding:6px 8px;
+  margin-bottom:4px;
+  border-radius:6px;
+}
+.hotspot-item-row{gap:7px;}
+.hotspot-item-rank{
+  min-width:28px;
+  height:22px;
+  border-radius:5px;
+  font-size:11px;
+}
+.hotspot-item-title{font-size:11px;line-height:1.35;}
+.hotspot-item-meta{margin-top:2px;font-size:9px;gap:5px;}
+.hotspot-action-btn{min-width:36px;padding:2px 7px;font-size:10px;}
+.hotspot-summary-panel,
+.hotspot-stock-panel{
+  border-color:rgba(120,170,255,.18);
+  border-radius:8px;
+  box-shadow:none;
+  background:rgba(10,15,24,.90);
+}
+[data-theme="light"] .hotspot-summary-panel,
+[data-theme="light"] .hotspot-stock-panel{background:rgba(255,255,255,.94);}
+.hotspot-summary-hd,
+.hotspot-stock-hd{
+  padding:10px 12px;
+  background:rgba(14,20,32,.74);
+  border-bottom-color:var(--border);
+}
+[data-theme="light"] .hotspot-summary-hd,
+[data-theme="light"] .hotspot-stock-hd{background:rgba(248,250,252,.90);}
+.hotspot-summary-content,
+.hotspot-stock-content{padding:11px 12px;}
+.hotspot-analysis-content{
+  padding:12px;
+  background:rgba(10,15,24,.92);
+}
+[data-theme="light"] .hotspot-analysis-content{background:rgba(255,255,255,.94);}
+.hotspot-analysis-content .report-shell-body{
+  padding:14px;
+  border-radius:8px;
+}
+
+/* v20260813b: ticket-style news terminal, matching the reference card language. */
+.hotspot-page-head{
+  border-bottom:1px dashed var(--ticket-line);
+}
+.hotspot-platform-filter,
+.hotspot-platform-card,
+.hotspot-summary-panel,
+.hotspot-stock-panel,
+.hotspot-item-main,
+.hotspot-focus-card,
+.hotspot-summary-box,
+.hotspot-stock-ai,
+.hotspot-stock-card,
+.hotspot-sector-card,
+.hotspot-sector-hero{
+  border:1.5px solid var(--border2);
+  border-radius:3px;
+  box-shadow:3px 3px 0 rgba(0,0,0,.10);
+}
+[data-theme="light"] .hotspot-platform-filter,
+[data-theme="light"] .hotspot-platform-card,
+[data-theme="light"] .hotspot-summary-panel,
+[data-theme="light"] .hotspot-stock-panel,
+[data-theme="light"] .hotspot-item-main,
+[data-theme="light"] .hotspot-focus-card,
+[data-theme="light"] .hotspot-summary-box,
+[data-theme="light"] .hotspot-stock-ai,
+[data-theme="light"] .hotspot-stock-card,
+[data-theme="light"] .hotspot-sector-card,
+[data-theme="light"] .hotspot-sector-hero{
+  box-shadow:3px 3px 0 rgba(23,25,29,.08);
+}
+.hotspot-card-header,
+.hotspot-summary-hd,
+.hotspot-stock-hd{
+  border-bottom:1px dashed var(--ticket-line);
+  background:var(--bg2);
+}
+.hotspot-card-title,
+.hotspot-summary-title,
+.hotspot-stock-title,
+.hotspot-sector-kicker,
+.hotspot-stock-ai-kicker{
+  color:var(--ticket-green-2);
+  font-family:var(--font-display);
+  letter-spacing:.04em;
+}
+[data-theme="light"] .hotspot-card-title,
+[data-theme="light"] .hotspot-summary-title,
+[data-theme="light"] .hotspot-stock-title,
+[data-theme="light"] .hotspot-sector-kicker,
+[data-theme="light"] .hotspot-stock-ai-kicker{
+  color:var(--ticket-green);
+}
+.hotspot-item-rank{
+  border:1px solid var(--ticket-line);
+  background:var(--gold-dim);
+  color:var(--ticket-green-2);
+}
+.hotspot-item-rank.r1,
+.hotspot-item-rank.r2,
+.hotspot-item-rank.r3{
+  color:var(--ticket-green-2);
+}
+.hotspot-action-btn,
+.hotspot-impact-tags span,
+.hotspot-stock-themes span,
+.hotspot-stock-ai-tags em,
+.hotspot-stock-reasons span,
+.hotspot-sector-tags span{
+  border:1px solid var(--ticket-line);
+  border-radius:2px;
+  background:transparent;
+  color:var(--ticket-green-2);
+}
+.hotspot-action-btn:hover{
+  background:var(--ticket-green);
+  border-color:var(--ticket-green);
+  color:#fff;
+}
+.hotspot-focus-card::before{
+  width:5px;
+  background:var(--ticket-green);
+}
+.hotspot-focus-card.is-primary,
+.hotspot-stock-card.is-top,
+.hotspot-sector-card.is-primary,
+.hotspot-sector-hero,
+.hotspot-summary-hero{
+  background:var(--gold-dim);
+}
+.hotspot-summary-stat,
+.hotspot-sector-score{
+  border-color:var(--ticket-line);
+  border-radius:3px;
+  background:var(--bg1);
+}
+.hotspot-summary-stat span,
+.hotspot-sector-score span,
+.hotspot-stock-confidence,
+.hotspot-sector-badge{
+  color:var(--ticket-green-2);
+}
+
+/* v20260813q: hotspot monitoring console density and restraint. */
+#sec-hotspot{
+  max-width:1600px;
+}
+.hotspot-page-head{
+  align-items:center;
+  gap:10px;
+  padding:7px 0 8px;
+  margin-bottom:7px;
+  border-bottom:1px solid var(--border2);
+}
+.hotspot-page-head .page-title{
+  font-size:20px!important;
+  margin-bottom:2px!important;
+}
+.hotspot-page-head .page-title + div{
+  font-size:10.5px!important;
+}
+.hotspot-toolbar{
+  gap:5px;
+}
+.hotspot-toolbar .inp{
+  width:210px!important;
+  height:28px!important;
+  min-height:28px!important;
+  border-radius:2px!important;
+  font-size:10.5px!important;
+  padding:5px 8px!important;
+}
+.hotspot-toolbar .btn,
+.hotspot-toolbar .btn-outline,
+.hotspot-toolbar .btn-gold{
+  min-height:28px!important;
+  border-radius:2px!important;
+  padding:5px 9px!important;
+  font-size:10.5px!important;
+  box-shadow:none!important;
+}
+.hotspot-platform-filter{
+  min-height:28px;
+  height:auto;
+  gap:4px;
+  padding:5px;
+  margin-bottom:7px;
+  border-radius:2px;
+  border-width:1px;
+  box-shadow:none;
+}
+.hotspot-platform-filter .tag{
+  min-height:22px;
+  border-radius:2px;
+  padding:3px 7px;
+  font-size:10px;
+}
+.hotspot-grid-main{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+}
+.hotspot-platform-card,
+.hotspot-summary-panel,
+.hotspot-stock-panel,
+.hotspot-analysis-panel .panel{
+  border-width:1px;
+  border-radius:2px;
+  box-shadow:none;
+  background:var(--bg1);
+}
+[data-theme="light"] .hotspot-platform-card,
+[data-theme="light"] .hotspot-summary-panel,
+[data-theme="light"] .hotspot-stock-panel,
+[data-theme="light"] .hotspot-analysis-panel .panel{
+  box-shadow:none;
+  background:rgba(255,255,255,.96);
+}
+.hotspot-card-header,
+.hotspot-summary-hd,
+.hotspot-stock-hd{
+  min-height:34px;
+  padding:6px 8px;
+  border-bottom:1px solid var(--border2);
+  background:var(--bg1);
+}
+.hotspot-card-header::before{
+  width:2px;
+}
+.hotspot-card-title,
+.hotspot-summary-title,
+.hotspot-stock-title{
+  font-size:11.5px;
+  letter-spacing:.06em;
+}
+.hotspot-card-sub,
+.hotspot-summary-meta,
+.hotspot-stock-meta{
+  font-size:9.5px;
+  margin-top:1px;
+}
+.hotspot-card-count strong{
+  font-size:15px;
+}
+.hotspot-card-count span{
+  font-size:9px;
+}
+.hotspot-card-body{
+  padding:5px;
+  max-height:none;
+}
+.hotspot-item-main{
+  margin-bottom:3px;
+  padding:5px 6px;
+  border-width:1px;
+  border-radius:2px;
+  box-shadow:none;
+}
+.hotspot-item-main:hover{
+  transform:none;
+  background:var(--bg2);
+}
+.hotspot-item-row{
+  gap:6px;
+}
+.hotspot-item-rank{
+  min-width:26px;
+  height:20px;
+  border-radius:2px;
+  font-size:10px;
+}
+.hotspot-item-title{
+  font-size:10.5px;
+  line-height:1.32;
+}
+.hotspot-item-meta{
+  gap:5px;
+  margin-top:2px;
+  font-size:8.5px;
+}
+.hotspot-item-meta span:not(.hotspot-item-hot)::before{
+  width:3px;
+  height:3px;
+  margin-right:4px;
+}
+.hotspot-item-hot{
+  max-width:96px;
+}
+.hotspot-action-btn{
+  min-width:32px;
+  min-height:20px;
+  padding:2px 6px;
+  border-radius:2px;
+  font-size:9px;
+  box-shadow:none;
+}
+.hotspot-summary-panel,
+.hotspot-stock-panel{
+  margin-bottom:7px;
+}
+.hotspot-summary-content,
+.hotspot-stock-content,
+.hotspot-analysis-content{
+  padding:8px;
+  background:var(--bg1);
+}
+[data-theme="light"] .hotspot-summary-content,
+[data-theme="light"] .hotspot-stock-content,
+[data-theme="light"] .hotspot-analysis-content{
+  background:rgba(255,255,255,.96);
+}
+.hotspot-summary-hero,
+.hotspot-sector-hero,
+.hotspot-focus-card,
+.hotspot-stock-ai,
+.hotspot-summary-box,
+.hotspot-noise-strip,
+.hotspot-stock-card,
+.hotspot-sector-card,
+.hotspot-sector-stock-row,
+.hotspot-stock-quote,
+.hotspot-stock-detail summary{
+  border-width:1px;
+  border-radius:2px;
+  box-shadow:none;
+}
+.hotspot-summary-hero,
+.hotspot-sector-hero{
+  padding:9px;
+}
+.hotspot-focus-card,
+.hotspot-stock-ai,
+.hotspot-summary-box,
+.hotspot-stock-card,
+.hotspot-sector-card{
+  padding:8px;
+}
+.hotspot-focus-title,
+.hotspot-sector-name,
+.hotspot-stock-ai-title,
+.hotspot-stock-name{
+  font-size:12px;
+  line-height:1.32;
+}
+.hotspot-focus-desc,
+.hotspot-sector-reason,
+.hotspot-stock-ai-reason,
+.hotspot-stock-reasons,
+.hotspot-summary-box{
+  font-size:10.5px;
+  line-height:1.45;
+}
+.hotspot-impact-tags,
+.hotspot-sector-tags,
+.hotspot-stock-themes,
+.hotspot-stock-ai-tags{
+  gap:3px;
+}
+.hotspot-impact-tags span,
+.hotspot-sector-tags span,
+.hotspot-stock-themes span,
+.hotspot-stock-ai-tags em,
+.hotspot-stock-reasons span{
+  border-radius:2px;
+  padding:1px 5px;
+  font-size:8.5px;
+}
+.hotspot-stock-grid,
+.hotspot-stock-ai-grid,
+.hotspot-sector-grid{
+  gap:6px;
+}
+.hotspot-sector-score{
+  width:76px;
+  height:76px;
+}
+.hotspot-sector-score span,
+.hotspot-sector-badge,
+.hotspot-stock-confidence{
+  font-size:18px;
+  font-variant-numeric:tabular-nums;
+}
+.hotspot-analysis-panel{
+  margin-top:8px;
+}
+.hotspot-analysis-panel .panel{
+  padding:10px;
+  background:var(--bg1);
+}
+.hotspot-analysis-panel .panel-hd{
+  margin-bottom:7px;
+  padding-bottom:6px;
+}
+.hotspot-analysis-panel .panel-title{
+  font-size:11.5px;
+  color:var(--ticket-green-2);
+}
+.hotspot-analysis-content .report-shell{
+  border-width:1px;
+  border-radius:2px;
+  box-shadow:none;
+}
+.hotspot-analysis-content .report-shell-header{
+  padding:10px 12px;
+}
+.hotspot-analysis-content .report-shell-header h1{
+  font-size:16px;
+}
+.hotspot-analysis-content .report-shell-body{
+  padding:10px;
+  border-radius:2px;
+  font-size:11px;
+  line-height:1.55;
+}
+.hotspot-analysis-content .report-shell-body h1,
+.hotspot-analysis-content .report-shell-body h2{
+  font-size:13px;
+}
+.hotspot-analysis-content .report-shell-body h3,
+.hotspot-analysis-content .report-shell-body h4{
+  font-size:11.5px;
+}
+@media(max-width:1280px){
+  .hotspot-grid-main{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
