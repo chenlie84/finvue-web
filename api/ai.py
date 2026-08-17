@@ -343,7 +343,7 @@ async def generate_stream(request: Request, session: dict = Depends(security.req
                 yield json.dumps({"type": "chunk", "content": markdown[index : index + 1200]}, ensure_ascii=False) + "\n"
             yield json.dumps({"type": "done", **result}, ensure_ascii=False) + "\n"
         except Exception as exc:
-            yield json.dumps({"type": "error", "message": str(exc)}, ensure_ascii=False) + "\n"
+            yield json.dumps({"type": "error", "error": str(exc), "message": str(exc)}, ensure_ascii=False) + "\n"
 
     return StreamingResponse(events(), media_type="application/x-ndjson; charset=utf-8")
 

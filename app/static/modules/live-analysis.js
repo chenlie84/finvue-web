@@ -20,35 +20,13 @@ function sanitizeProgressInsightMarkdown(markdown) {
   return normalized;
 }
 
-function detectIncompleteLiveReport(markdown) {
-  const raw = String(markdown || "");
-  if (typeof getSelectedReportType === "function" && getSelectedReportType() !== "anchorEvaluation") {
-    return "";
-  }
-  const prompt = String(els.taskPrompt?.value || "");
-  if (prompt && !/模块\s*7|7-1/.test(prompt)) return "";
-  const plain = raw
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!plain) return "报告没有返回有效正文。";
-  if (!/模块\s*7|7-1/.test(plain)) {
-    return "报告可能未完整生成：未找到模块7内容。请把 AI 路由的“最大输出 Token”提高到 8192 以上后重新生成。";
-  }
-  const missing = ["7-2", "7-3", "7-4", "7-5", "7-6", "7-7"].filter((marker) => !plain.includes(marker));
-  if (!missing.length) return "";
-  return `报告可能未完整生成：模块7缺少 ${missing.join("、")}。请把 AI 路由的“最大输出 Token”提高到 8192 以上后重新生成。`;
-}
-
 function renderLiveReport(markdown) {
   const now = new Date().toLocaleString("zh-CN");
-  const warning = detectIncompleteLiveReport(markdown);
   els.liveResult.innerHTML = buildReportShellHtml(markdown, {
     title: getCurrentReportTitle(),
     timestamp: now,
     model: state.lastAiMeta?.providerLabel ? `${state.lastAiMeta.providerLabel} / ${state.lastAiMeta.model}` : (state.lastAiMeta?.model || "后台路由")
-  }) + (warning ? `<div class="live-report-completeness-warning">${escapeHtml(warning)}</div>` : "");
+  });
   updateEvaluationTags(markdown);
 }
 
@@ -296,7 +274,7 @@ async function runLiveOnce(payload) {
     const attemptSummary = attempts.length
       ? `已尝试：${attempts.map((item) => `${item.providerLabel}/${item.model}：${item.error}`).join("；")}`
       : "";
-    throw new Error([result.error || "生成失败", attemptSummary].filter(Boolean).join("｜"));
+    throw new Error([result.error || result.detail || result.message || "生成失败", attemptSummary].filter(Boolean).join("｜"));
   }
   const markdown = result.markdown || "";
   state.lastAiMeta = result.aiMeta || null;
@@ -304,6 +282,25 @@ async function runLiveOnce(payload) {
   renderLiveReport(markdown || "未获得分析结果");
   showLiveResultReady();
   return markdown;
+}
+
+async function refreshLiveAiRoutes() {
+  const localProviders = typeof getAiProviders === "function"
+    ? getAiProviders().map(normalizeAiProviderDraft).filter((item) => item.enabled)
+    : (Array.isArray(state.globalSettings?.aiProviders) ? state.globalSettings.aiProviders.filter((item) => item?.enabled !== false) : []);
+  if (localProviders.length) return localProviders;
+  const response = await apiFetch("/api/settings");
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || payload.detail || "读取 AI 路由配置失败");
+  state.globalSettings = payload.settings || state.globalSettings || {};
+  if (typeof renderAiRouteSummary === "function") renderAiRouteSummary();
+  const providers = typeof getAiProviders === "function"
+    ? getAiProviders().map(normalizeAiProviderDraft).filter((item) => item.enabled)
+    : (Array.isArray(state.globalSettings.aiProviders) ? state.globalSettings.aiProviders.filter((item) => item?.enabled !== false) : []);
+  if (!providers.length) {
+    throw new Error("当前账号未读取到启用的 AI 路由。请确认已在管理员账号保存配置，并退出后重新登录。");
+  }
+  return providers;
 }
 
 function shouldFallbackToNonStream(error) {
@@ -340,7 +337,6 @@ function buildLivePrompt() {
 
   return [
     "请严格根据以下唯一提示生成结果，只输出一份最终完整报告，不要重复输出。",
-    "【报告完整性要求】必须完成提示词列出的全部模块和子项；如果输出空间紧张，请压缩每段文字，但不能停在标题、时间区间或半行内容处。主播评价体系报告至少要完整输出模块1至模块7，其中模块7必须包含7-1到7-7。",
     mainPrompt ? `【分析提示词】\n${mainPrompt}` : "",
     htmlFormatGuard,
     hotTopics ? `【外部热点】\n${hotTopics}` : "",
@@ -358,6 +354,7 @@ function buildLiveSystemPrompt() {
 }
 
 async function executeSingleLiveRun() {
+  await refreshLiveAiRoutes();
   // 获取选择的模型
   const modelSelect = document.getElementById("live-model-select");
   const selectedModelId = modelSelect?.value || null;
@@ -520,7 +517,7 @@ async function copyLiveResult() {
 }
 
   window.sanitizeProgressInsightMarkdown = sanitizeProgressInsightMarkdown;
-  window.detectIncompleteLiveReport = detectIncompleteLiveReport;
+  window.refreshLiveAiRoutes = refreshLiveAiRoutes;
   window.renderLiveReport = renderLiveReport;
   window.startRunProgress = startRunProgress;
   window.finishRunProgress = finishRunProgress;

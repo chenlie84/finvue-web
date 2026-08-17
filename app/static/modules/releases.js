@@ -1,8 +1,21 @@
 // FinVue release metadata.
 // Keep version history here instead of app/index.html so UI shell changes and release-note updates do not fight each other.
 (function () {
-  const APP_VERSION = "0.1.83";
+  const APP_VERSION = "0.1.84";
   const APP_RELEASES = [
+  {
+    version: "0.1.84",
+    date: "2026-08-17",
+    title: "直播分析路由错误收口",
+    permissions: ["live", "admin-api", "notify"],
+    summary: "修复直播分析读取不到已配置路由时只显示笼统失败的问题，保留用户自定义提示词原样执行。",
+    items: [
+      "直播分析执行前会重新读取一次当前账号的 AI 路由配置，避免页面状态过期导致误报无可用路由。",
+      "前端同时读取 error、detail 和 message，后端路由错误会显示真实排查信息。",
+      "移除对用户原始提示词章节结构的硬编码要求，不再额外限制提示词内容。",
+      "刷新 admin-config.js 静态资源版本，确保 API 管理页加载最新配置表单。"
+    ]
+  },
   {
     version: "0.1.83",
     date: "2026-08-17",

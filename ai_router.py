@@ -337,7 +337,10 @@ def generate(payload: dict[str, Any], username: str | None = None) -> dict[str, 
     hot_topics = _text(payload.get("externalHotTopics") or settings.get("externalHotTopics"))
     user_input = "\n\n".join(part for part in [user_prompt, hot_topics and f"外部热点：\n{hot_topics}", live_data and f"直播数据：\n{live_data}", transcript and f"逐字稿：\n{transcript}"] if part)
     attempts: list[dict[str, str]] = []
-    for provider in _routes_from_payload(payload, settings):
+    routes = _routes_from_payload(payload, settings)
+    if not routes:
+        raise RuntimeError("当前账号未读取到启用的 AI 路由，请在管理员账号保存配置后重新登录")
+    for provider in routes:
         label = _provider_label(provider)
         try:
             markdown = _call_provider(provider, system_prompt, user_input)
