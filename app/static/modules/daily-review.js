@@ -193,12 +193,12 @@
     const raw = state.data.sankey || { nodes: [], links: [] };
     const colors = { sector: "#E5B84A", subsector: "#4A90D9", stock: "#2DBD85" };
     const nodes = (raw.nodes || []).map((node) => ({ ...node, itemStyle: { color: colors[node.kind] || "#9B7FE8" } }));
-    chartEl.style.height = `${Math.min(980, Math.max(500, nodes.length * 11))}px`;
+    chartEl.style.height = `${Math.min(560, Math.max(320, nodes.length * 7))}px`;
     state.chart.resize();
     state.chart.setOption({
       backgroundColor: "transparent",
       tooltip: { trigger: "item", backgroundColor: "#11131A", borderColor: "#2E3347", textStyle: { color: "#EAE6DD" }, formatter: (item) => item.dataType === "node" ? `${esc(item.data.displayName || item.name)}${item.data.code ? `<br/>${esc(item.data.code)} · ${esc(item.data.role)}` : ""}<br/>涨跌：${pct(item.data.pctChange)}` : `${esc(item.data.source)} → ${esc(item.data.target)}` },
-      series: [{ type: "sankey", left: 16, right: 132, top: 16, bottom: 16, nodeWidth: 10, nodeGap: 10, draggable: false, nodeAlign: "justify", emphasis: { focus: "adjacency" }, data: nodes, links: raw.links || [], lineStyle: { color: "gradient", opacity: 0.32, curveness: 0.52 }, label: { color: "#C8C5C0", fontSize: 11, distance: 7, formatter: ({ data }) => data.displayName || String(data.name || "").split("｜").slice(1).join("｜") || data.name }, levels: [{ depth: 0, itemStyle: { borderWidth: 0 } }, { depth: 1, itemStyle: { borderWidth: 0 } }, { depth: 2, itemStyle: { borderWidth: 0 }, label: { position: "right", width: 112, overflow: "truncate" } }] }],
+      series: [{ type: "sankey", left: 10, right: 116, top: 10, bottom: 10, nodeWidth: 8, nodeGap: 8, draggable: false, nodeAlign: "justify", emphasis: { focus: "adjacency" }, data: nodes, links: raw.links || [], lineStyle: { color: "gradient", opacity: 0.22, curveness: 0.48 }, label: { color: "#8B918C", fontSize: 10, distance: 5, formatter: ({ data }) => data.displayName || String(data.name || "").split("｜").slice(1).join("｜") || data.name }, levels: [{ depth: 0, itemStyle: { borderWidth: 0 } }, { depth: 1, itemStyle: { borderWidth: 0 } }, { depth: 2, itemStyle: { borderWidth: 0 }, label: { position: "right", width: 104, overflow: "truncate" } }] }],
     });
     state.chart.on("click", (params) => {
       if (params.dataType !== "node" || !String(params.name).startsWith("板块｜")) return;

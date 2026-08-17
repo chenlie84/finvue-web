@@ -59,6 +59,7 @@ def _normalize_ai_provider(raw: dict[str, Any], index: int = 0, existing: dict[s
         api_key = str(existing.get("apiKey") or "").strip()
     priority_raw = _pick(raw, "priority", "AI_PRIORITY")
     timeout_raw = _pick(raw, "timeoutSeconds", "AI_TIMEOUT_SECONDS")
+    max_output_tokens_raw = _pick(raw, "maxOutputTokens", "max_output_tokens", "maxTokens", "AI_MAX_OUTPUT_TOKENS")
     item = {
         "id": provider_id,
         "label": str(_pick(raw, "label", "name", "AI_PROVIDER_LABEL") or existing.get("label") or f"路由 {index + 1}").strip(),
@@ -71,6 +72,13 @@ def _normalize_ai_provider(raw: dict[str, Any], index: int = 0, existing: dict[s
         "apiKeyPlacement": str(_pick(raw, "apiKeyPlacement", "keyPlacement", "AI_API_KEY_PLACEMENT") or existing.get("apiKeyPlacement") or "header").strip(),
         "useProxy": _truthy(_pick(raw, "useProxy", "AI_USE_PROXY"), bool(existing.get("useProxy", True))),
     }
+    if max_output_tokens_raw not in (None, ""):
+        try:
+            item["maxOutputTokens"] = max(1024, min(int(float(max_output_tokens_raw)), 32768))
+        except (TypeError, ValueError):
+            item["maxOutputTokens"] = int(existing.get("maxOutputTokens") or 8192)
+    else:
+        item["maxOutputTokens"] = int(existing.get("maxOutputTokens") or 8192)
     if timeout_raw not in (None, ""):
         item["timeoutSeconds"] = int(float(timeout_raw))
     elif existing.get("timeoutSeconds") not in (None, ""):
@@ -195,6 +203,7 @@ def _config_bundle_template() -> dict[str, Any]:
                     "apiFormat": "finvue",
                     "apiKeyPlacement": "header",
                     "useProxy": True,
+                    "maxOutputTokens": 8192,
                 }
             ],
         },

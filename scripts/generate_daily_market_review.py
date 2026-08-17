@@ -36,6 +36,7 @@ TOKEN_FILE = Path.home() / ".tushare" / "token"
 
 EASTMONEY_CLIST = "https://push2.eastmoney.com/api/qt/clist/get"
 EASTMONEY_KLINE = "https://push2his.eastmoney.com/api/qt/stock/kline/get"
+EASTMONEY_DATACENTER = "https://datacenter-web.eastmoney.com/api/data/v1/get"
 HEADERS = {
     "Referer": "https://quote.eastmoney.com/",
     "User-Agent": "Mozilla/5.0",
@@ -699,6 +700,79 @@ def get_lhb(pro, trade_date: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     return top, inst
 
 
+def eastmoney_lhb(trade_date: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Fetch daily billboard rows from Eastmoney when TuShare LHB is empty.
+
+    Eastmoney's public datacenter endpoint does not consistently expose seat
+    details without additional pages, so this fallback only normalizes the top
+    list. Seat aggregation remains optional downstream.
+    """
+    iso_trade_date = iso_date(trade_date)
+    page_size = env_int("DAILY_MARKET_REVIEW_EASTMONEY_LHB_PAGE_SIZE", 500, 50, 1000)
+    params = {
+        "sortColumns": "TRADE_DATE,SECURITY_CODE",
+        "sortTypes": "-1,1",
+        "pageSize": page_size,
+        "pageNumber": 1,
+        "reportName": "RPT_DAILYBILLBOARD_DETAILS",
+        "columns": ",".join(
+            [
+                "SECURITY_CODE",
+                "SECUCODE",
+                "SECURITY_NAME_ABBR",
+                "TRADE_DATE",
+                "EXPLAIN",
+                "CLOSE_PRICE",
+                "CHANGE_RATE",
+                "BILLBOARD_NET_AMT",
+                "BILLBOARD_BUY_AMT",
+                "BILLBOARD_SELL_AMT",
+                "BILLBOARD_DEAL_AMT",
+                "ACCUM_AMOUNT",
+                "DEAL_NET_RATIO",
+                "TURNOVERRATE",
+                "FREE_MARKET_CAP",
+            ]
+        ),
+        "filter": f"(TRADE_DATE='{iso_trade_date}')",
+    }
+    rows: list[dict[str, Any]] = []
+    pages = 1
+    for page in range(1, 101):
+        params["pageNumber"] = page
+        resp = request_get(EASTMONEY_DATACENTER, params=params)
+        payload = resp.json().get("result") or {}
+        if page == 1:
+            try:
+                pages = max(1, min(100, int(payload.get("pages") or 1)))
+            except Exception:
+                pages = 1
+        rows.extend(payload.get("data") or [])
+        if page >= pages:
+            break
+    if not rows:
+        return pd.DataFrame(), pd.DataFrame()
+    raw = pd.DataFrame(rows)
+    frame = pd.DataFrame(
+        {
+            "trade_date": pd.to_datetime(raw.get("TRADE_DATE"), errors="coerce").dt.strftime("%Y%m%d").fillna(trade_date),
+            "ts_code": raw.get("SECUCODE", pd.Series(dtype=str)).astype(str),
+            "name": raw.get("SECURITY_NAME_ABBR", pd.Series(dtype=str)).astype(str),
+            "close": pd.to_numeric(raw.get("CLOSE_PRICE"), errors="coerce"),
+            "pct_change": pd.to_numeric(raw.get("CHANGE_RATE"), errors="coerce"),
+            "amount": pd.to_numeric(raw.get("BILLBOARD_DEAL_AMT"), errors="coerce"),
+            "net_amount": pd.to_numeric(raw.get("BILLBOARD_NET_AMT"), errors="coerce"),
+            "buy": pd.to_numeric(raw.get("BILLBOARD_BUY_AMT"), errors="coerce"),
+            "sell": pd.to_numeric(raw.get("BILLBOARD_SELL_AMT"), errors="coerce"),
+            "reason": raw.get("EXPLAIN", pd.Series(dtype=str)).astype(str),
+            "source": "东方财富龙虎榜",
+        }
+    )
+    frame = frame[frame["ts_code"].str.contains(r"\.(?:SH|SZ|BJ)$", regex=True, na=False)]
+    frame = frame.drop_duplicates(["ts_code", "reason", "amount", "net_amount"])
+    return frame, pd.DataFrame()
+
+
 def aggregate_seats(inst: pd.DataFrame) -> pd.DataFrame:
     if inst.empty:
         return pd.DataFrame()
@@ -1283,6 +1357,30 @@ def read_news(trade_date: str, boards: pd.DataFrame | None = None) -> pd.DataFra
             if "title" in df.columns:
                 hit = df[df["title"].astype(str).str.contains(keywords, regex=True, na=False)]
                 return hit if not hit.empty else df
+    if boards is not None and not boards.empty:
+        rows = []
+        for _, board in boards.head(10).iterrows():
+            name = str(board.get("board_name") or "")
+            pct_value = board.get("pct_chg")
+            pct_text = fmt_pct(pct_value) if pd.notna(pct_value) else ""
+            rows.append(
+                {
+                    "title": f"行情线索：{name}{f' 涨幅 {pct_text}' if pct_text else ''}，需用公告、订单、价格和财报继续验证",
+                    "url": "",
+                    "published_at": trade_date,
+                    "platform": "market-review",
+                    "relevance": 1,
+                    "source": str(board.get("source") or "板块行情"),
+                }
+            )
+        progress(
+            "news:fallback:boards",
+            trade_date=trade_date,
+            rows=len(rows),
+            source="hot_boards",
+            fallback_reason="cls_news_file_missing",
+        )
+        return pd.DataFrame(rows)
     return pd.DataFrame(columns=["title", "url", "published_at"])
 
 
@@ -1520,14 +1618,26 @@ def main() -> None:
         time.sleep(0.05)
 
     progress("lhb:fetch:start", trade_date=trade_date)
+    lhb_source = "TuShare 龙虎榜"
     try:
         top_lhb, inst = get_lhb(pro, trade_date)
     except Exception as exc:
         print(f"TuShare LHB unavailable: {exc}", file=sys.stderr, flush=True)
         top_lhb, inst = pd.DataFrame(), pd.DataFrame()
-        progress("lhb:fetch:failed", error=str(exc))
+        progress("lhb:fetch:failed", source="tushare", error=str(exc), error_code="tushare_lhb_unavailable")
     else:
-        progress("lhb:fetch:done", top_rows=len(top_lhb), inst_rows=len(inst))
+        progress("lhb:fetch:done", source="tushare", top_rows=len(top_lhb), inst_rows=len(inst))
+    if top_lhb.empty:
+        progress("lhb:fallback:eastmoney:start", trade_date=trade_date, fallback_reason="tushare_lhb_empty")
+        try:
+            top_lhb, inst = eastmoney_lhb(trade_date)
+            if not top_lhb.empty:
+                lhb_source = "东方财富龙虎榜"
+            progress("lhb:fallback:eastmoney:done", trade_date=trade_date, rows=len(top_lhb), source="eastmoney")
+        except Exception as exc:
+            print(f"Eastmoney LHB unavailable: {exc}", file=sys.stderr, flush=True)
+            top_lhb, inst = pd.DataFrame(), pd.DataFrame()
+            progress("lhb:fallback:eastmoney:failed", trade_date=trade_date, source="eastmoney", error=str(exc), error_code="eastmoney_lhb_unavailable")
     if top_lhb.empty:
         lhb_hot = pd.DataFrame()
     else:
@@ -1539,7 +1649,7 @@ def main() -> None:
         lhb_hot = lhb[(lhb["pct_change"] > 0) | (lhb["net_amount"] > 0)].sort_values(
             ["pct_change", "net_amount"], ascending=[False, False]
         )
-    progress("lhb:filter_hot:done", rows=len(lhb_hot))
+    progress("lhb:filter_hot:done", rows=len(lhb_hot), source=lhb_source)
     progress("news:read:start", trade_date=trade_date)
     news = read_news(trade_date, hot_boards)
     progress("news:read:done", rows=len(news))

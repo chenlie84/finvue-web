@@ -1,8 +1,35 @@
 // FinVue release metadata.
 // Keep version history here instead of app/index.html so UI shell changes and release-note updates do not fight each other.
 (function () {
-  const APP_VERSION = "0.1.81";
+  const APP_VERSION = "0.1.83";
   const APP_RELEASES = [
+  {
+    version: "0.1.83",
+    date: "2026-08-17",
+    title: "直播报告完整性修复",
+    permissions: ["live", "admin-api", "notify"],
+    summary: "修复长篇直播分析在模块中途停止的问题，并在报告不完整时给出明确诊断。",
+    items: [
+      "AI 路由新增最大输出 Token 配置，默认 8192；长报告不再依赖上游默认短输出上限。",
+      "按 FinVue、OpenAI 和 Anthropic 三类协议分别传递 max_output_tokens / max_tokens，兼容现有路由池。",
+      "直播分析提示词增加完整性约束，要求模块 7 必须输出 7-1 到 7-7，长度紧张时压缩正文而不是停在半个小节。",
+      "前端检测缺失章节并展示诊断提示，避免把只生成到模块 7-1 的半份报告误认为完整结果。"
+    ]
+  },
+  {
+    version: "0.1.82",
+    date: "2026-08-13",
+    title: "复盘证据源与层级收口",
+    permissions: ["market", "research", "notify"],
+    summary: "行情复盘在龙虎榜空表时自动降级到东方财富公开龙虎榜，并重新压低复盘页线条干扰，让结论、证据和风险层级更清晰。",
+    items: [
+      "TuShare 龙虎榜为空或不可用时，自动请求东方财富 datacenter 每日龙虎榜明细，并规范成原有 top_list 字段。",
+      "财联社新闻原始文件缺失时，新闻区降级展示热门板块行情线索，明确提示需用公告、订单、价格和财报继续验证。",
+      "行情复盘页降低背景网格、桑基图高度和连线视觉权重，把主线结论、市场指标和当前主线摘要提到更高视觉层级。",
+      "上涨驱动、下跌风险、次日验证改成不同边线权重的证据卡，减少长文本同权重铺满导致的杂乱感。",
+      "前端静态资源版本统一刷新到 20260813r。"
+    ]
+  },
   {
     version: "0.1.81",
     date: "2026-08-13",

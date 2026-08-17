@@ -82,6 +82,15 @@ def is_openai_protocol_url(url: str, api_format: str = "") -> bool:
     return _text(api_format) == "openai" or normalized.endswith("/chat/completions")
 
 
+def _max_output_tokens(provider: dict[str, Any], fallback: int = 8192) -> int:
+    """Return a bounded output budget so long-form reports are not cut off mid-section."""
+    try:
+        value = int(provider.get("maxOutputTokens") or fallback)
+    except (TypeError, ValueError):
+        value = fallback
+    return max(1024, min(value, 32768))
+
+
 def build_provider_request(provider: dict[str, Any], system_prompt: str, user_prompt: str, *, max_tokens: int = 4096) -> tuple[str, dict[str, Any], dict[str, str]]:
     return _build_request(provider, system_prompt, user_prompt, max_tokens=max_tokens)
 
@@ -125,6 +134,7 @@ def _build_request(provider: dict[str, Any], system_prompt: str, user_prompt: st
                 {"role": "user", "content": user_prompt},
             ],
             "stream": False,
+            "max_tokens": max_tokens,
         }
     else:
         payload = {
@@ -134,6 +144,7 @@ def _build_request(provider: dict[str, Any], system_prompt: str, user_prompt: st
                 {"role": "user", "content": user_prompt},
             ],
             "stream": False,
+            "max_output_tokens": max_tokens,
         }
     return base_url, payload, headers
 
@@ -148,7 +159,12 @@ def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: st
     api_key = _text(provider.get("apiKey") or provider.get("key"))
     if not api_key:
         raise ValueError("AI 路由缺少 API Key")
-    url, payload, headers = _build_request(provider, system_prompt, user_prompt)
+    url, payload, headers = _build_request(
+        provider,
+        system_prompt,
+        user_prompt,
+        max_tokens=_max_output_tokens(provider),
+    )
     if _text(provider.get("apiKeyPlacement") or "header") == "body":
         payload["api_key"] = api_key
     else:

@@ -16,7 +16,8 @@ function normalizeAiProviderDraft(item = {}, index = 0) {
     priority: Number.isFinite(Number(item.priority)) ? Number(item.priority) : index + 1,
     apiFormat: String(item.apiFormat || "finvue"),
     apiKeyPlacement: String(item.apiKeyPlacement || "header"),
-    useProxy: item.useProxy === undefined ? true : Boolean(item.useProxy)
+    useProxy: item.useProxy === undefined ? true : Boolean(item.useProxy),
+    maxOutputTokens: Math.max(1024, Math.min(32768, Number(item.maxOutputTokens) || 8192))
   };
 }
 
@@ -87,6 +88,11 @@ function renderAdminAiProviders() {
           <input type="checkbox" data-ai-provider-proxy="${item.id}" ${item.useProxy ? "checked" : ""}/>
           外部接口走代理
         </label>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+        <label class="muted" style="font-size:12px;white-space:nowrap;">最大输出 Token</label>
+        <input class="inp" data-ai-provider-max-output="${item.id}" type="number" min="1024" max="32768" step="256" value="${escapeHtml(String(item.maxOutputTokens))}" style="max-width:150px;">
+        <span class="muted" style="font-size:11px;">长报告建议 8192 以上</span>
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:10px;">
         <button class="btn btn-outline" data-ai-provider-test="${item.id}" style="font-size:12px;padding:6px 14px;">测试连接</button>
@@ -186,7 +192,8 @@ function collectAiProvidersFromUi() {
     priority: Number(document.querySelector(`[data-ai-provider-priority="${CSS.escape(item.id)}"]`)?.value || item.priority || index + 1),
     apiFormat: String(document.querySelector(`[data-ai-provider-format="${CSS.escape(item.id)}"]`)?.value || item.apiFormat || "finvue"),
     apiKeyPlacement: String(document.querySelector(`[data-ai-provider-key-placement="${CSS.escape(item.id)}"]`)?.value || item.apiKeyPlacement || "header"),
-    useProxy: Boolean(document.querySelector(`[data-ai-provider-proxy="${CSS.escape(item.id)}"]`)?.checked)
+    useProxy: Boolean(document.querySelector(`[data-ai-provider-proxy="${CSS.escape(item.id)}"]`)?.checked),
+    maxOutputTokens: Math.max(1024, Math.min(32768, Number(document.querySelector(`[data-ai-provider-max-output="${CSS.escape(item.id)}"]`)?.value || item.maxOutputTokens || 8192)))
   }));
 }
 

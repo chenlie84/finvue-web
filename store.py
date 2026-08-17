@@ -144,6 +144,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
             "priority": 20,
             "apiKeyPlacement": "header",
             "useProxy": True,
+            "maxOutputTokens": 8192,
         }
     ],
     "anchorRolePrompt": "你是一位资深的抖音直播运营分析专家和合规顾问，重点从直播结构、互动效率、合规边界、用户理解度和转化动作五个方面评估主播表现，并给出可直接复用的优化建议。",

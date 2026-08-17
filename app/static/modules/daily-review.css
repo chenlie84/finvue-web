@@ -629,3 +629,176 @@
     grid-template-columns:repeat(4,minmax(0,1fr));
   }
 }
+
+/* v20260813r: clearer hierarchy for market-review data reading pages. */
+.main-content:has(#sec-daily-review.active){
+  background:
+    linear-gradient(180deg,rgba(255,252,242,.92),rgba(255,252,242,.82)),
+    var(--bg0)!important;
+}
+[data-theme="dark"] .main-content:has(#sec-daily-review.active),
+:root:not([data-theme="light"]) .main-content:has(#sec-daily-review.active){
+  background:
+    linear-gradient(180deg,rgba(5,7,12,.90),rgba(5,7,12,.82)),
+    var(--bg0)!important;
+}
+#sec-daily-review .daily-review-page{
+  max-width:1360px;
+  gap:7px;
+}
+#sec-daily-review .daily-review-header{
+  padding-bottom:8px;
+  border-bottom:2px solid var(--border2);
+}
+#sec-daily-review .daily-review-header h2{
+  font-size:18px;
+  letter-spacing:.01em;
+}
+#sec-daily-review .daily-review-header .muted{
+  max-width:760px;
+  font-size:11px;
+}
+#sec-daily-review .daily-review-summary{
+  align-items:stretch;
+  border:1px solid var(--border2);
+  border-left:5px solid var(--ticket-green,var(--green));
+  background:var(--bg1);
+  padding:10px 12px;
+}
+#sec-daily-review .daily-review-summary h1{
+  font-size:18px;
+}
+#sec-daily-review .daily-review-summary p{
+  max-width:1000px;
+  color:var(--text0);
+  font-size:11.5px;
+  line-height:1.55;
+  font-weight:600;
+}
+#sec-daily-review .daily-review-ai-state{
+  align-self:center;
+  border-color:var(--border2);
+  background:var(--bg0);
+}
+#sec-daily-review .daily-review-metrics{
+  border:1px solid var(--border2);
+  background:var(--bg1);
+}
+#sec-daily-review .daily-review-metric{
+  padding:8px 10px;
+  background:transparent;
+}
+#sec-daily-review .daily-review-metric-label{
+  color:var(--text2);
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+#sec-daily-review .daily-review-metric-value{
+  font-size:16px;
+  color:var(--text0);
+}
+#sec-daily-review .daily-review-flow-section{
+  border:1px solid var(--border2);
+  background:var(--bg1);
+  padding:8px 10px 6px;
+}
+#sec-daily-review .daily-review-flow-section .daily-review-section-head{
+  border-bottom:1px solid var(--border);
+}
+#sec-daily-review .daily-review-sankey{
+  height:320px;
+  background:
+    linear-gradient(90deg,rgba(7,153,106,.045),transparent 30%,rgba(79,107,158,.035) 70%,transparent);
+  opacity:.88;
+}
+#sec-daily-review .daily-review-sector-tabs{
+  border:1px solid var(--border2);
+  border-top:0;
+  background:var(--bg1);
+}
+#sec-daily-review .daily-review-sector-tabs button{
+  min-height:34px;
+  border-right:1px solid var(--border);
+  border-bottom:2px solid transparent;
+  opacity:.72;
+}
+#sec-daily-review .daily-review-sector-tabs button.active{
+  opacity:1;
+  background:var(--ticket-mint,var(--gold-dim));
+  border-bottom-color:var(--ticket-green,var(--green));
+}
+#sec-daily-review .daily-review-sector-head{
+  margin-top:8px;
+  border:1px solid var(--border2);
+  border-left:5px solid var(--ticket-green,var(--green));
+  background:var(--bg1);
+  padding:10px 12px;
+}
+#sec-daily-review .daily-review-sector-head h2{
+  font-size:19px;
+  color:var(--text0);
+}
+#sec-daily-review .daily-review-sector-head p{
+  color:var(--text0);
+  font-size:11.5px;
+  line-height:1.58;
+}
+#sec-daily-review .daily-review-sector-score{
+  justify-content:center;
+  padding-left:12px;
+  border-left:1px solid var(--border);
+}
+#sec-daily-review .daily-review-sector-score b{
+  font-size:20px;
+}
+#sec-daily-review .daily-review-analysis-grid{
+  grid-template-columns:1.1fr 1.1fr .95fr .95fr;
+  gap:0;
+  border:1px solid var(--border2);
+  border-top:0;
+  background:var(--border);
+}
+#sec-daily-review .daily-review-analysis-grid article{
+  min-height:88px;
+  background:var(--bg1);
+  border-top:3px solid transparent;
+  padding:9px 10px;
+}
+#sec-daily-review .daily-review-analysis-grid article:nth-child(1){
+  border-top-color:var(--blue);
+}
+#sec-daily-review .daily-review-analysis-grid article:nth-child(2){
+  border-top-color:var(--green);
+  background:var(--ticket-mint,var(--bg1));
+}
+#sec-daily-review .daily-review-analysis-grid article:nth-child(3){
+  border-top-color:var(--red);
+}
+#sec-daily-review .daily-review-analysis-grid article:nth-child(4){
+  border-top-color:var(--gold);
+}
+#sec-daily-review .daily-review-analysis-grid article span{
+  color:var(--text2);
+  font-family:var(--font-mono);
+  font-size:9px;
+}
+#sec-daily-review .daily-review-analysis-grid article p{
+  color:var(--text1);
+  font-size:10.5px;
+  line-height:1.52;
+}
+#sec-daily-review .daily-review-driver-evidence article,
+#sec-daily-review .daily-review-section,
+#sec-daily-review .daily-review-news{
+  border-color:var(--border2);
+}
+#sec-daily-review .daily-review-news a,
+#sec-daily-review .daily-review-news-item{
+  background:var(--bg1);
+  padding:6px 8px;
+}
+@media(max-width:1180px){
+  #sec-daily-review .daily-review-analysis-grid{
+    grid-template-columns:1fr 1fr;
+  }
+}
