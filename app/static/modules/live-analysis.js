@@ -254,7 +254,12 @@ async function runLiveStream(payload) {
       }
       if (event.type === "error") {
         const providerPart = event.providerLabel ? `路由：${event.providerLabel}${event.model ? ` / ${event.model}` : ""}` : "";
-        throw new Error([event.error || "流式生成失败", providerPart, event.hint || ""].filter(Boolean).join("｜"));
+        const detail = [event.error || "流式生成失败", providerPart, event.hint || ""].filter(Boolean).join("｜");
+        // 关键：正文还没吐出来就失败，说明这次是「流式这条路走不通」（该路由不支持 stream、
+        // 网关把 SSE 掐了、上游瞬时 5xx 等）。带上这个前缀，executeSingleLiveRun 的 catch
+        // 会经 shouldFallbackToNonStream 判定后交给非流式再试一次 —— 流式的可用性必须不弱于非流式。
+        // 反过来，已经吐出过正文（sawChunk）就不再重试：重跑一遍会产生重复内容。
+        throw new Error(sawChunk ? detail : `模型未返回有效内容：${detail}`);
       }
     }
   }
