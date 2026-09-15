@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import queue
+import threading
 from urllib.parse import urlparse
 from typing import Any
 
@@ -155,24 +157,37 @@ def _should_use_proxy(provider: dict[str, Any], url: str) -> bool:
     return url.startswith("https://")
 
 
-def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: str) -> str:
+def _apply_provider_auth(provider: dict[str, Any], headers: dict[str, str], payload: dict[str, Any]) -> None:
     api_key = _text(provider.get("apiKey") or provider.get("key"))
     if not api_key:
         raise ValueError("AI 路由缺少 API Key")
+    if _text(provider.get("apiKeyPlacement") or "header") == "body":
+        payload["api_key"] = api_key
+    else:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+
+def _provider_proxies(provider: dict[str, Any], url: str) -> dict[str, str] | None:
+    proxy = (config.HTTPS_PROXY or config.HTTP_PROXY) if _should_use_proxy(provider, url) else None
+    return {"http": proxy, "https": proxy} if proxy else None
+
+
+def _call_provider(provider: dict[str, Any], system_prompt: str, user_prompt: str) -> str:
     url, payload, headers = _build_request(
         provider,
         system_prompt,
         user_prompt,
         max_tokens=_max_output_tokens(provider),
     )
-    if _text(provider.get("apiKeyPlacement") or "header") == "body":
-        payload["api_key"] = api_key
-    else:
-        headers["Authorization"] = f"Bearer {api_key}"
+    _apply_provider_auth(provider, headers, payload)
     timeout = float(provider.get("timeoutSeconds") or 180)
-    proxy = (config.HTTPS_PROXY or config.HTTP_PROXY) if _should_use_proxy(provider, url) else None
-    proxies = {"http": proxy, "https": proxy} if proxy else None
-    response = requests.post(url, headers=headers, json=payload, timeout=timeout, proxies=proxies)
+    response = requests.post(
+        url,
+        headers=headers,
+        json=payload,
+        timeout=timeout,
+        proxies=_provider_proxies(provider, url),
+    )
     content_type = response.headers.get("content-type", "")
     if "text/html" in content_type:
         public_host = urlparse(config.PUBLIC_BASE_URL).netloc
@@ -327,8 +342,7 @@ def _routes_from_payload(payload: dict[str, Any], settings: dict[str, Any]) -> l
     return sorted(routes, key=lambda item: int(item.get("priority") or 999))
 
 
-def generate(payload: dict[str, Any], username: str | None = None) -> dict[str, Any]:
-    settings = store.get_effective_settings(username)
+def _build_prompts(payload: dict[str, Any], settings: dict[str, Any]) -> tuple[str, str]:
     role_prompt = _text(payload.get("anchorRolePrompt") or settings.get("anchorRolePrompt"))
     system_prompt = _text(payload.get("systemPrompt") or settings.get("systemPrompt") or role_prompt)
     user_prompt = _text(payload.get("userPrompt") or settings.get("userPrompt"))
@@ -336,6 +350,12 @@ def generate(payload: dict[str, Any], username: str | None = None) -> dict[str, 
     live_data = _text(payload.get("liveData") or payload.get("data") or payload.get("extraContext"))
     hot_topics = _text(payload.get("externalHotTopics") or settings.get("externalHotTopics"))
     user_input = "\n\n".join(part for part in [user_prompt, hot_topics and f"外部热点：\n{hot_topics}", live_data and f"直播数据：\n{live_data}", transcript and f"逐字稿：\n{transcript}"] if part)
+    return system_prompt, user_input
+
+
+def generate(payload: dict[str, Any], username: str | None = None) -> dict[str, Any]:
+    settings = store.get_effective_settings(username)
+    system_prompt, user_input = _build_prompts(payload, settings)
     attempts: list[dict[str, str]] = []
     routes = _routes_from_payload(payload, settings)
     if not routes:
@@ -358,3 +378,216 @@ def generate(payload: dict[str, Any], username: str | None = None) -> dict[str, 
             continue
     detail = "；".join(f"{item['provider']}：{item['error']}" for item in attempts) or "未配置可用 AI 路由"
     raise RuntimeError(f"AI 生成失败：{detail}")
+
+
+# ══════════════ 流式生成 ══════════════
+# 背景：/api/generate 是非流式的，一次上游调用可能静默 30~180s（实测 8192 max_tokens
+# 满额输出约需 100s+，若首个路由失败再串行 fallback，最坏 180+180=360s）。
+# 这么长的静默请求会被反向代理/网关判为超时后重置连接，前端只看到 "Failed to fetch"。
+# 因此提供真流式：上游一旦吐字就立刻转发，空闲时每 5s 补一个心跳，连接始终有字节流动。
+
+STREAM_HEARTBEAT_SECONDS = 5.0
+
+
+def _delta_from_stream_object(obj: dict[str, Any]) -> str:
+    """从一条 SSE data 里抽出增量文本，兼容 OpenAI 与 Anthropic 两种流式协议。"""
+    if not isinstance(obj, dict):
+        return ""
+    choices = obj.get("choices")
+    if isinstance(choices, list) and choices:
+        node = (choices[0] or {}).get("delta")
+        if not isinstance(node, dict):
+            node = (choices[0] or {}).get("message") or {}
+        content = node.get("content")
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            return "".join(str(item.get("text") or "") for item in content if isinstance(item, dict))
+        return ""
+    if obj.get("type") == "content_block_delta":
+        return _text((obj.get("delta") or {}).get("text"))
+    if isinstance(obj.get("delta"), dict):
+        return _text(obj["delta"].get("text"))
+    if isinstance(obj.get("output_text"), str):
+        return obj["output_text"]
+    return ""
+
+
+def iter_provider_deltas(provider: dict[str, Any], system_prompt: str, user_prompt: str):
+    """按增量逐段吐出上游文本。
+
+    这是**同步生成器**（内部用阻塞 requests），必须在线程池里被迭代，
+    否则同样会冻结事件循环。
+    """
+    url, payload, headers = _build_request(
+        provider,
+        system_prompt,
+        user_prompt,
+        max_tokens=_max_output_tokens(provider),
+    )
+    _apply_provider_auth(provider, headers, payload)
+    payload["stream"] = True
+    read_timeout = float(provider.get("timeoutSeconds") or 180)
+    with requests.post(
+        url,
+        headers=headers,
+        json=payload,
+        # (连接, 读取) 分开：读取超时是按「两次数据之间」计的，不会误伤长输出
+        timeout=(15, read_timeout),
+        proxies=_provider_proxies(provider, url),
+        stream=True,
+    ) as response:
+        if response.status_code >= 400:
+            raise RuntimeError(f"{response.status_code}: {response.text[:400]}")
+        content_type = (response.headers.get("content-type") or "").lower()
+        if "text/event-stream" not in content_type:
+            # 上游忽略了 stream=True 并返回整包 JSON —— 退化成一次性吐出，行为与原来一致
+            try:
+                body = response.json()
+            except Exception:
+                text = _text(response.text)
+                if text:
+                    yield text
+                return
+            # 有些网关即使 stream=True 也返回非 SSE，但内容其实是 SSE 文本
+            raw_text = _text(response.text)
+            if raw_text.startswith("data:") or "\ndata:" in raw_text:
+                for line in raw_text.split("\n"):
+                    line = line.strip()
+                    if not line.startswith("data:"):
+                        continue
+                    data = line[5:].strip()
+                    if not data or data == "[DONE]":
+                        continue
+                    try:
+                        delta = _delta_from_stream_object(json.loads(data))
+                    except Exception:
+                        continue
+                    if delta:
+                        yield delta
+                return
+            text = _extract_text(body)
+            if text:
+                yield text
+            return
+
+        for raw_line in response.iter_lines(decode_unicode=False):
+            if not raw_line:
+                continue
+            line = raw_line.decode("utf-8", "ignore").strip()
+            if not line or line.startswith(":"):
+                continue
+            if not line.startswith("data:"):
+                continue
+            data = line[5:].strip()
+            if data == "[DONE]":
+                break
+            if not data:
+                continue
+            try:
+                obj = json.loads(data)
+            except Exception:
+                continue
+            delta = _delta_from_stream_object(obj)
+            if delta:
+                yield delta
+
+
+def generate_stream_events(payload: dict[str, Any], username: str | None = None):
+    """流式 NDJSON 事件源：status / chunk / done / error。
+
+    刻意返回**同步**生成器：StreamingResponse 会把它交给线程池迭代，
+    因此内部的阻塞 requests 不会占用事件循环（这正是非流式端点卡住全站的原因）。
+
+    上游在首字之前可能静默几十秒，所以每 5 秒补一个心跳，保证连接上持续有字节，
+    网关就不会把连接判为超时后重置。首字之前用 stage=accepted，之后用 stage=generating
+    （前端只认识 connecting/accepted/streaming，未知 stage 会被忽略，因此不会把进度条冲回去）。
+    """
+    events: queue.Queue[tuple[str, dict[str, Any]]] = queue.Queue()
+
+    def worker() -> None:
+        try:
+            settings = store.get_effective_settings(username)
+            system_prompt, user_input = _build_prompts(payload, settings)
+            routes = _routes_from_payload(payload, settings)
+            if not routes:
+                events.put(("error", {"error": "当前账号未读取到启用的 AI 路由，请在管理员账号保存配置后重新登录"}))
+                return
+            attempts: list[dict[str, str]] = []
+            for provider in routes:
+                label = _provider_label(provider)
+                model = _text(provider.get("model"))
+                first_delta_seen = False
+                buffered: list[str] = []
+                try:
+                    events.put(("status", {"stage": "accepted", "message": f"已连接 {label}，正在等待首段内容返回"}))
+                    for delta in iter_provider_deltas(provider, system_prompt, user_input):
+                        if not first_delta_seen:
+                            first_delta_seen = True
+                            events.put(("status", {"stage": "streaming", "message": "模型已开始输出"}))
+                        buffered.append(delta)
+                        events.put(("chunk", {"delta": delta, "content": delta}))
+                    markdown = "".join(buffered).strip()
+                    if not markdown:
+                        raise RuntimeError("模型返回为空")
+                    events.put((
+                        "done",
+                        {
+                            "markdown": markdown,
+                            "aiMeta": {
+                                "provider": label,
+                                "route": _text(provider.get("id") or label),
+                                "model": model,
+                                "attempts": attempts,
+                            },
+                        },
+                    ))
+                    return
+                except Exception as exc:
+                    attempts.append({"provider": label, "providerLabel": label, "model": model, "error": str(exc)})
+                    if first_delta_seen:
+                        # 已经吐出正文了，换路由重来会产生重复内容，直接报错
+                        events.put((
+                            "error",
+                            {
+                                "error": str(exc),
+                                "providerLabel": label,
+                                "model": model,
+                                "hint": "该路由已输出部分内容后中断，请重试",
+                            },
+                        ))
+                        return
+                    continue
+            detail = "；".join(f"{item['provider']}：{item['error']}" for item in attempts) or "未配置可用 AI 路由"
+            events.put(("error", {"error": f"AI 生成失败：{detail}", "hint": "已依次尝试全部启用的 AI 路由"}))
+        except Exception as exc:
+            events.put(("error", {"error": str(exc)}))
+        finally:
+            events.put(("__end__", {}))
+
+    yield json.dumps({"type": "status", "stage": "connecting", "message": "正在连接模型…"}, ensure_ascii=False) + "\n"
+
+    thread = threading.Thread(target=worker, name="ai-generate-stream", daemon=True)
+    thread.start()
+
+    waited = 0.0
+    saw_chunk = False
+    while True:
+        try:
+            kind, data = events.get(timeout=STREAM_HEARTBEAT_SECONDS)
+        except queue.Empty:
+            waited += STREAM_HEARTBEAT_SECONDS
+            yield json.dumps(
+                {
+                    "type": "status",
+                    "stage": "generating" if saw_chunk else "accepted",
+                    "message": f"模型仍在生成，已等待 {int(waited)} 秒…",
+                },
+                ensure_ascii=False,
+            ) + "\n"
+            continue
+        if kind == "__end__":
+            break
+        if kind == "chunk":
+            saw_chunk = True
+        yield json.dumps({"type": kind, **data}, ensure_ascii=False) + "\n"

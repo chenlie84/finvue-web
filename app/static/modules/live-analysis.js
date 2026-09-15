@@ -369,8 +369,17 @@ async function executeSingleLiveRun() {
     userPrompt: buildLivePrompt(),
     model: selectedModelId
   };
-  setRunProgress(18, "模型已受理请求", "当前路由为非流式生成，完成后会一次性返回报告。");
-  state.lastMarkdown = await runLiveOnce(requestPayload);
+  // 优先走流式：上游首字之前可能静默几十秒，非流式的长静默请求会被反向代理判超时后重置连接
+  // （前端只看到 "Failed to fetch"），而且流式期间整个后端不会被阻塞住。
+  // 流式不可用（浏览器不支持、模型迟迟不吐字等）时，按 shouldFallbackToNonStream 的约定回退到非流式。
+  setRunProgress(12, "正在连接模型", "已提交分析任务，正在等待模型响应。");
+  try {
+    state.lastMarkdown = await runLiveStream(requestPayload);
+  } catch (error) {
+    if (!shouldFallbackToNonStream(error)) throw error;
+    setRunProgress(18, "已切换非流式生成", "当前路由不支持流式，完成后会一次性返回报告。");
+    state.lastMarkdown = await runLiveOnce(requestPayload);
+  }
   showLiveResultReady();
   await persistCurrentAnalysisBundle(state.lastMarkdown);
 }

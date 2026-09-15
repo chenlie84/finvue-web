@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+from functools import partial
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 
 import ai_router
@@ -327,25 +329,22 @@ async def test_ai_provider(request: Request, session: dict = Depends(security.re
 @router.post("/api/generate")
 async def generate(request: Request, session: dict = Depends(security.require_permission("live"))) -> dict:
     body = await request.json()
-    return ai_router.generate(body, username=session.get("username"))
+    # ⚠️ ai_router.generate() 内部是**阻塞**的 requests.post（默认 180s/provider，且会串行 fallback
+    # 多个路由，最坏 180+180=360s）。直接在事件循环里调用会把**整个应用**冻住：
+    # 实测分析期间 /favicon.ico 的响应从 ~10ms 涨到 15s+，平台的健康检查因此超时并重置连接，
+    # 前端只会看到 "Failed to fetch"。交给线程池执行，事件循环保持空闲。
+    return await run_in_threadpool(partial(ai_router.generate, body, username=session.get("username")))
 
 
 @router.post("/api/generate-stream")
 async def generate_stream(request: Request, session: dict = Depends(security.require_permission("live"))) -> StreamingResponse:
     body = await request.json()
-
-    def events():
-        yield json.dumps({"type": "status", "message": "已接收任务，正在调用 AI 路由"}, ensure_ascii=False) + "\n"
-        try:
-            result = ai_router.generate(body, username=session.get("username"))
-            markdown = result.get("markdown") or ""
-            for index in range(0, len(markdown), 1200):
-                yield json.dumps({"type": "chunk", "content": markdown[index : index + 1200]}, ensure_ascii=False) + "\n"
-            yield json.dumps({"type": "done", **result}, ensure_ascii=False) + "\n"
-        except Exception as exc:
-            yield json.dumps({"type": "error", "error": str(exc), "message": str(exc)}, ensure_ascii=False) + "\n"
-
-    return StreamingResponse(events(), media_type="application/x-ndjson; charset=utf-8")
+    # 注意：这里刻意传**同步**生成器。StreamingResponse 会把同步生成器放进线程池迭代，
+    # 所以内部的阻塞 requests 不会占用事件循环；若改成 async 生成器，就会退化成阻塞全站。
+    return StreamingResponse(
+        ai_router.generate_stream_events(body, session.get("username")),
+        media_type="application/x-ndjson; charset=utf-8",
+    )
 
 
 @router.post("/api/analysis-persist")
