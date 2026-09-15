@@ -22,12 +22,48 @@ function sanitizeProgressInsightMarkdown(markdown) {
 
 function renderLiveReport(markdown) {
   const now = new Date().toLocaleString("zh-CN");
-  els.liveResult.innerHTML = buildReportShellHtml(markdown, {
-    title: getCurrentReportTitle(),
-    timestamp: now,
-    model: state.lastAiMeta?.providerLabel ? `${state.lastAiMeta.providerLabel} / ${state.lastAiMeta.model}` : (state.lastAiMeta?.model || "后台路由")
-  });
+  const title = getCurrentReportTitle();
+  const modelLabel = state.lastAiMeta?.providerLabel
+    ? `${state.lastAiMeta.providerLabel} / ${state.lastAiMeta.model}`
+    : (state.lastAiMeta?.model || "后台路由");
+
+  // 直接渲染报告，不依赖 buildReportShellHtml，避免 CSS 层级冲突
+  // 用 markdownToReportHtml 生成内容，再用 DOM 强制修复宽度
+  const bodyHtml = markdownToReportHtml(stripLeadingDuplicateReportTitle(markdown));
+
+  els.liveResult.innerHTML = `
+    <div style="width:100%;max-width:100%;box-sizing:border-box;padding:0;">
+      <div style="width:100%;box-sizing:border-box;border-bottom:1px solid var(--color-border);padding-bottom:12px;margin-bottom:14px;">
+        <h1 style="margin:0 0 8px;padding:0 0 0 10px;border-left:3px solid var(--color-accent);color:var(--color-text-0);font-size:18px;line-height:1.4;font-weight:600;box-sizing:border-box;">
+          ${escapeInlineHtml(title)}
+        </h1>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;box-sizing:border-box;">
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border:1px solid var(--color-border-strong);border-radius:6px;font-size:12px;color:var(--color-text-2);box-sizing:border-box;">生成时间 ${now}</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border:1px solid var(--color-border-strong);border-radius:6px;font-size:12px;color:var(--color-text-2);box-sizing:border-box;">模型 ${modelLabel}</span>
+        </div>
+      </div>
+      <div id="liveReportBodyContent">${bodyHtml}</div>
+    </div>
+  `;
+
+  // 强制修复所有子元素的 width，防止 AI 返回的 HTML 带固定宽度
+  forceFullWidthOnChildren(els.liveResult);
+
+  // 把报告 shadow host 初始化为 shadow DOM,实现无滚动条、主题跟随
+  els.liveResult.querySelectorAll(".ai-html-report-shadow").forEach(attachReportShadow);
+
   updateEvaluationTags(markdown);
+}
+
+// 递归强制将所有表格和容器元素设为 width:100%
+function forceFullWidthOnChildren(container) {
+  if (!container) return;
+  const targets = container.querySelectorAll("table, div, section, article");
+  targets.forEach(function(el) {
+    el.style.width = "100%";
+    el.style.maxWidth = "100%";
+    el.style.boxSizing = "border-box";
+  });
 }
 
 let runProgressStartedAt = 0;
@@ -73,7 +109,7 @@ function estimateRunSeconds() {
 function showLiveResultGenerating() {
   els.liveResultWrap.classList.add("visible", "generating");
   els.liveResultShell.classList.add("generating");
-  els.liveResult.innerHTML = "";
+  els.liveResult.innerHTML = '<div style="color:var(--color-text-2);font-size:13px;padding:20px 0;">正在生成报告内容，请稍候…</div>';
   els.evalTagRow.style.display = "none";
   els.evalTagRow.innerHTML = "";
 }
@@ -102,45 +138,14 @@ function finishRunProgress(success = true, message = "") {
 }
 
 function resetBatchRunResults() {
+  // 简化：批量队列已下线，保留入口避免外部旧引用报错
   state.batchRunResults = [];
   state.currentBatchResultId = "";
-  renderBatchRunResults();
 }
 
 function renderBatchRunResults() {
-  const list = Array.isArray(state.batchRunResults) ? state.batchRunResults : [];
-  if (!els.batchRunResultsPanel || !els.batchRunResultsList || !els.batchRunResultsMeta) return;
-  if (!list.length) {
-    els.batchRunResultsPanel.style.display = "none";
-    els.batchRunResultsMeta.textContent = "暂无记录";
-    els.batchRunResultsList.innerHTML = "";
-    return;
-  }
-  els.batchRunResultsPanel.style.display = "block";
-  const successCount = list.filter((item) => item.status === "success").length;
-  const failCount = list.filter((item) => item.status === "error").length;
-  els.batchRunResultsMeta.textContent = `共 ${list.length} 份 · 成功 ${successCount} · 失败 ${failCount}`;
-  const activeId = state.currentBatchResultId || list[list.length - 1]?.id || "";
-  state.currentBatchResultId = activeId;
-  els.batchRunResultsList.innerHTML = list.map((item) => {
-    const isActive = item.id === activeId;
-    const accent = item.status === "success" ? "var(--gold)" : "var(--red)";
-    return `
-      <button class="analyst-row" style="width:100%;text-align:left;background:${isActive ? "rgba(200,146,42,0.08)" : "var(--bg1)"};border:1px solid ${isActive ? "rgba(200,146,42,0.42)" : "var(--border)"};box-shadow:${isActive ? "0 0 0 1px rgba(200,146,42,0.16) inset" : "none"};border-radius:var(--r);padding:12px 14px;cursor:pointer;color:var(--text0);" onclick="openBatchRunResult('${encodeURIComponent(item.id)}')">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:14px;font-weight:700;color:var(--text0);line-height:1.4;">${escapeHtml(item.label || item.fileName || "未命名结果")}</div>
-            <div style="font-size:12px;color:${accent};margin-top:6px;line-height:1.6;">${escapeHtml(item.status === "success" ? "分析成功" : "分析失败")}</div>
-            <div style="font-size:12px;color:var(--text1);margin-top:6px;line-height:1.6;">${escapeHtml(item.summary || item.errorMessage || "暂无摘要")}</div>
-          </div>
-          <div style="text-align:right;white-space:nowrap;">
-            <div style="font-size:11px;color:var(--text2);">${escapeHtml(formatDateTime(item.createdAt))}</div>
-          </div>
-        </div>
-      </button>
-    `;
-  }).join("");
-  refreshDerivedViews();
+  // 简化：批量结果列表已下线
+  return;
 }
 
 function openBatchRunResult(resultId) {
@@ -394,99 +399,19 @@ async function runLive() {
     showToast("新人面试分析必须同时提供候选人简历");
     return;
   }
+  // 简化：每次只分析当前上传的 1 份逐字稿；如需分析下一份，重新上传即可
+  state.transcriptBatchQueue = [];
   try {
     els.runBtn.disabled = true;
     els.runBtn.innerHTML = '<span class="spinner"></span> 分析中…';
     state.lastAiMeta = null;
     resetBatchRunResults();
-    const queue = Array.isArray(state.transcriptBatchQueue) ? state.transcriptBatchQueue.slice() : [];
-    if (queue.length > 1) {
-      const failures = [];
-      for (let index = 0; index < queue.length; index += 1) {
-        const item = queue[index];
-        state.fileMeta.ts = item.name;
-        state.fileData.ts = item.text;
-        updateTranscriptBatchStatus({
-          mode: "running",
-          currentIndex: index + 1,
-          total: queue.length,
-          currentName: item.name
-        });
-        startRunProgress();
-        setRunProgress(6, `准备处理第 ${index + 1}/${queue.length} 份`, item.name);
-        try {
-          await executeSingleLiveRun();
-          pushBatchRunResult({
-            id: `batch-result-${Date.now()}-${index}`,
-            status: "success",
-            fileName: item.name,
-            label: item.name,
-            summary: extractSnapshotConclusion(state.lastMarkdown),
-            markdown: state.lastMarkdown,
-            createdAt: new Date().toISOString()
-          });
-          finishRunProgress(true, `第 ${index + 1}/${queue.length} 份已完成`);
-        } catch (itemError) {
-          const itemMessage = String(itemError?.message || "生成失败");
-          failures.push(`${item.name}：${itemMessage}`);
-          pushBatchRunResult({
-            id: `batch-result-${Date.now()}-${index}`,
-            status: "error",
-            fileName: item.name,
-            label: item.name,
-            summary: "本次生成失败",
-            errorMessage: itemMessage,
-            createdAt: new Date().toISOString()
-          });
-          renderLiveReport([
-            "## 生成失败",
-            "",
-            `当前文件：${item.name}`,
-            "",
-            `错误信息：${itemMessage}`
-          ].join("\n"));
-          showLiveResultReady();
-          finishRunProgress(false, `第 ${index + 1}/${queue.length} 份失败`);
-        }
-      }
-      const lastItem = queue[queue.length - 1];
-      state.transcriptBatchQueue = [];
-      state.fileMeta.ts = lastItem?.name || state.fileMeta.ts;
-      state.fileData.ts = lastItem?.text || state.fileData.ts;
-      updateUploadedFileUi("ts");
-      if (failures.length) {
-        updateTranscriptBatchStatus({ mode: "done", total: queue.length, currentName: state.fileMeta.ts });
-        showToast(`批量分析完成：成功 ${queue.length - failures.length}，失败 ${failures.length}`);
-      } else {
-        updateTranscriptBatchStatus({ mode: "done", total: queue.length, currentName: state.fileMeta.ts });
-        showToast(`批量分析完成：${queue.length} 份全部成功`);
-      }
-    } else {
-      startRunProgress();
-      await executeSingleLiveRun();
-      pushBatchRunResult({
-        id: `batch-result-${Date.now()}`,
-        status: "success",
-        fileName: state.fileMeta.ts || "当前逐字稿",
-        label: state.fileMeta.ts || "当前逐字稿",
-        summary: extractSnapshotConclusion(state.lastMarkdown),
-        markdown: state.lastMarkdown,
-        createdAt: new Date().toISOString()
-      });
-      finishRunProgress(true, "报告已生成，可继续查看和复制。");
-      showToast("分析完成");
-    }
+    startRunProgress();
+    await executeSingleLiveRun();
+    finishRunProgress(true, "报告已生成，可继续查看和复制。");
+    showToast("分析完成");
   } catch (error) {
     const friendlyMessage = String(error?.message || "生成失败");
-    pushBatchRunResult({
-      id: `batch-result-${Date.now()}`,
-      status: "error",
-      fileName: state.fileMeta.ts || "当前逐字稿",
-      label: state.fileMeta.ts || "当前逐字稿",
-      summary: "本次生成失败",
-      errorMessage: friendlyMessage,
-      createdAt: new Date().toISOString()
-    });
     renderLiveReport([
       "## 生成失败",
       "",

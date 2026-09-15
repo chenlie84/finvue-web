@@ -22,3 +22,25 @@ create_tables.sql
 export_all_data.js
 export_and_import.py
 node_modules/
+
+# 改前本地备份（如 index.html.bak-20260914-dupclass）。
+# 单个 500KB+，累积起来会污染 git 历史；只留本地用于回滚。
+*.bak-*
+*.bak
+
+# 本地工具缓存（Playwright / Firecrawl / WorkBuddy 项目数据）
+.workbuddy/
+.firecrawl/
+.playwright-cli/
+.playwright-mcp/
+tmp/
+
+# 导出产物（截图、PDF、日报输出），本地生成不入库
+output/
+outputs/
+
+# 个人 / 商务文件：配置包含真实凭据，报价单与简历为个人资料
+finvue-config-bundle-*.json
+finvue-private-deployment-quote.html
+pengcheng-resume-*
+scripts/generate_pengcheng_resume*.py

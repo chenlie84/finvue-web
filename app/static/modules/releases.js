@@ -1,8 +1,113 @@
 // FinVue release metadata.
 // Keep version history here instead of app/index.html so UI shell changes and release-note updates do not fight each other.
 (function () {
-  const APP_VERSION = "0.1.84";
+  const APP_VERSION = "0.1.93";
   const APP_RELEASES = [
+  {
+    version: "0.1.93",
+    date: "2026-08-26",
+    title: "任务配置对齐 + RUN 按钮移位",
+    permissions: ["live", "admin-api", "notify"],
+    summary: "AI 路由和我的提示词改成 2 列 grid 严格对齐，lbl 统一字号。RUN 按钮 + 进度条移到右栏最上方（与左栏'逐字稿上传' panel 对齐）。",
+    items: [
+      "AI 路由 / 我的提示词 改成 grid 1fr 1fr 严格 2 列对齐，lbl 字号统一 11px、统一 margin-bottom，select 宽度 100%。",
+      "右列放一个 visibility:hidden 占位行，让两列的 lbl 顶对齐、select 顶对齐。",
+      "RUN 按钮 + 进度条合并到一行（.run-bar 容器），放在右栏最上方，与左栏'逐字稿上传' panel 同行对齐。",
+      ".run-bar 用 panel 样式（同背景/边框/圆角），与其它 panel 视觉一致。",
+      "RUN 按钮 font-size 从 16px 缩到 15px，padding 14x48 → 12x36，更紧凑。",
+      "进度条改成 inline 形式：与 RUN 按钮同一行，标题+进度+ETA 横向铺开。"
+    ]
+  },
+  {
+    version: "0.1.90",
+    date: "2026-08-26",
+    title: "任务配置：路由 + 提示词下拉常显",
+    permissions: ["live", "admin-api", "notify"],
+    summary: "任务配置面板里把 AI 路由 select 和我的提示词 select 提到 panel-hd 下方常显，分析模式和提示词编辑 textarea 仍默认折叠。",
+    items: [
+      "AI 路由 select 移到 panel-hd 下方常显，左列布局。",
+      "我的提示词 select（用户保存的模板下拉）移到 panel-hd 下方常显，右列布局。",
+      "路由概览 1 行小字继续放在 AI 路由下拉下方。",
+      "分析模式 radio + 提示词编辑 textarea + 新建/删除/保存 + AI 优化，全部移到折叠区。",
+      "顶部仍显示一行摘要：主播评价 · 默认路由 · 内置分析提示词。"
+    ]
+  },
+  {
+    version: "0.1.89",
+    date: "2026-08-26",
+    title: "直播分析页极简重构",
+    permissions: ["live", "admin-api", "notify"],
+    summary: "彻底删掉重复的'分析模式'顶部面板和'提示词模板'11 个卡片筛选区。三个核心配置（分析模式 + AI 路由 + 我的提示词）合并到一个'任务配置'折叠面板，顶部显示一行摘要。",
+    items: [
+      "删除顶部独立的'分析模式'面板（之前在高级设置里又出现一次，重复）。",
+      "删除'提示词模板'11 个卡片筛选区（用户不需要角色/任务类型筛选，只用'我的提示词'）。",
+      "新建'任务配置'折叠面板：内含 分析模式 + AI 路由 + 我的提示词，3 个核心配置合一。",
+      "顶部 panel-hd 显示一行摘要：'主播评价 · 默认路由 · 内置分析提示词'，用户无需展开就知道当前配置。",
+      "分析模式 / 路由 / 提示词 任何一项变化都会实时更新摘要。",
+      "页面核心流程：任务配置（折叠）→ 逐字稿上传 → 热点/补充材料（折叠）→ RUN → 报告，5 步线性。"
+    ]
+  },
+  {
+    version: "0.1.88",
+    date: "2026-08-26",
+    title: "直播分析页大幅简化",
+    permissions: ["live", "admin-api", "notify"],
+    summary: "删除高级设置里的报告风格、角色预设、重复提示词下拉，简化补充材料内嵌结构。整个直播分析页从 8 个 panel 缩减到 4 个。",
+    items: [
+      "高级设置从'报告风格 + AI 路由 + 角色预设 + 提示词编辑' 4 个子面板缩减为'AI 路由 + 我的提示词' 2 个。",
+      "删除报告风格选择（7 种视觉风格属于装饰类，95% 用户不会改；与 v4 翠绿主题统一即可）。",
+      "角色预设功能已合并到'提示词模板'卡片（advisory / fund / director / talent / liveAnalyzer / compliance 都是角色视角），不再在高级设置里独立展示。",
+      "高级设置默认折叠后只剩：AI 模型下拉（默认路由池）+ 路由概览一行文字 + 我的提示词 textarea + 新建/删除/保存按钮。",
+      "补充材料从 4 层嵌套 panel 简化为 1 层折叠：内嵌的'从已接入系统拉数据'独立子 panel 改为简单的 5 列 grid。",
+      "页面逻辑流：分析模式 → 提示词模板 → 上传/补充材料 → RUN → 报告，4 个核心步骤。"
+    ]
+  },
+  {
+    version: "0.1.87",
+    date: "2026-08-26",
+    title: "修复行情分析样式 + 直播分析页加提示词模板",
+    permissions: ["live", "market", "admin-api", "notify"],
+    summary: "market.css 已从 v3 变量名（--gold/--cyan/--r 等）迁移到 v4 设计系统变量；直播分析页新增提示词模板展示与筛选区，可视化查看 11 个内置模板。",
+    items: [
+      "修复行情分析页（sec-market）在 v4 主题下样式错乱：market.css 仍引用 v3 变量（--gold/--cyan/--r/--text0 等）已被删除，所有 59 处引用映射到 v4 变量（--color-accent/--color-blue/--radius-md/--color-text-0 等）。",
+      "行情页保留金色语义：'AI 消息面归因' 标题与正文中 h1 仍用 var(--color-gold)。",
+      "直播分析页新增'提示词模板'面板：可视化卡片展示 11 个内置模板（核心/角色/章节/扩展 四类，区分主播评价/新人面试两种模式），每张卡片显示摘要、标签、大小，点击直接载入到 taskPrompt。",
+      "模板卡片支持：模式筛选、任务类型筛选、关键词搜索。",
+      "载入模板后自动展开高级设置并滚动到提示词编辑区，便于继续微调。"
+    ]
+  },
+  {
+    version: "0.1.86",
+    date: "2026-08-26",
+    title: "直播分析页布局精简 + 报告满宽",
+    permissions: ["live", "admin-api", "notify"],
+    summary: "把报告风格、AI 路由、角色预设、提示词编辑合并到默认折叠的“高级设置”面板；简历仅在新人面试模式显示；报告区取消 1080px 居中限制改为满宽展示。",
+    items: [
+      "折叠默认收起：报告风格选择、AI 路由、角色预设、提示词编辑、补充材料等都不再在首屏出现，需要时点“高级设置 / 补充材料”展开。",
+      "分析模式：主播评价体系 / 新人面试 二选一放在顶部，简历上传区仅在“新人面试”模式下显示。",
+      "热点输入：保留输入框 + 添加按钮 + 4 个快选，标题标为“可选”。",
+      "补充材料：默认折叠，标题从“补充备注、直播数据等（展开后可配置）”简化为“补充材料（可选）”，内含拉数据 / Excel / 融合报告 / 备注 / 摘要。",
+      "报告展示区：取消 max-width: 1080px 居中限制，改为整行满宽展示；border-left 竖线改为 border-top 横线与上方分离开。",
+      "工具栏间距放大 (gap: 16px, padding: 14px 20px)，按钮更整齐不挤。",
+      "RUN 按钮加大 (padding 14×48, font 16px)，更醒目。",
+      "修复 showToast is not defined：ui-core 同时挂 window.showToast。",
+      "修复 clearUploadedFile 里的孤立代码块（导致整个 inline script 解析失败、doLogin 未定义）。"
+    ]
+  },
+  {
+    version: "0.1.85",
+    date: "2026-08-26",
+    title: "直播分析模块重构",
+    permissions: ["live", "admin-api", "notify"],
+    summary: "修复 showToast 未定义错误，统一上传区为文件 chip，去掉批量队列，状态展示更直观。",
+    items: [
+      "修复直播分析在生成失败/文件读取失败时报 'showToast is not defined' 的问题：ui-core 现在同时把 showToast/toast 挂载到 window。",
+      "所有上传区（逐字稿/简历/直播数据/补充融合报告）统一改为文件 chip：清晰显示类型、文件名、字数/大小、状态，错误用红色标识，读取中显示 loading 动画。",
+      "删除逐字稿批量队列和排队结果面板：每次只分析当前 1 份逐字稿，状态切换更少更直接。",
+      "删除 '重新上传' / '删除已上传' 两按钮行，改为 chip 上的 × 关闭按钮；状态文字从上传区里抽出到 chip 上，不再和上传区文案混在一起。",
+      "刷新 ui-core.js、theme-system.css、live-analysis.js 静态资源版本号。"
+    ]
+  },
   {
     version: "0.1.84",
     date: "2026-08-17",

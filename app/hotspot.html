@@ -4,103 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>热搜追踪 · FinVue</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-:root{--bg0:#0A0B0E;--bg1:#11131A;--bg2:#181B24;--bg3:#1E2230;--border:#252836;--border2:#2E3347;--gold:#C8922A;--gold2:#E5B84A;--gold-dim:rgba(200,146,42,.12);--text0:#EAE6DD;--text1:#9B97A0;--text2:#5A566A;--green:#2DBD85;--red:#E05252;--blue:#4A90D9;--purple:#9B7FE8;--r:8px;--r2:12px;--font-display:'Playfair Display',Georgia,serif;--font-body:'Outfit',sans-serif;--font-mono:'JetBrains Mono',monospace;}
-[data-theme="light"]{--bg0:#F8FAFC;--bg1:#FFFFFF;--bg2:#F1F5F9;--bg3:#E2E8F0;--border:#E2E8F0;--border2:#CBD5E1;--gold:#D97706;--gold2:#F59E0B;--gold-dim:rgba(217,119,6,.08);--text0:#1E293B;--text1:#64748B;--text2:#94A3B8;--green:#059669;--red:#DC2626;--blue:#2563EB;--purple:#7C3AED;}
-
-*{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;background:var(--bg0);color:var(--text0);font-family:var(--font-body);font-size:14px;line-height:1.6;}
-::-webkit-scrollbar{width:4px;height:4px;}
-::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
-
-.container{max-width:1400px;margin:0 auto;padding:24px;}
-
-/* 顶部栏 */
-.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;}
-.back-btn{color:var(--text1);border:1px solid var(--border2);border-radius:var(--r);padding:8px 14px;background:var(--bg1);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;font-size:13px;}
-.back-btn:hover{color:var(--gold);border-color:var(--gold);}
-.topbar-right{display:flex;gap:8px;align-items:center;}
-.theme-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--bg1);color:var(--text1);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s;}
-.theme-btn:hover{background:var(--bg2);color:var(--gold);}
-.theme-btn.active{background:var(--gold-dim);color:var(--gold);border-color:var(--gold);}
-.fetch-btn{padding:8px 16px;border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:none;display:inline-flex;align-items:center;gap:6px;background:var(--gold);color:#0A0B0E;}
-.fetch-btn:hover{background:var(--gold2);}
-.fetch-btn:disabled{opacity:.6;cursor:not-allowed;}
-
-/* 页面标题和更新时间 */
-.header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
-.page-title{display:flex;align-items:center;gap:12px;}
-h1{font-family:var(--font-display);font-size:28px;font-weight:600;color:var(--text0);}
-.update-time{font-size:12px;color:var(--text2);background:var(--bg2);padding:6px 12px;border-radius:var(--r);display:inline-flex;align-items:center;gap:6px;}
-.update-time .icon{color:var(--green);}
-
-/* 搜索和筛选 */
-.filter-row{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
-.search-input{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:10px 14px;color:var(--text0);font-size:13px;outline:none;transition:border-color .2s;width:260px;}
-.search-input:focus{border-color:var(--gold);}
-.search-input::placeholder{color:var(--text2);}
-.platform-btns{display:flex;gap:6px;flex-wrap:wrap;}
-.platform-btn{padding:6px 14px;border-radius:20px;font-size:12px;border:1px solid var(--border);color:var(--text1);cursor:pointer;transition:all .15s;background:var(--bg1);}
-.platform-btn:hover{border-color:var(--gold);color:var(--gold);}
-.platform-btn.active{background:var(--gold-dim);border-color:var(--gold);color:var(--gold);}
-.platform-btn .icon{margin-right:4px;}
-
-/* 状态提示 */
-.status-bar{padding:10px 14px;background:var(--bg2);border-radius:var(--r);font-size:12px;color:var(--text1);margin-bottom:16px;display:none;}
-.status-bar.success{background:rgba(45,189,133,.08);color:var(--green);display:block;}
-.status-bar.error{background:rgba(224,82,82,.08);color:var(--red);display:block;}
-.status-bar.loading{display:block;}
-
-/* 热搜网格 */
-.hotspot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
-@media(max-width:1200px){.hotspot-grid{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:700px){.hotspot-grid{grid-template-columns:1fr;}}
-
-/* 平台卡片 */
-.platform-card{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;}
-.card-header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:var(--bg2);border-bottom:1px solid var(--border);}
-.card-title{font-size:14px;font-weight:600;color:var(--text0);display:flex;align-items:center;gap:8px;}
-.card-title .icon{font-size:20px;}
-.card-count{font-size:12px;color:var(--text2);font-family:var(--font-mono);}
-.card-body{padding:12px;max-height:400px;overflow-y:auto;}
-
-/* 热搜条目 */
-.hotspot-item{padding:10px 12px;border-radius:var(--r);background:var(--bg2);margin-bottom:8px;transition:all .15s;}
-.hotspot-item:hover{background:var(--bg3);}
-.hotspot-item:last-child{margin-bottom:0;}
-.item-row{display:flex;align-items:flex-start;gap:10px;}
-.item-rank{font-family:var(--font-mono);font-size:13px;font-weight:600;min-width:24px;}
-.item-rank.top1{color:var(--red);}
-.item-rank.top2{color:var(--orange);}
-.item-rank.top3{color:var(--gold);}
-.item-content{flex:1;}
-.item-title{font-size:13px;color:var(--text0);line-height:1.4;display:block;text-decoration:none;transition:color .15s;}
-.item-title:hover{color:var(--gold);}
-.item-title .arrow{color:var(--text2);margin-left:4px;font-size:11px;}
-.item-meta{font-size:11px;color:var(--text2);margin-top:4px;display:flex;gap:8px;align-items:center;}
-.item-hot{color:var(--red);font-family:var(--font-mono);}
-.item-time{color:var(--text2);}
-
-/* 空状态 */
-.empty{text-align:center;color:var(--text1);padding:30px 20px;}
-.empty-icon{font-size:36px;opacity:.4;margin-bottom:8px;}
-
-/* 加载 */
-.loading{text-align:center;padding:20px;color:var(--text1);}
-.spinner{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;margin-right:8px;}
-@keyframes spin{to{transform:rotate(360deg);}}
-
-/* 抓取状态浮层 */
-.fetch-overlay{position:fixed;top:0;left:0;right:0;background:var(--bg1);border-bottom:1px solid var(--border);padding:12px 24px;z-index:1000;display:none;align-items:center;gap:12px;}
-.fetch-overlay.active{display:flex;}
-.fetch-overlay .spinner{width:16px;height:16px;}
-.fetch-overlay .text{font-size:13px;color:var(--text1);}
-
-/* 橙色 */
-:root{--orange:#F59E0B;}
-</style>
+<link rel="stylesheet" href="/static/modules/theme-system.css?v=20260914a" />
+<link rel="stylesheet" href="/static/modules/hotspot.css?v=20260915a" />
+  <script src="/static/modules/theme-controller.js?v=20260914a"></script>
 </head>
 <body>
 <div class="container">
@@ -109,10 +15,10 @@ h1{font-family:var(--font-display);font-size:28px;font-weight:600;color:var(--te
     <button class="back-btn" onclick="location.href='/index.html'">← 返回主页</button>
     <div class="topbar-right">
       <button class="fetch-btn" id="fetchBtn" onclick="fetchHotspots()">
-        <span>📥</span> 刷新热搜
+        <span>↻</span> 刷新热搜
       </button>
-      <button class="theme-btn active" id="theme-dark" onclick="setTheme('dark')">🌙</button>
-      <button class="theme-btn" id="theme-light" onclick="setTheme('light')">☀️</button>
+      <button class="theme-btn active" id="theme-dark" onclick="setTheme('dark')">深</button>
+      <button class="theme-btn" id="theme-light" onclick="setTheme('light')">浅</button>
     </div>
   </div>
 
@@ -169,14 +75,14 @@ let state = {
 
 // 平台元信息
 const PLATFORM_META = {
-  zhihu: { name: '知乎', icon: '📘' },
-  bilibili: { name: 'B站', icon: '📺' },
-  toutiao: { name: '头条', icon: '📰' },
-  weibo: { name: '微博', icon: '🔥' },
-  baidu: { name: '百度', icon: '🔍' },
-  douyin: { name: '抖音', icon: '🎵' },
-  cls: { name: '财联社', icon: '💰' },
-  wallstreetcn: { name: '华尔街', icon: '📈' }
+  zhihu: { name: '知乎', icon: '◈' },
+  bilibili: { name: 'B站', icon: '▶' },
+  toutiao: { name: '头条', icon: '≡' },
+  weibo: { name: '微博', icon: '●' },
+  baidu: { name: '百度', icon: '◉' },
+  douyin: { name: '抖音', icon: '◆' },
+  cls: { name: '财联社', icon: '■' },
+  wallstreetcn: { name: '华尔街', icon: '▲' }
 };
 
 // 主题
@@ -208,7 +114,7 @@ function renderPlatformBtns() {
   let html = '<button class="platform-btn active" data-platform="" onclick="filterPlatform(\'\')">全部</button>';
   
   state.platforms.forEach(p => {
-    const meta = PLATFORM_META[p.id] || { name: p.name, icon: p.icon || '🔥' };
+    const meta = PLATFORM_META[p.id] || { name: p.name, icon: p.icon || '●' };
     html += `<button class="platform-btn" data-platform="${esc(p.id)}" onclick="filterPlatform('${esc(p.id)}')">${esc(meta.icon)} ${esc(meta.name)}</button>`;
   });
   
@@ -251,20 +157,20 @@ async function loadHotspots() {
     updateStats(data.items || []);
     
   } catch (e) {
-    $('hotspotGrid').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div>加载失败: ${esc(e.message)}</div>`;
+    $('hotspotGrid').innerHTML = `<div class="empty"><div class="empty-icon">!</div>加载失败: ${esc(e.message)}</div>`;
   }
 }
 
 // 渲染热搜网格
 function renderHotspotGrid(byPlatform) {
   if (!Object.keys(byPlatform).length) {
-    $('hotspotGrid').innerHTML = '<div class="empty"><div class="empty-icon">📭</div>暂无热搜数据，点击"刷新热搜"获取</div>';
+    $('hotspotGrid').innerHTML = '<div class="empty"><div class="empty-icon">○</div>暂无热搜数据，点击"刷新热搜"获取</div>';
     return;
   }
 
   let html = '';
   for (const [platformId, items] of Object.entries(byPlatform)) {
-    const meta = PLATFORM_META[platformId] || state.platforms.find(p => p.id === platformId) || { name: platformId, icon: '🔥' };
+    const meta = PLATFORM_META[platformId] || state.platforms.find(p => p.id === platformId) || { name: platformId, icon: '●' };
     
     // 找最新的更新时间
     const latestTime = items.reduce((max, item) => {
@@ -392,7 +298,7 @@ async function fetchHotspots() {
   }
   
   btn.disabled = false;
-  btn.innerHTML = '<span>📥</span> 刷新热搜';
+  btn.innerHTML = '<span>↻</span> 刷新热搜';
 }
 
 // 初始化

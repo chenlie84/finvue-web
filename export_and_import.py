@@ -9,45 +9,69 @@
 """
 
 import csv
+import os
 import sys
 import hashlib
 import json
 import argparse
 from datetime import datetime, timedelta
+from pathlib import Path
 import pymysql
 
-# ============== 数据库配置 ==============
+
+def _load_env() -> None:
+    env_path = Path(__file__).resolve().parent / ".env"
+    if not env_path.exists():
+        return
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+_load_env()
+
+
+def _env(name: str, default: str = "") -> str:
+    return str(os.environ.get(name, default) or "").strip()
+
+
+# ============== 数据库配置（从环境变量读取） ==============
 
 LOCAL_DB = {
-    "host": "127.0.0.1",
-    "port": 3306,
-    "user": "root",
-    "password": "Python3.8",
-    "database": "finvue",
+    "host": _env("MYSQL_HOST", "127.0.0.1"),
+    "port": int(_env("MYSQL_PORT", "3306")),
+    "user": _env("MYSQL_USER", "root"),
+    "password": _env("MYSQL_PASSWORD"),
+    "database": _env("MYSQL_DATABASE", "finvue"),
     "charset": "utf8mb4",
 }
 
 REMOTE_DB = {
-    "host": "10.170.32.218",
-    "port": 3306,
-    "user": "root",
-    "password": "Python3.8",
-    "database": "demo",
+    "host": _env("DOUYIN_DB_HOST"),
+    "port": int(_env("DOUYIN_DB_PORT", "3306")),
+    "user": _env("DOUYIN_DB_USER", "root"),
+    "password": _env("DOUYIN_DB_PASSWORD"),
+    "database": _env("DOUYIN_DB_DATABASE", "demo"),
     "charset": "utf8mb4",
     "connect_timeout": 30,
 }
 
 PRODUCTION_DB = {
-    "host": "mysql0200.3337-wm.db.idc",
-    "port": 3337,
-    "database": "process_analysis",
-    "user": "process_analysis",
-    "password": "ns7ubvy96ncHncOTOeHS",
+    "host": _env("PRODUCTION_DB_HOST"),
+    "port": int(_env("PRODUCTION_DB_PORT", "3337")),
+    "database": _env("PRODUCTION_DB_DATABASE"),
+    "user": _env("PRODUCTION_DB_USER"),
+    "password": _env("PRODUCTION_DB_PASSWORD"),
     "charset": "utf8mb4",
     "connect_timeout": 30,
 }
 
-OUTPUT_DIR = "/Users/beeerjack/Desktop/develop/10-data"
+OUTPUT_DIR = _env("DATA_OUTPUT_DIR") or str(Path(__file__).resolve().parent / "10-data")
 
 # 线上表名映射
 TABLE_NAMES = {

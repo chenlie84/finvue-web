@@ -14,7 +14,7 @@ import store
 
 
 logger = logging.getLogger(__name__)
-DEFAULT_TASKS = ("hotspot-refresh", "market-refresh", "feishu-push", "daily-review")
+DEFAULT_TASKS = ("hotspot-refresh", "hotspot-cleanup", "market-refresh", "feishu-push", "daily-review")
 DEFAULT_TTL_SECONDS = 15 * 60
 
 

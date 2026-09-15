@@ -627,222 +627,198 @@
   }
 }
 
-/* v20260813c: restrained ticket system for creator/profile dashboards */
-.anchor-dashboard-grid,
-.anchor-profile-shell,
-.anchor-profile-detail,
-.anchor-roi-wrap,
-.roi-widget{
-  gap:12px;
+
+/* ── 主播资料库 · 关键指标 + 六维评分条 ─────────────── */
+/* 这个面板在 g2 双栏里只有 ~230px 宽，指标名又长（「前15分钟互动次数」），
+   摆成卡片网格会挤成两列并把名字截掉。改成「名字左、数值右」的列表更清楚。 */
+.anchor-metric-list{display:flex;flex-direction:column;}
+.anchor-metric-row{
+  display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  padding:6px 0;border-bottom:1px solid var(--border);
+}
+.anchor-metric-row:last-child{border-bottom:none;}
+.anchor-metric-label{
+  font-size:12px;color:var(--text1);line-height:1.4;min-width:0;
+}
+.anchor-metric-value{
+  flex:0 0 auto;font-family:var(--font-mono);font-size:14px;font-weight:600;
+  color:var(--text0);line-height:1.4;
 }
 
-.anchor-kpi-grid,
-.anchor-dashboard-two-col,
-.anchor-profile-layout,
-.anchor-profile-mini-grid,
-.anchor-hero-metrics,
-.roi-scenario-grid{
-  gap:12px;
+.anchor-score-list{display:flex;flex-direction:column;gap:7px;}
+.anchor-score-row{display:flex;align-items:center;gap:8px;font-size:12px;}
+.anchor-score-name{
+  flex:0 0 68px;color:var(--text1);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.anchor-score-bar{
+  flex:1;height:6px;min-width:0;background:var(--bg2);
+  border-radius:3px;overflow:hidden;
+}
+.anchor-score-bar>i{
+  display:block;height:100%;border-radius:3px;background:var(--blue);
+}
+.anchor-score-num{
+  flex:0 0 26px;text-align:right;font-family:var(--font-mono);
+  font-size:11.5px;color:var(--text0);
 }
 
-.anchor-dashboard-section,
-.anchor-roi-card,
-.anchor-kpi-card,
-.anchor-summary-row,
-.anchor-queue-row,
-.anchor-risk-row,
-.anchor-profile-list,
-.anchor-profile-card,
-.anchor-profile-hero,
-.anchor-profile-mini,
-.anchor-hero-metric,
-.roi-control-group,
-.roi-scenario-col,
-.roi-verdict{
-  border:1.5px solid var(--border);
-  border-radius:4px;
+/* ── 主播资料库 · 详情页 Tab ─────────────────────────────── */
+/* 详情页原有 9 个面板纵向铺开有 1400~2300px 高，找内容全靠滚轮。
+   切成 5 个 Tab 后首屏就能看到画像全貌，只有切 Tab 才展开重内容。 */
+.anchor-detail-tabs{
+  display:flex;align-items:center;gap:6px;flex-wrap:nowrap;
+  overflow-x:auto;overflow-y:hidden;
+  padding-bottom:2px;
+  border-bottom:1px solid var(--border);
+  scrollbar-width:none;
+}
+.anchor-detail-tabs::-webkit-scrollbar{display:none;}
+.anchor-detail-tab{
+  display:inline-flex;align-items:center;gap:6px;
+  flex:0 0 auto;
+  padding:7px 14px;
+  font-size:13px;line-height:1.2;font-family:inherit;
+  color:var(--text1);
+  background:transparent;
+  border:1px solid transparent;
+  border-bottom:none;
+  border-radius:var(--radius-sm) var(--radius-sm) 0 0;
+  cursor:pointer;
+  transition:color .15s ease,background .15s ease,border-color .15s ease;
+  white-space:nowrap;
+}
+.anchor-detail-tab:hover{
+  color:var(--text0);
+  background:var(--bg2);
+}
+/* 注意：别用 var(--gold-dim)——它在 theme-system.css 里指向 --color-accent-dim，
+   实际是绿色，配金色文字会串色。这里用 color-mix 从 --gold 自身混出淡金底，
+   不支持 color-mix 的浏览器会回退到上面的 var(--bg2) 中性底。 */
+.anchor-detail-tab.is-active{
+  color:var(--gold);
+  background:var(--bg2);
+  background:color-mix(in srgb, var(--gold) 14%, var(--bg2));
+  border-color:var(--border);
+  box-shadow:inset 0 -2px 0 0 var(--gold);
+  font-weight:600;
+}
+.anchor-detail-tab-badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:16px;height:16px;padding:0 5px;
+  border-radius:8px;
+  font-size:10.5px;font-weight:600;font-family:var(--font-mono);
+  color:var(--text1);
+  background:var(--bg2);
+}
+.anchor-detail-tab.is-active>.anchor-detail-tab-badge{
+  color:var(--gold);
   background:var(--bg1);
-  box-shadow:4px 4px 0 rgba(0,0,0,.12);
 }
 
-[data-theme="light"] .anchor-dashboard-section,
-[data-theme="light"] .anchor-roi-card,
-[data-theme="light"] .anchor-kpi-card,
-[data-theme="light"] .anchor-summary-row,
-[data-theme="light"] .anchor-queue-row,
-[data-theme="light"] .anchor-risk-row,
-[data-theme="light"] .anchor-profile-list,
-[data-theme="light"] .anchor-profile-card,
-[data-theme="light"] .anchor-profile-hero,
-[data-theme="light"] .anchor-profile-mini,
-[data-theme="light"] .anchor-hero-metric,
-[data-theme="light"] .roi-control-group,
-[data-theme="light"] .roi-scenario-col,
-[data-theme="light"] .roi-verdict{
-  box-shadow:4px 4px 0 rgba(23,25,29,.08);
+/* ── 逐字稿库 · 正文定位与高亮 ───────────────────────────── */
+/* 原来正文是一整块 pre-wrap + 硬编码 min-height:620px / max-height:720px，
+   右栏被撑得很高、短稿又留大片空白。改成内容自适应高度 + 上限跟随视口。 */
+.ts-search-bar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:8px 12px;margin-bottom:12px;
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--bg2);font-size:12px;
+}
+.ts-hit-count{color:var(--text1);}
+.ts-hit-count>b{color:var(--gold);font-family:var(--font-mono);font-size:13px;}
+.ts-hit-nav{display:flex;gap:6px;margin-left:auto;}
+
+.ts-content-grid{align-items:start;}
+.ts-plain{
+  max-height:min(720px, calc(100vh - 260px));
+  overflow-y:auto;overscroll-behavior:contain;
+  padding-right:6px;
+  font-size:13px;line-height:1.85;color:var(--text0);
+}
+.ts-line{padding:1px 0;word-break:break-word;}
+.ts-line-gap{height:8px;}
+/* 定位命中行：左边一道金色竖条 + 淡金底。别用 var(--gold-dim)，
+   它在 theme-system.css 里指向绿色 --color-accent-dim。 */
+.ts-line.is-focused{
+  background:var(--bg2);
+  background:color-mix(in srgb, var(--gold) 12%, var(--bg2));
+  box-shadow:inset 3px 0 0 0 var(--gold);
+  padding-left:8px;border-radius:2px;
+}
+.ts-plain mark.ts-hit{
+  background:rgba(245,158,11,.28);color:var(--text0);
+  padding:0 1px;border-radius:2px;
+}
+.ts-plain mark.ts-hit.is-current{
+  background:var(--gold);color:var(--bg1);
+  font-weight:600;
 }
 
-.anchor-dashboard-section,
-.anchor-roi-card,
-.anchor-profile-hero,
-.anchor-kpi-card{
-  position:relative;
+.ts-chapter-list{
+  display:flex;flex-direction:column;gap:8px;
+  max-height:min(720px, calc(100vh - 260px));
+  overflow-y:auto;overscroll-behavior:contain;padding-right:6px;
 }
-
-.anchor-dashboard-section,
-.anchor-roi-card,
-.anchor-profile-hero{
-  padding:14px;
-}
-
-.anchor-kpi-card,
-.anchor-profile-mini,
-.anchor-hero-metric,
-.roi-control-group,
-.roi-scenario-col,
-.roi-verdict{
-  padding:12px;
-}
-
-.anchor-dashboard-section::before,
-.anchor-roi-card::before,
-.anchor-profile-hero::before,
-.anchor-kpi-card::before{
-  content:"";
-  position:absolute;
-  left:0;
-  right:0;
-  top:0;
-  height:4px;
-  background:var(--ticket-green);
-}
-
-.anchor-dashboard-head{
-  margin-bottom:10px;
-  padding-bottom:8px;
-  border-bottom:1px dashed var(--border2);
-}
-
-.anchor-dashboard-head h3,
-.anchor-profile-title,
-.anchor-profile-hero h2{
-  font-family:var(--font-display);
-  letter-spacing:.02em;
-}
-
-.anchor-kpi-label,
-.anchor-stat-label,
-.anchor-profile-mini .mini-label,
-.anchor-hero-metric span,
-.roi-section-title,
-.roi-s-label,
-.anchor-field span{
-  font-family:var(--font-display);
-  letter-spacing:.06em;
-  text-transform:uppercase;
-}
-
-.anchor-kpi-value{
-  font-family:var(--font-mono);
-  font-size:26px;
-  color:var(--ticket-green);
-}
-
-.anchor-summary-row,
-.anchor-queue-row,
-.anchor-risk-row,
-.anchor-profile-card{
-  padding:10px;
-  border-color:var(--border2);
-  box-shadow:none;
-}
-
-.anchor-profile-card{
+.ts-chapter{
+  display:block;width:100%;text-align:left;
+  padding:10px 12px;
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--bg2);color:var(--text0);
+  font-family:inherit;font-size:12px;cursor:pointer;
   transition:border-color .15s ease,background .15s ease;
 }
-
-.anchor-profile-card:hover{
-  transform:none;
-  border-color:var(--ticket-green);
+.ts-chapter:hover:not(:disabled){
+  border-color:var(--gold);
+  background:var(--bg3);
+  background:color-mix(in srgb, var(--gold) 10%, var(--bg2));
+}
+.ts-chapter:disabled{opacity:.55;cursor:default;}
+.ts-chapter-hd{display:flex;align-items:center;gap:8px;}
+.ts-chapter-order{
+  flex:0 0 auto;min-width:18px;height:18px;
+  display:inline-flex;align-items:center;justify-content:center;
+  border-radius:9px;background:var(--bg3);color:var(--text1);
+  font-family:var(--font-mono);font-size:10.5px;
+}
+.ts-chapter-title{
+  flex:1;min-width:0;font-size:13px;font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.ts-chapter-preview{
+  margin-top:6px;color:var(--text1);line-height:1.7;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
 }
 
-.anchor-profile-card.active{
-  border-color:var(--ticket-green);
-  background:var(--ticket-mint);
+/* ── 主播资料库 · 场次切换条 ─────────────────────────────── */
+/* 一个主播会有多个场次（价值探路 0622 / 0629），列表已按主播聚合，
+   详情页用这条 chips 在同主播的场次之间切换。 */
+.anchor-session-bar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  margin-top:12px;padding:8px 12px;
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--bg2);
 }
-
-.anchor-pill,
-.anchor-status-pill,
-.roi-cvr-tag,
-.roi-scenario-head{
-  border:1px solid var(--border2);
-  border-radius:3px;
-  background:var(--ticket-mint);
-  color:var(--ticket-green);
-  font-family:var(--font-display);
-  font-size:11px;
+.anchor-session-lbl{
+  font-size:11px;color:var(--text2);letter-spacing:.08em;
 }
-
-.anchor-status-pill.red,
-.roi-cvr-tag.conservative,
-.roi-scenario-head.conservative{
-  color:var(--red);
-  background:rgba(224,82,82,.08);
-  border-color:rgba(224,82,82,.32);
+.anchor-session-list{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.anchor-session-chip{
+  padding:4px 12px;
+  font-family:var(--font-mono);font-size:12px;line-height:1.5;
+  color:var(--text1);background:transparent;
+  border:1px solid var(--border);border-radius:14px;
+  cursor:pointer;
+  transition:color .15s ease,border-color .15s ease,background .15s ease;
 }
-
-.anchor-status-pill.yellow,
-.roi-cvr-tag.base,
-.roi-scenario-head.base{
+.anchor-session-chip:hover{
+  color:var(--text0);border-color:var(--border2);
+}
+.anchor-session-chip.is-active{
   color:var(--gold);
-  background:rgba(200,146,42,.10);
-  border-color:rgba(200,146,42,.34);
-}
-
-.anchor-status-pill.green,
-.roi-cvr-tag.optimistic,
-.roi-scenario-head.optimistic{
-  color:var(--ticket-green);
-  background:var(--ticket-mint);
-  border-color:rgba(45,138,99,.36);
-}
-
-.anchor-profile-list-body{
-  padding:8px;
-  gap:8px;
-}
-
-.anchor-profile-summary,
-.anchor-profile-hero-sub{
-  line-height:1.55;
-}
-
-.anchor-profile-title{
-  font-size:18px;
-}
-
-.anchor-profile-hero h2{
-  font-size:24px;
-}
-
-.anchor-profile-mini .mini-value,
-.anchor-hero-metric strong,
-.anchor-stat-value,
-.roi-s-value,
-.roi-s-roi{
-  font-family:var(--font-mono);
-}
-
-.roi-slider-row{
-  margin-bottom:8px;
-}
-
-.roi-cvr-input-wrap input{
-  border-radius:3px;
-  background:var(--bg0);
-  border-color:var(--border2);
-}
-
-.roi-pnl-row{
-  border-bottom:1px dashed var(--border2);
+  border-color:var(--gold);
+  background:var(--bg1);
+  background:color-mix(in srgb, var(--gold) 12%, var(--bg1));
+  font-weight:600;
+  cursor:default;
 }

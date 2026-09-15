@@ -66,13 +66,13 @@ def create_session(user: Dict[str, Any]) -> str:
 
 def set_session_cookie(request: Request, response: Response, user: Dict[str, Any]) -> None:
     token = create_session(user)
+    # 始终设置 SameSite=Lax，不强制 Secure=True（本地 HTTP 也能正常用）
     response.set_cookie(
         config.SESSION_COOKIE_NAME,
         token,
         max_age=config.SESSION_TTL_SECONDS,
         httponly=True,
         samesite="lax",
-        secure=request.headers.get("x-forwarded-proto") == "https",
         path="/",
     )
 

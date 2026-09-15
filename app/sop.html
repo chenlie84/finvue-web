@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>主播带新计划执行台 · SOP执行台</title>
-  <link rel="stylesheet" href="/static/sop.css">
+  <link rel="stylesheet" href="/static/modules/theme-system.css?v=20260914a">
+  <link rel="stylesheet" href="/static/sop.css?v=20260914a">
+  <script src="/static/modules/theme-controller.js?v=20260914a"></script>
 </head>
 <body>
   <div class="shell">
@@ -28,8 +30,8 @@
           <span class="nav-num">02</span> 主播汇总
         </button>
         <div style="display:flex;gap:6px;margin-left:10px;">
-          <button class="theme-btn active" id="theme-dark" onclick="setTheme('dark')" title="深色主题">🌙</button>
-          <button class="theme-btn" id="theme-light" onclick="setTheme('light')" title="浅色主题">☀️</button>
+          <button class="theme-btn" data-theme-btn="dark" title="深色主题">D</button>
+          <button class="theme-btn" data-theme-btn="light" title="浅色主题">L</button>
         </div>
       </div>
 
@@ -57,9 +59,9 @@
         <p class="page-intro">左侧按四周展示标准动作，但默认突出当前周；右侧填写运营、主播和关键备注。动作完成后自动沉淀到主播 SOP 记录。</p>
 
         <div class="pill-row">
-          <div class="pill">⏱ 标准周期 28 天</div>
-          <div class="pill">👤 责任人：运营</div>
-          <div class="pill">📝 保存时自动记录当天日期</div>
+          <div class="pill">标准周期 28 天</div>
+          <div class="pill">责任人：运营</div>
+          <div class="pill">保存时自动记录当天日期</div>
         </div>
 
         <div class="warn-banner" id="legacyTrainingWarn">

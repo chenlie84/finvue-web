@@ -22,16 +22,15 @@ function normalizeAiProviderDraft(item = {}, index = 0) {
 }
 
 function renderAiRouteSummary() {
-  if (!els.aiRouteSummary) return;
   const providers = getAiProviders().map(normalizeAiProviderDraft).filter((item) => item.enabled);
-  if (!providers.length) {
-    els.aiRouteSummary.textContent = "后台还没有可用 AI 路由。请去管理后台至少启用一条 API Key 和模型。";
-    return;
-  }
-  els.aiRouteSummary.textContent = providers
-    .sort((a, b) => a.priority - b.priority)
-    .map((item, index) => `${index === 0 ? "主路由" : `备用 ${index}`}：${item.label} / ${item.model}`)
-    .join("；");
+  const summaryText = !providers.length
+    ? "后台还没有可用 AI 路由。请去管理后台至少启用一条 API Key 和模型。"
+    : providers
+        .sort((a, b) => a.priority - b.priority)
+        .map((item, index) => `${index === 0 ? "主路由" : `备用 ${index}`}：${item.label} / ${item.model}`)
+        .join("；");
+  if (els.aiRouteSummary) els.aiRouteSummary.textContent = summaryText;
+  if (els.aiRouteSummaryInlineText) els.aiRouteSummaryInlineText.textContent = summaryText;
 
   // 同时更新直播分析页的模型选择下拉框
   const liveModelSelect = document.getElementById("live-model-select");
@@ -155,6 +154,14 @@ async function importConfigBundleFile(file) {
       credentials: "include",
       body: form
     });
+    // 专门处理 401：不在此处弹 login，而是给用户明确提示
+    if (response.status === 401) {
+      state.authUser = null;
+      if (status) status.textContent = "登录已失效，请重新登录";
+      showToast("登录已失效，请重新登录");
+      showPage("login");
+      return;
+    }
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.detail || payload.error || "总配置文件导入失败");
     state.globalSettings = payload.settings || state.globalSettings || {};

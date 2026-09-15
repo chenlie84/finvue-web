@@ -4,182 +4,108 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>运营数据中心 · FinVue</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/static/modules/theme-system.css?v=20260914a" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 <style>
-  /* 深色主题（默认） */
-  :root {
-    --bg0:#0A0B0E; --bg1:#11131A; --bg2:#181B24; --bg3:#1E2230;
-    --border:#252836; --border2:#2E3347;
-    --gold:#C8922A; --gold2:#E5B84A; --gold-dim:rgba(200,146,42,0.12);
-    --text0:#EAE6DD; --text1:#9B97A0; --text2:#5A566A;
-    --green:#2DBD85; --red:#E05252; --blue:#4A90D9; --purple:#9B7FE8;
-    --r:8px; --r2:12px;
-    --font-display:'Playfair Display',Georgia,serif;
-    --font-body:'Outfit',sans-serif;
-    --font-mono:'JetBrains Mono',monospace;
-    --chart-bg:#181B24;
-  }
-  
-  /* 浅色主题 */
-  [data-theme="light"] {
-    --bg0:#F8FAFC; --bg1:#FFFFFF; --bg2:#F1F5F9; --bg3:#E2E8F0;
-    --border:#E2E8F0; --border2:#CBD5E1;
-    --gold:#D97706; --gold2:#F59E0B; --gold-dim:rgba(217,119,6,0.08);
-    --text0:#1E293B; --text1:#64748B; --text2:#94A3B8;
-    --green:#059669; --red:#DC2626; --blue:#2563EB; --purple:#7C3AED;
-    --chart-bg:#F1F5F9;
-  }
-  
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-  html,body{height:100%;background:var(--bg0);color:var(--text0);font-family:var(--font-body);font-size:14px;line-height:1.6;}
-  a{color:inherit;text-decoration:none;}
-  ::-webkit-scrollbar{width:4px;height:4px;}
-  ::-webkit-scrollbar-track{background:transparent;}
-  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+/* ── Operation Dashboard Page Specific ── */
+:root { --chart-bg: #181B24; }
+[data-theme="light"] { --chart-bg: #F1F5F9; }
 
-  .gold{color:var(--gold);} .green{color:var(--green);} .red{color:var(--red);} .blue{color:var(--blue);} .muted{color:var(--text1);} .mono{font-family:var(--font-mono);}
-  .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;}
-  .badge.green{background:rgba(45,189,133,0.12);color:var(--green);}
-  [data-theme="light"] .badge.green{background:rgba(5,150,105,0.12);}
-  .badge.gold{background:var(--gold-dim);color:var(--gold);}
-  .badge.blue{background:rgba(74,144,217,0.12);color:var(--blue);}
-  [data-theme="light"] .badge.blue{background:rgba(37,99,235,0.12);}
+.app-shell{display:flex;height:100vh;overflow:hidden;}
 
-  /* 主题切换按钮 */
-  .theme-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--bg1);color:var(--text1);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s;}
-  .theme-btn:hover{background:var(--bg2);color:var(--gold);}
-  .theme-btn.active{background:var(--gold-dim);color:var(--gold);border-color:var(--gold);}
+/* Sidebar (page-specific) */
+.op-sidebar{width:200px;background:var(--color-bg-1);border-right:1px solid var(--color-border);padding:16px 10px;display:flex;flex-direction:column;gap:1px;flex-shrink:0;}
+.op-sidebar .s-section{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-2);padding:10px 8px 4px;margin-top:4px;}
+.op-sidebar .nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--color-text-1);transition:all .15s;}
+.op-sidebar .nav-item:hover{color:var(--color-text-0);background:var(--color-bg-2);}
+.op-sidebar .nav-item.active{color:var(--color-accent);background:var(--color-accent-dim);}
+.op-sidebar .nav-item .ni{width:16px;text-align:center;flex-shrink:0;}
 
-  .app-shell{display:flex;height:100vh;overflow:hidden;}
-  .sidebar{width:200px;background:var(--bg1);border-right:1px solid var(--border);padding:16px 10px;display:flex;flex-direction:column;gap:1px;flex-shrink:0;}
-  .s-section{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);padding:10px 8px 4px;margin-top:4px;}
-  .nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r);cursor:pointer;font-size:13px;color:var(--text1);transition:all .15s;}
-  .nav-item:hover{color:var(--text0);background:var(--bg2);}
-  .nav-item.active{color:var(--gold);background:var(--gold-dim);}
-  .nav-item .ni{width:16px;text-align:center;flex-shrink:0;}
-  
-  .main-content{flex:1;overflow-y:auto;padding:28px 30px;}
-  .page-title{font-family:var(--font-display);font-size:23px;font-weight:600;margin-bottom:4px;}
-  .page-sub{color:var(--text1);font-size:13px;margin-bottom:24px;}
-  
-  .panel{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r2);padding:20px;}
-  .panel-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
-  .panel-title{font-size:14px;font-weight:500;}
-  .g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
-  .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;}
-  .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
-  .mb{margin-bottom:20px;}
+.main-content{flex:1;overflow-y:auto;padding:28px 30px;}
+.page-title{font-family:var(--font-display);font-size:23px;font-weight:600;margin-bottom:4px;}
+.page-sub{color:var(--color-text-1);font-size:13px;margin-bottom:24px;}
 
-  .kpi{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r2);padding:18px 20px;position:relative;overflow:hidden;}
-  .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent,var(--gold));}
-  .kpi-lbl{font-size:11px;color:var(--text1);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
-  .kpi-val{font-family:var(--font-mono);font-size:26px;font-weight:500;line-height:1;margin-bottom:6px;}
-  .kpi-delta{font-size:12px;display:flex;align-items:center;gap:4px;}
-  .kpi-ico{position:absolute;right:16px;top:14px;font-size:22px;opacity:.15;}
+.filter-bar{display:flex;gap:12px;margin-bottom:20px;align-items:center;}
+.empty{padding:40px;text-align:center;color:var(--color-text-2);}
 
-  .btn{padding:8px 16px;border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid;display:inline-flex;align-items:center;gap:6px;}
-  .btn-gold{background:var(--gold);color:#0A0B0E;border-color:var(--gold);}
-  .btn-gold:hover{background:var(--gold2);}
-  .btn-outline{background:transparent;border-color:var(--border2);color:var(--text1);}
-  .btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+/* Calendar */
+.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.calendar-header{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px;}
+.calendar-day-header{padding:8px;text-align:center;font-size:12px;color:var(--color-text-2);font-weight:500;}
+.calendar-day{background:var(--color-bg-2);border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:8px;min-height:80px;cursor:pointer;transition:all .15s;position:relative;}
+.calendar-day:hover{border-color:var(--color-accent);}
+.calendar-day.today{background:rgba(7,153,106,0.05);}
+.calendar-day.has-live{background:rgba(15,185,129,0.08);border-color:rgba(15,185,129,0.3);}
+.calendar-day.has-live:hover{border-color:var(--color-green);}
+.calendar-day.selected{border-color:var(--color-accent);background:var(--color-accent-dim);box-shadow:0 0 0 2px rgba(7,153,106,0.3);}
+.calendar-day.other-month{opacity:0.4;}
+.calendar-date{font-size:13px;font-weight:500;margin-bottom:4px;}
+.calendar-anchor{font-size:11px;color:var(--color-text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;line-height:1.3;}
+.calendar-live-count{font-size:11px;color:var(--color-green);margin-top:2px;}
 
-  .sel{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:8px 12px;color:var(--text0);font-size:13px;outline:none;cursor:pointer;}
-  .sel:focus{border-color:var(--gold);}
-  
-  .tbl{width:100%;border-collapse:collapse;}
-  .tbl th{text-align:left;padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);background:var(--bg2);border-bottom:1px solid var(--border);}
-  .tbl td{padding:11px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
-  .tbl tr:last-child td{border-bottom:none;}
-  .tbl tr:hover td{background:var(--bg2);}
-  
-  .filter-bar{display:flex;gap:12px;margin-bottom:20px;align-items:center;}
-  
-  .empty{padding:40px;text-align:center;color:var(--text2);}
-  
-  .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
-  .calendar-header{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px;}
-  .calendar-day-header{padding:8px;text-align:center;font-size:12px;color:var(--text2);font-weight:500;}
-  .calendar-day{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:8px;min-height:80px;cursor:pointer;transition:all .15s;position:relative;}
-  .calendar-day:hover{border-color:var(--gold);}
-  .calendar-day.today{background:rgba(200,146,42,0.05);}
-  .calendar-day.has-live{background:rgba(45,189,133,0.08);border-color:rgba(45,189,133,0.3);}
-  .calendar-day.has-live:hover{border-color:var(--green);}
-  .calendar-day.selected{border-color:var(--gold);background:var(--gold-dim);box-shadow:0 0 0 2px rgba(200,146,42,0.3);}
-  .calendar-day.other-month{opacity:0.4;}
-  .calendar-date{font-size:13px;font-weight:500;margin-bottom:4px;}
-  .calendar-anchor{font-size:11px;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;line-height:1.3;}
-  .calendar-live-count{font-size:11px;color:var(--green);margin-top:2px;}
-  
-  .live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:4px;}
-  
-  .video-title{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  
-  .tab-content{display:none;}
-  .tab-content.active{display:block;}
+.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--color-green);margin-right:4px;}
+.video-title{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
 
-  /* 粉丝趋势样式 */
-  .cohort-table{width:100%;border-collapse:collapse;}
-  .cohort-table th{text-align:center;padding:9px 6px;font-size:11px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);}
-  .cohort-table td{text-align:center;padding:9px 6px;border:1px solid var(--border);font-size:12px;min-width:70px;}
-  .cohort-table td:first-child{text-align:left;}
-  .heat-cell{font-family:var(--font-mono);font-size:11px;}
-  .progress-sm{height:4px;background:rgba(255,255,255,0.05);border-radius:2px;margin-top:4px;overflow:hidden;}
-  .progress-sm-fill{height:100%;background:var(--gold);border-radius:2px;}
-  .fans-chart{width:100%;height:300px;margin-bottom:20px;}
-  
-  .month-stats-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px;}
-  .month-stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px;}
-  .month-stat-label{font-size:11px;color:var(--text2);margin-bottom:4px;}
-  .month-stat-value{font-family:var(--font-mono);font-size:16px;font-weight:500;}
-  
-  .history-chart{height:180px;display:flex;align-items:end;gap:4px;padding:12px;background:var(--bg2);border-radius:var(--r);position:relative;}
-  .history-bar{flex:1;background:var(--gold-dim);border-radius:2px 2px 0 0;min-height:4px;position:relative;transition:height .3s;}
-  .history-bar:hover{background:var(--gold);}
-  .history-bar-label{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--text2);white-space:nowrap;}
-  /* 折线图样式 */
-  .line-chart-container{position:relative;height:200px;padding:16px;background:var(--bg2);border-radius:var(--r);}
-  .line-chart-svg{width:100%;height:100%;}
-  .line-chart-point{fill:var(--gold);stroke:var(--gold);stroke-width:2;cursor:pointer;}
-  .line-chart-point:hover{fill:var(--gold2);stroke:var(--gold2);r:6;}
-  .line-chart-line{fill:none;stroke:var(--gold);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
-  .line-chart-area{fill:url(#goldGradient);opacity:0.3;}
-  .line-chart-label{font-size:10px;fill:var(--text2);text-anchor:middle;}
-  .line-chart-title{font-size:12px;fill:var(--text1);font-weight:500;}
-  .line-chart-tooltip{position:absolute;background:var(--bg0);border:1px solid var(--border);padding:4px 8px;border-radius:var(--r);font-size:11px;color:var(--text1);pointer-events:none;z-index:10;white-space:nowrap;}
-  
-  .lbl{font-size:12px;color:var(--text1);margin-bottom:6px;display:block;}
-  .inp{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;color:var(--text0);font-size:13px;outline:none;transition:border-color .2s;width:100%;}
-  .inp:focus{border-color:var(--gold);}
-  .inp::placeholder{color:var(--text2);}
-  .textarea{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;color:var(--text0);font-size:13px;outline:none;resize:vertical;line-height:1.6;transition:border-color .2s;width:100%;}
-  .textarea:focus{border-color:var(--gold);}
-  .textarea::placeholder{color:var(--text2);}
+/* Cohort Table */
+.cohort-table{width:100%;border-collapse:collapse;}
+.cohort-table th{text-align:center;padding:9px 6px;font-size:11px;color:var(--color-text-2);background:var(--color-bg-2);border:1px solid var(--color-border);}
+.cohort-table td{text-align:center;padding:9px 6px;border:1px solid var(--color-border);font-size:12px;min-width:70px;}
+.cohort-table td:first-child{text-align:left;}
+.heat-cell{font-family:var(--font-mono);font-size:11px;}
+.progress-sm{height:4px;background:rgba(255,255,255,0.05);border-radius:var(--radius-sm);margin-top:4px;overflow:hidden;}
+.progress-sm-fill{height:100%;background:var(--color-accent);border-radius:var(--radius-sm);}
+.fans-chart{width:100%;height:300px;margin-bottom:20px;}
+
+/* Month Stats */
+.month-stats-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px;}
+.month-stat-card{background:var(--color-bg-2);border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:12px;}
+.month-stat-label{font-size:11px;color:var(--color-text-2);margin-bottom:4px;}
+.month-stat-value{font-family:var(--font-mono);font-size:16px;font-weight:500;}
+
+/* History Chart */
+.history-chart{height:180px;display:flex;align-items:end;gap:4px;padding:12px;background:var(--color-bg-2);border-radius:var(--radius-sm);position:relative;}
+.history-bar{flex:1;background:var(--color-accent-dim);border-radius:var(--radius-sm) 2px 0 0;min-height:4px;position:relative;transition:height .3s;}
+.history-bar:hover{background:var(--color-accent);}
+.history-bar-label{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--color-text-2);white-space:nowrap;}
+
+/* Line Chart */
+.line-chart-container{position:relative;height:200px;padding:16px;background:var(--color-bg-2);border-radius:var(--radius-sm);}
+.line-chart-svg{width:100%;height:100%;}
+.line-chart-point{fill:var(--color-accent);stroke:var(--color-accent);stroke-width:2;cursor:pointer;}
+.line-chart-point:hover{fill:var(--color-accent-2);stroke:var(--color-accent-2);r:6;}
+.line-chart-line{fill:none;stroke:var(--color-accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.line-chart-area{fill:url(#greenGradient);opacity:0.3;}
+.line-chart-label{font-size:10px;fill:var(--color-text-2);text-anchor:middle;}
+.line-chart-title{font-size:12px;fill:var(--color-text-1);font-weight:500;}
+.line-chart-tooltip{position:absolute;background:var(--color-bg-0);border:1px solid var(--color-border);padding:4px 8px;border-radius:var(--radius-sm);font-size:11px;color:var(--color-text-1);pointer-events:none;z-index:10;white-space:nowrap;}
 </style>
 </head>
 <body>
 <div class="app-shell">
   <!-- 侧边栏 -->
-  <nav class="sidebar">
+  <nav class="op-sidebar">
     <div class="s-section">数据报表</div>
     <div class="nav-item active" onclick="switchTab('weekly', this)">
-      <span class="ni">📊</span>
+      <span class="ni">◆</span>
       <span>主播周报</span>
     </div>
     <div class="nav-item" onclick="switchTab('monthly', this)">
-      <span class="ni">📈</span>
+      <span class="ni">■</span>
       <span>主播月报</span>
     </div>
     <div class="nav-item" onclick="switchTab('fans-trend', this)">
-      <span class="ni">👥</span>
+      <span class="ni">▲</span>
       <span>粉丝趋势</span>
     </div>
     <div class="nav-item" onclick="switchTab('calendar', this)">
-      <span class="ni">📅</span>
+      <span class="ni">◉</span>
       <span>直播日历</span>
     </div>
     <div class="nav-item" onclick="switchTab('live-details', this)">
-      <span class="ni">📋</span>
+      <span class="ni">≡</span>
       <span>直播明细</span>
     </div>
     <div class="s-section">其他</div>
@@ -188,8 +114,8 @@
       <span>返回首页</span>
     </div>
     <div style="margin-top:auto;padding-top:10px;display:flex;gap:6px;justify-content:center;">
-      <button class="theme-btn active" id="theme-dark" onclick="setTheme('dark')" title="深色主题">🌙</button>
-      <button class="theme-btn" id="theme-light" onclick="setTheme('light')" title="浅色主题">☀️</button>
+      <button class="theme-btn active" id="theme-dark" onclick="setTheme('dark')" title="深色主题">深</button>
+      <button class="theme-btn" id="theme-light" onclick="setTheme('light')" title="浅色主题">浅</button>
     </div>
   </nav>
 
@@ -250,8 +176,8 @@
       <!-- 手工添加直播记录 -->
       <div class="panel">
         <div class="panel-hd">
-          <div class="panel-title">📝 手工添加直播记录</div>
-          <span class="muted" style="font-size:12px;">点击日历日期自动填充</span>
+          <div class="panel-title">手工添加直播记录</div>
+          <span class="muted text-sm">点击日历日期自动填充</span>
         </div>
         <div class="g2">
           <div>
@@ -262,24 +188,24 @@
           </div>
           <div>
             <label class="lbl">直播日期 <span class="muted">(点击日历选择)</span></label>
-            <input type="date" id="add-live-date" class="inp" style="width:100%;background:var(--bg2);color:var(--text1);" readonly>
+            <input type="date" id="add-live-date" class="inp" style="width:100%;background:var(--color-bg-2);color:var(--color-text-1);" readonly>
           </div>
         </div>
         <div class="g2">
           <div>
             <label class="lbl">开播时间</label>
-            <input type="time" id="add-live-time" class="inp" style="width:100%;">
+            <input type="time" id="add-live-time" class="inp full-w">
           </div>
           <div>
             <label class="lbl">直播时长(分钟)</label>
-            <input type="number" id="add-live-duration" class="inp" style="width:100%;" placeholder="如: 60">
+            <input type="number" id="add-live-duration" class="inp full-w" placeholder="如: 60">
           </div>
         </div>
-        <div style="margin-bottom:12px;">
+        <div class="mb-md">
           <label class="lbl">直播标题(可选)</label>
-          <input type="text" id="add-live-title" class="inp" style="width:100%;" placeholder="直播标题">
+          <input type="text" id="add-live-title" class="inp full-w" placeholder="直播标题">
         </div>
-        <div style="margin-bottom:12px;">
+        <div class="mb-md">
           <label class="lbl">备注(可选)</label>
           <textarea id="add-live-notes" class="textarea" rows="2" placeholder="备注信息"></textarea>
         </div>
@@ -297,24 +223,24 @@
       
       <!-- 统计卡片 -->
       <div class="g4 mb">
-        <div class="kpi" style="--accent:var(--gold)"><div class="kpi-lbl">直播场次</div><div class="kpi-val gold" id="live-detail-count">—</div></div>
-        <div class="kpi" style="--accent:var(--green)"><div class="kpi-lbl">总涨粉</div><div class="kpi-val" id="live-detail-follow">—</div></div>
-        <div class="kpi" style="--accent:var(--blue)"><div class="kpi-lbl">平均时长</div><div class="kpi-val" id="live-detail-duration">—</div><div class="kpi-delta muted">分钟</div></div>
-        <div class="kpi" style="--accent:var(--purple)"><div class="kpi-lbl">平均峰值</div><div class="kpi-val" id="live-detail-pcu">—</div></div>
+        <div class="kpi" style="--accent:var(--color-accent)"><div class="kpi-lbl">直播场次</div><div class="kpi-val gold" id="live-detail-count">—</div></div>
+        <div class="kpi" style="--accent:var(--color-green)"><div class="kpi-lbl">总涨粉</div><div class="kpi-val" id="live-detail-follow">—</div></div>
+        <div class="kpi" style="--accent:var(--color-blue)"><div class="kpi-lbl">平均时长</div><div class="kpi-val" id="live-detail-duration">—</div><div class="kpi-delta muted">分钟</div></div>
+        <div class="kpi" style="--accent:var(--color-purple)"><div class="kpi-lbl">平均峰值</div><div class="kpi-val" id="live-detail-pcu">—</div></div>
       </div>
 
       <!-- AI 分析区域（可折叠） -->
       <details class="prompt-detail mb" open>
-        <summary style="font-size:15px;font-weight:500;padding:12px;background:var(--bg2);border-radius:var(--r);">
-          🤖 AI 数据分析助手
+        <summary style="font-size:15px;font-weight:500;padding:12px;background:var(--color-bg-2);border-radius:var(--radius-sm);">
+          AI 数据分析助手
           <button class="btn btn-outline" onclick="clearAIChatHistory();event.stopPropagation();" style="font-size:11px;margin-left:8px;">清空</button>
         </summary>
-        <div style="padding:12px;">
+        <div class="pad-md">
           <!-- 对话历史区域 -->
-          <div id="ai-analysis-result" style="min-height:100px;max-height:350px;overflow-y:auto;background:var(--bg2);border-radius:var(--r);padding:12px;">
+          <div id="ai-analysis-result" style="min-height:100px;max-height:350px;overflow-y:auto;background:var(--color-bg-2);border-radius:var(--radius-sm);padding:12px;">
             <div class="muted" style="text-align:center;padding:20px;">
               输入您的问题，AI 将基于当前筛选的直播数据进行分析<br>
-              <span style="font-size:11px;">例如：分析涨粉趋势、对比主播表现、给出优化建议</span>
+              <span class="text-xs">例如：分析涨粉趋势、对比主播表现、给出优化建议</span>
             </div>
           </div>
           <!-- 知识库选择 -->
@@ -322,15 +248,15 @@
             <select id="ai-knowledge-select" class="sel" style="width:200px;font-size:13px;" onchange="updateKnowledgeStatus()">
               <option value="">不使用知识库</option>
             </select>
-            <span id="ai-knowledge-status" class="muted" style="font-size:11px;"></span>
+            <span id="ai-knowledge-status" class="muted text-xs"></span>
           </div>
           <!-- 输入区域 -->
           <div style="margin-top:8px;display:flex;gap:8px;align-items:flex-end;">
             <textarea id="ai-input-prompt" 
               placeholder="输入问题...例如：哪个主播表现最好？" 
-              style="flex:1;min-height:50px;max-height:120px;padding:10px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg);color:var(--text);resize:vertical;font-size:13px;"
+              style="flex:1;min-height:50px;max-height:120px;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--color-border);background:var(--color-bg-1);color:var(--color-text-0);resize:vertical;font-size:13px;"
               onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();sendAIPrompt();}"></textarea>
-            <button class="btn" id="btn-ai-send" onclick="sendAIPrompt()" style="background:var(--gold);padding:10px 16px;">发送</button>
+            <button class="btn" id="btn-ai-send" onclick="sendAIPrompt()" style="background:var(--color-accent);padding:10px 16px;">发送</button>
             <button class="btn btn-outline" id="btn-ai-batch" onclick="analyzeAllAnchors()" style="padding:10px 16px;">分析全部主播</button>
           </div>
         </div>
@@ -342,11 +268,11 @@
           <option value="">全部主播</option>
         </select>
         <div style="display:flex;gap:4px;">
-          <button class="btn btn-outline" onclick="setLiveDetailsDateRange('day')" id="btn-live-day" style="padding:6px 12px;font-size:12px;">日</button>
-          <button class="btn btn-outline" onclick="setLiveDetailsDateRange('week')" id="btn-live-week" style="padding:6px 12px;font-size:12px;">周</button>
-          <button class="btn btn-outline" onclick="setLiveDetailsDateRange('month')" id="btn-live-month" style="padding:6px 12px;font-size:12px;">月</button>
-          <button class="btn btn-outline" onclick="setLiveDetailsDateRange('year')" id="btn-live-year" style="padding:6px 12px;font-size:12px;">年</button>
-          <button class="btn btn-outline" onclick="setLiveDetailsDateRange('all')" id="btn-live-all" style="padding:6px 12px;font-size:12px;">全部</button>
+          <button class="btn btn-outline" onclick="setLiveDetailsDateRange('day')" id="btn-live-day" class="text-sm pad-6-12">日</button>
+          <button class="btn btn-outline" onclick="setLiveDetailsDateRange('week')" id="btn-live-week" class="text-sm pad-6-12">周</button>
+          <button class="btn btn-outline" onclick="setLiveDetailsDateRange('month')" id="btn-live-month" class="text-sm pad-6-12">月</button>
+          <button class="btn btn-outline" onclick="setLiveDetailsDateRange('year')" id="btn-live-year" class="text-sm pad-6-12">年</button>
+          <button class="btn btn-outline" onclick="setLiveDetailsDateRange('all')" id="btn-live-all" class="text-sm pad-6-12">全部</button>
         </div>
         <input type="date" id="live-details-start" class="sel" onchange="loadLiveDetails()" style="width:120px;">
         <input type="date" id="live-details-end" class="sel" onchange="loadLiveDetails()" style="width:120px;">
@@ -489,7 +415,7 @@ async function loadAccounts() {
       
       // 未登录跳转
       if (res.status === 401) {
-        $('dataStatus').innerHTML = '未登录或登录已失效，<a href="/index.html" style="color:var(--gold);">点击登录</a>';
+        $('dataStatus').innerHTML = '未登录或登录已失效，<a href="/index.html" class="accent">点击登录</a>';
         return;
       }
       
@@ -507,7 +433,7 @@ async function loadAccounts() {
 
     // 显示警告信息（如表不存在）
     if (data.warning) {
-      $('dataStatus').innerHTML = `<span style="color:var(--gold);">${esc(data.warning)}</span>`;
+      $('dataStatus').innerHTML = `<span class="accent">${esc(data.warning)}</span>`;
       $('weekly-content').innerHTML = `<div class="panel"><div class="empty">${esc(data.warning)}</div></div>`;
       return;
     }
@@ -536,7 +462,7 @@ async function loadAccounts() {
     if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
       errMsg = '网络连接失败，请检查服务器是否正常运行';
     }
-    $('dataStatus').innerHTML = `<span style="color:var(--red);">加载失败: ${esc(errMsg)}</span> <a href="/index.html" style="color:var(--gold);margin-left:8px;">返回首页</a>`;
+    $('dataStatus').innerHTML = `<span class="red">加载失败: ${esc(errMsg)}</span> <a href="/index.html" style="color:var(--color-accent);margin-left:8px;">返回首页</a>`;
     $('weekly-content').innerHTML = `<div class="panel"><div class="empty">${esc(errMsg)}</div></div>`;
   }
 }
@@ -565,7 +491,7 @@ async function addLiveRecord() {
   const notes = $('add-live-notes').value;
 
   if (!account || !liveDate) {
-    $('add-live-result').innerHTML = '<span style="color:var(--red);">请选择主播和日期</span>';
+    $('add-live-result').innerHTML = '<span class="red">请选择主播和日期</span>';
     return;
   }
 
@@ -588,7 +514,7 @@ async function addLiveRecord() {
     const data = await res.json();
 
     if (data.ok) {
-      $('add-live-result').innerHTML = '<span style="color:var(--green);">✓ 添加成功</span>';
+      $('add-live-result').innerHTML = '<span class="green">✓ 添加成功</span>';
       // 清空表单
       $('add-live-date').value = '';
       $('add-live-time').value = '';
@@ -599,10 +525,10 @@ async function addLiveRecord() {
       loadAccounts();
       loadCalendar();
     } else {
-      $('add-live-result').innerHTML = `<span style="color:var(--red);">${esc(data.error)}</span>`;
+      $('add-live-result').innerHTML = `<span class="red">${esc(data.error)}</span>`;
     }
   } catch (e) {
-    $('add-live-result').innerHTML = `<span style="color:var(--red);">${esc(e.message)}</span>`;
+    $('add-live-result').innerHTML = `<span class="red">${esc(e.message)}</span>`;
   }
 }
 
@@ -676,7 +602,7 @@ async function loadWeeklyReport() {
         errMsg = json.detail || json.error || errMsg;
       } catch {}
       if (res.status === 401) {
-        $('weekly-content').innerHTML = '<div class="panel"><div class="empty">未登录，<a href="/index.html" style="color:var(--gold);">点击登录</a></div></div>';
+        $('weekly-content').innerHTML = '<div class="panel"><div class="empty">未登录，<a href="/index.html" class="accent">点击登录</a></div></div>';
         return;
       }
       throw new Error(errMsg);
@@ -691,7 +617,7 @@ async function loadWeeklyReport() {
     if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
       errMsg = '网络连接失败';
     }
-    $('weekly-content').innerHTML = `<div class="panel"><div class="empty" style="color:var(--red);">${esc(errMsg)}</div></div>`;
+    $('weekly-content').innerHTML = `<div class="panel"><div class="empty red">${esc(errMsg)}</div></div>`;
   }
 }
 
@@ -708,23 +634,21 @@ function renderWeeklyReport(data) {
   
   let html = `
     <div class="g4 mb">
-      <div class="kpi" style="--accent:var(--gold)">
-        <div class="kpi-ico">👥</div>
+      <div class="kpi" style="--accent:var(--color-accent)">
+        <div class="kpi-ico">◆</div>
         <div class="kpi-lbl">主播数量</div>
         <div class="kpi-val gold">${accounts.length}</div>
       </div>
-      <div class="kpi" style="--accent:var(--blue)">
-        <div class="kpi-ico">🎥</div>
+      <div class="kpi" style="--accent:var(--color-blue)">
         <div class="kpi-lbl">直播场次</div>
         <div class="kpi-val blue">${totalLiveCount}</div>
       </div>
-      <div class="kpi" style="--accent:var(--green)">
-        <div class="kpi-ico">📈</div>
+      <div class="kpi" style="--accent:var(--color-green)">
+        <div class="kpi-ico">■</div>
         <div class="kpi-lbl">涨粉总数</div>
         <div class="kpi-val green">${fmt(totalFollow)}</div>
       </div>
-      <div class="kpi" style="--accent:var(--purple)">
-        <div class="kpi-ico">🎬</div>
+      <div class="kpi" style="--accent:var(--color-purple)">
         <div class="kpi-lbl">短视频发布</div>
         <div class="kpi-val">${totalVideoCount}</div>
       </div>
@@ -734,7 +658,7 @@ function renderWeeklyReport(data) {
   for (const acc of accounts) {
     html += `<div class="panel mb">
       <div class="panel-hd">
-        <div class="panel-title">👤 ${esc(acc.account)}</div>
+        <div class="panel-title">${esc(acc.account)}</div>
         <span class="badge gold">${acc.stats?.liveCount || 0} 场直播</span>
       </div>`;
     
@@ -744,11 +668,11 @@ function renderWeeklyReport(data) {
       const totalVideoFollow = acc.video.reduce((s, v) => s + (v.follow_count || 0), 0);
       html += `
         <div style="margin-bottom:16px;">
-          <div style="margin-bottom:12px;">
+          <div class="mb-md">
             <span class="badge blue">短视频 · 发布 ${acc.video.length} 条</span>
             <span class="muted" style="margin-left:12px;">播放 ${fmt(totalPlay)} · 涨粉 ${fmt(totalVideoFollow)}</span>
           </div>
-          <table class="tbl" style="font-size:12px;">
+          <table class="tbl text-sm">
             <tr><th>发布时间</th><th>体裁</th><th>作品名称</th><th>播放量</th><th>点赞</th><th>完播率</th><th>5s完播</th><th>2s跳出</th><th>互动率</th><th>涨粉</th></tr>
             ${acc.video.map(v => `
               <tr>
@@ -774,7 +698,7 @@ function renderWeeklyReport(data) {
       html += `
         <div>
           <div class="muted" style="font-size:12px;margin-bottom:8px;">直播明细 · ${acc.live.length} 场 · 涨粉 ${fmt(acc.stats?.totalFollow || 0)}</div>
-          <table class="tbl" style="font-size:12px;">
+          <table class="tbl text-sm">
             <tr><th>开播时间</th><th>时长</th><th>峰值/平均</th><th>观看(粉/非粉)</th><th>停留(粉/非粉)</th><th>涨粉</th><th>涨粉率</th><th>来源</th></tr>
             ${acc.live.map(l => {
               const followRate = l.follow_u_rate || ((l.follow_ucnt / l.watch_ucnt) * 100) || 0;
@@ -783,11 +707,11 @@ function renderWeeklyReport(data) {
                 <td>${fmtTime(l.start_time)}</td>
                 <td class="mono">${l.duration || 0}分</td>
                 <td class="mono">${fmt(l.pcu)}/${fmt(l.acu)}</td>
-                <td class="mono">${fmt(l.watch_ucnt)}<span style="color:var(--gold)">(${fmt(l.fans_watch_ucnt)}/${fmt(l.non_fans_watch_ucnt)})</span></td>
-                <td class="mono"><span style="color:var(--gold)">${(l.fans_avg_watch_duration || 0).toFixed(1)}</span>/<span style="color:var(--blue)">${(l.non_fans_avg_watch_duration || 0).toFixed(1)}</span>分</td>
+                <td class="mono">${fmt(l.watch_ucnt)}<span style="color:var(--color-accent)">(${fmt(l.fans_watch_ucnt)}/${fmt(l.non_fans_watch_ucnt)})</span></td>
+                <td class="mono"><span style="color:var(--color-accent)">${(l.fans_avg_watch_duration || 0).toFixed(1)}</span>/<span style="color:var(--color-blue)">${(l.non_fans_avg_watch_duration || 0).toFixed(1)}</span>分</td>
                 <td class="green mono">${fmt(l.follow_ucnt)}</td>
                 <td class="mono">${followRate.toFixed(2)}%</td>
-                <td>${l.notes && l.notes.includes("[手工录入]") ? "<button onclick=deleteWeeklyLive('" + l.room_id + "') style=font-size:10px;padding:2px 6px;background:var(--red);border:none;color:#fff;border-radius:4px;cursor:pointer;>删除</button>" : "<span class=muted style=font-size:10px;>CSV</span>"}</td>
+                <td>${l.notes && l.notes.includes("[手工录入]") ? "<button onclick=deleteWeeklyLive('" + l.room_id + "') style=font-size:10px;padding:2px 6px;background:var(--color-red);border:none;color:#fff;border-radius:var(--radius-sm);cursor:pointer;>删除</button>" : "<span class=muted style=font-size:10px;>CSV</span>"}</td>
               </tr>
             `}).join('')}
           </table>
@@ -839,7 +763,7 @@ async function loadMonthlyReport() {
         errMsg = json.detail || json.error || errMsg;
       } catch {}
       if (res.status === 401) {
-        $('monthly-content').innerHTML = '<div class="panel"><div class="empty">未登录，<a href="/index.html" style="color:var(--gold);">点击登录</a></div></div>';
+        $('monthly-content').innerHTML = '<div class="panel"><div class="empty">未登录，<a href="/index.html" class="accent">点击登录</a></div></div>';
         return;
       }
       throw new Error(errMsg);
@@ -860,7 +784,7 @@ async function loadMonthlyReport() {
     if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
       errMsg = '网络连接失败';
     }
-    $('monthly-content').innerHTML = `<div class="panel"><div class="empty" style="color:var(--red);">${esc(errMsg)}</div></div>`;
+    $('monthly-content').innerHTML = `<div class="panel"><div class="empty red">${esc(errMsg)}</div></div>`;
   }
 }
 
@@ -1016,23 +940,20 @@ function renderMonthlyReport(data) {
   
   let html = `
     <div class="g4 mb">
-      <div class="kpi" style="--accent:var(--blue)">
-        <div class="kpi-ico">🎥</div>
+      <div class="kpi" style="--accent:var(--color-blue)">
         <div class="kpi-lbl">直播场次</div>
         <div class="kpi-val blue">${totalLive}</div>
       </div>
-      <div class="kpi" style="--accent:var(--purple)">
-        <div class="kpi-ico">🎬</div>
+      <div class="kpi" style="--accent:var(--color-purple)">
         <div class="kpi-lbl">短视频发布</div>
         <div class="kpi-val">${totalVideo}</div>
       </div>
-      <div class="kpi" style="--accent:var(--gold)">
-        <div class="kpi-ico">👁</div>
+      <div class="kpi" style="--accent:var(--color-accent)">
         <div class="kpi-lbl">观看总数</div>
         <div class="kpi-val gold">${fmt(totalWatch)}</div>
       </div>
-      <div class="kpi" style="--accent:var(--green)">
-        <div class="kpi-ico">📈</div>
+      <div class="kpi" style="--accent:var(--color-green)">
+        <div class="kpi-ico">■</div>
         <div class="kpi-lbl">涨粉总数</div>
         <div class="kpi-val green">${fmt(totalFollow)}</div>
       </div>
@@ -1053,7 +974,7 @@ function renderMonthlyReport(data) {
     chartIndex++;
     if (anchorDaily.length > 0) {
       chartHtml = `
-        <div id="${chartId}" style="margin-top:12px;height:220px;background:var(--bg2);border-radius:var(--r);"></div>
+        <div id="${chartId}" style="margin-top:12px;height:220px;background:var(--color-bg-2);border-radius:var(--radius-sm);"></div>
       `;
       // 保存图表数据，稍后初始化
       chartsToInit.push({ id: chartId, data: anchorDaily });
@@ -1064,7 +985,7 @@ function renderMonthlyReport(data) {
     html += `
       <div class="panel mb">
         <div class="panel-hd">
-          <div class="panel-title">👤 ${esc(accName)}</div>
+          <div class="panel-title">${esc(accName)}</div>
           <span class="badge gold">${accData.stats.liveCount} 场</span>
         </div>
         <div class="month-stats-grid">
@@ -1098,8 +1019,8 @@ function renderMonthlyReport(data) {
                   <td>${fmtTime(l.start_time)}</td>
                   <td class="mono">${l.duration || 0}分</td>
                   <td class="mono">${fmt(l.pcu)}/${fmt(l.acu)}</td>
-                  <td class="mono">${fmt(l.watch_ucnt)}<span style="color:var(--gold)">(${fmt(l.fans_watch_ucnt)}/${fmt(l.non_fans_watch_ucnt)})</span></td>
-                  <td class="mono"><span style="color:var(--gold)">${(l.fans_avg_watch_duration || 0).toFixed(1)}</span>/<span style="color:var(--blue)">${(l.non_fans_avg_watch_duration || 0).toFixed(1)}</span>分</td>
+                  <td class="mono">${fmt(l.watch_ucnt)}<span style="color:var(--color-accent)">(${fmt(l.fans_watch_ucnt)}/${fmt(l.non_fans_watch_ucnt)})</span></td>
+                  <td class="mono"><span style="color:var(--color-accent)">${(l.fans_avg_watch_duration || 0).toFixed(1)}</span>/<span style="color:var(--color-blue)">${(l.non_fans_avg_watch_duration || 0).toFixed(1)}</span>分</td>
                   <td class="green mono">${fmt(l.follow_ucnt)}</td>
                   <td class="mono">${followRate.toFixed(2)}%</td>
                 </tr>
@@ -1195,7 +1116,7 @@ async function loadCalendar() {
         errMsg = json.detail || json.error || errMsg;
       } catch {}
       if (res.status === 401) {
-        $('calendar-grid').innerHTML = '<div class="empty" style="grid-column:span 7;">未登录，<a href="/index.html" style="color:var(--gold);">点击登录</a></div>';
+        $('calendar-grid').innerHTML = '<div class="empty" style="grid-column:span 7;">未登录，<a href="/index.html" class="accent">点击登录</a></div>';
         return;
       }
       throw new Error(errMsg);
@@ -1210,7 +1131,7 @@ async function loadCalendar() {
     if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
       errMsg = '网络连接失败';
     }
-    $('calendar-grid').innerHTML = `<div class="empty" style="grid-column:span 7;color:var(--red);">${esc(errMsg)}</div>`;
+    $('calendar-grid').innerHTML = `<div class="empty" style="grid-column:span 7;color:var(--color-red);">${esc(errMsg)}</div>`;
   }
 }
 
@@ -1315,7 +1236,7 @@ function showDayDetail(event, dateStr, dayData) {
           <td class="mono">${l.duration || 0}分</td>
           <td class="mono">${fmt(l.watch_ucnt)}</td>
           <td class="green mono">${fmt(l.follow_ucnt)}</td>
-          <td>${l.notes && l.notes.includes("[手工录入]") ? "<button onclick=deleteLiveRecord('" + l.room_id + "') style=font-size:10px;padding:2px 6px;background:var(--red);border:none;color:#fff;border-radius:4px;cursor:pointer;>删除</button>" : "<span class=muted style=font-size:10px;>CSV导入</span>"}</td>
+          <td>${l.notes && l.notes.includes("[手工录入]") ? "<button onclick=deleteLiveRecord('" + l.room_id + "') style=font-size:10px;padding:2px 6px;background:var(--color-red);border:none;color:#fff;border-radius:var(--radius-sm);cursor:pointer;>删除</button>" : "<span class=muted style=font-size:10px;>CSV导入</span>"}</td>
         </tr>
       `).join('')}
     </table>
@@ -1338,7 +1259,7 @@ async function deleteLiveRecord(roomId) {
 
     // 刷新日历
     loadCalendar();
-    $('calendar-detail').innerHTML = '<div style="color:var(--green);padding:8px;">已删除</div>';
+    $('calendar-detail').innerHTML = '<div style="color:var(--color-green);padding:8px;">已删除</div>';
   } catch (e) {
     alert('删除失败: ' + e.message);
   }
@@ -1350,7 +1271,7 @@ async function deleteLiveRecord(roomId) {
 function heatColor(value) {
   if (value <= 0) return '';
   const alpha = Math.max(0.05, Math.min(0.82, value / 100 * 0.82));
-  const textColor = value >= 45 ? 'var(--text0)' : 'var(--text1)';
+  const textColor = value >= 45 ? 'var(--color-text-0)' : 'var(--color-text-1)';
   return `background: rgba(99,102,241,${alpha}); color: ${textColor}`;
 }
 
@@ -1368,7 +1289,7 @@ async function loadFansTrend() {
     const res = await fetch(`/api/fans-trend/top200?anchorName=${encodeURIComponent(anchor)}`, { credentials: 'include' });
     if (!res.ok) {
       if (res.status === 401) {
-        $('fans-trend-content').innerHTML = '<div class="empty">请先<a href="/index.html" style="color:var(--gold);">登录</a></div>';
+        $('fans-trend-content').innerHTML = '<div class="empty">请先<a href="/index.html" class="accent">登录</a></div>';
         return;
       }
       const errData = await res.json().catch(() => ({}));
@@ -1395,22 +1316,22 @@ function renderFansTrend(data) {
   let html = `
     <!-- 统计卡片 -->
     <div class="g4 mb">
-      <div class="kpi" style="--accent:var(--blue)">
+      <div class="kpi" style="--accent:var(--color-blue)">
         <div class="kpi-lbl">核心粉丝总量 (≥10场)</div>
         <div class="kpi-val mono">${fmt(stats.core_count || 0)}</div>
         <div class="kpi-delta muted">死忠粉+高频粉</div>
       </div>
-      <div class="kpi" style="--accent:var(--green)">
+      <div class="kpi" style="--accent:var(--color-green)">
         <div class="kpi-lbl">核心追随粉 (Active)</div>
         <div class="kpi-val mono green">${fmt(stats.active_core || 0)}</div>
         <div class="kpi-delta">近30天活跃</div>
       </div>
-      <div class="kpi" style="--accent:var(--red)">
+      <div class="kpi" style="--accent:var(--color-red)">
         <div class="kpi-lbl">核心流失粉 (Churned)</div>
         <div class="kpi-val mono red">${fmt(stats.churned_core || 0)}</div>
         <div class="kpi-delta">超30天未活跃</div>
       </div>
-      <div class="kpi" style="--accent:var(--gold)">
+      <div class="kpi" style="--accent:var(--color-accent)">
         <div class="kpi-lbl">新晋活跃粉 (New)</div>
         <div class="kpi-val mono gold">${fmt(stats.new_active || 0)}</div>
         <div class="kpi-delta">1-3场且活跃</div>
@@ -1496,7 +1417,7 @@ function renderCohortTable(rows, maxMonths) {
         ${rows.map(row => `
           <tr>
             <td class="mono">${esc(row.cohort)}</td>
-            <td class="mono" style="color:var(--gold2);font-weight:600">${fmt(row.base)}</td>
+            <td class="mono" style="color:var(--color-accent-2);font-weight:600">${fmt(row.base)}</td>
             ${(row.cells || []).slice(0, monthCount).map(cell => {
               const style = heatColor(cell.value || 0);
               return `<td class="heat-cell" ${style ? `style="${style}"` : ''}>${(cell.value || 0).toFixed(1)}%</td>`;
@@ -1532,8 +1453,8 @@ function exportFansTrendHTML() {
 </head>
 <body style="padding:30px;">
 <div style="max-width:1400px;margin:0 auto;">
-  <h1 style="font-family:'Playfair Display';font-size:28px;text-align:center;margin-bottom:30px;color:var(--text0);">${esc(title)}</h1>
-  <div style="text-align:center;color:var(--text1);margin-bottom:30px;" id="fans-trend-subtitle">${$('fans-trend-subtitle').textContent}</div>
+  <h1 style="font-family:'Playfair Display';font-size:28px;text-align:center;margin-bottom:30px;color:var(--color-text-0);">${esc(title)}</h1>
+  <div style="text-align:center;color:var(--color-text-1);margin-bottom:30px;" id="fans-trend-subtitle">${$('fans-trend-subtitle').textContent}</div>
   ${content}
 </div>
 </body>
@@ -1591,9 +1512,9 @@ function setLiveDetailsDateRange(range) {
     const btn = $('btn-live-' + r);
     if (btn) {
       if (r === range) {
-        btn.style.background = 'var(--gold)';
+        btn.style.background = 'var(--color-accent)';
         btn.style.color = '#fff';
-        btn.style.borderColor = 'var(--gold)';
+        btn.style.borderColor = 'var(--color-accent)';
       } else {
         btn.style.background = '';
         btn.style.color = '';
@@ -1631,7 +1552,7 @@ async function loadLiveDetails() {
     .then(r => r.json())
     .then(data => {
       if (!data.ok) {
-        contentEl.innerHTML = `<div class="panel"><div class="empty" style="color:var(--red);">加载失败: ${escapeHtml(data.error)}</div></div>`;
+        contentEl.innerHTML = `<div class="panel"><div class="empty red">加载失败: ${escapeHtml(data.error)}</div></div>`;
         return;
       }
 
@@ -1673,37 +1594,37 @@ async function loadLiveDetails() {
         html += `
           <div class="panel mb" id="anchor-card-${chartIndex}">
             <div class="panel-hd">
-              <div class="panel-title">👤 ${escapeHtml(accName)}</div>
+              <div class="panel-title">${escapeHtml(accName)}</div>
               <span class="badge gold">${accData.liveCount} 场</span>
             </div>
             <!-- AI 一句话总结（分析后填充） -->
-            <div id="anchor-summary-${chartIndex}" style="font-size:13px;padding:10px 12px;background:var(--bg2);border-radius:var(--r);margin-bottom:12px;border-left:3px solid var(--gold);">
-              <span class="muted">💡 点击"分析全部主播"生成 AI 评价</span>
+            <div id="anchor-summary-${chartIndex}" style="font-size:13px;padding:10px 12px;background:var(--color-bg-2);border-radius:var(--radius-sm);margin-bottom:12px;border-left:3px solid var(--color-accent);">
+              <span class="muted">点击"分析全部主播"生成 AI 评价</span>
             </div>
-            <div class="g4" style="margin-bottom:12px;">
-              <div class="kpi" style="--accent:var(--gold);padding:12px;">
+            <div class="g4 mb-md">
+              <div class="kpi" style="--accent:var(--color-accent);padding:12px;">
                 <div class="kpi-lbl">观看总数</div>
-                <div class="kpi-val gold" style="font-size:20px;">${fmt(accData.totalWatch)}</div>
+                <div class="kpi-val gold text-20">${fmt(accData.totalWatch)}</div>
               </div>
-              <div class="kpi" style="--accent:var(--green);padding:12px;">
+              <div class="kpi" style="--accent:var(--color-green);padding:12px;">
                 <div class="kpi-lbl">涨粉总数</div>
-                <div class="kpi-val green" style="font-size:20px;">${fmt(accData.totalFollow)}</div>
+                <div class="kpi-val green text-20">${fmt(accData.totalFollow)}</div>
               </div>
-              <div class="kpi" style="--accent:var(--blue);padding:12px;">
+              <div class="kpi" style="--accent:var(--color-blue);padding:12px;">
                 <div class="kpi-lbl">总时长</div>
-                <div class="kpi-val" style="font-size:20px;">${fmt(accData.totalDuration)}分</div>
+                <div class="kpi-val text-20">${fmt(accData.totalDuration)}分</div>
               </div>
-              <div class="kpi" style="--accent:var(--purple);padding:12px;">
+              <div class="kpi" style="--accent:var(--color-purple);padding:12px;">
                 <div class="kpi-lbl">音浪收入</div>
-                <div class="kpi-val" style="font-size:20px;">${fmt(accData.totalEarn)}</div>
+                <div class="kpi-val text-20">${fmt(accData.totalEarn)}</div>
               </div>
             </div>
             <!-- 图表区域 -->
-            <div id="${chartId}" style="height:220px;background:var(--bg2);border-radius:var(--r);margin-bottom:12px;"></div>
+            <div id="${chartId}" style="height:220px;background:var(--color-bg-2);border-radius:var(--radius-sm);margin-bottom:12px;"></div>
             <details class="prompt-detail">
               <summary>直播明细 (${accData.liveCount} 场)</summary>
               <div style="overflow-x:auto;">
-                <table class="tbl" style="font-size:11px;">
+                <table class="tbl text-xs">
                   <tr>
                     <th>开播时间</th><th>时长</th><th>曝光</th><th>峰值</th><th>平均</th>
                     <th>观看</th><th>粉观看</th><th>非粉观看</th>
@@ -1724,13 +1645,13 @@ async function loadLiveDetails() {
                       <td class="mono">${fmt(row.pcu || 0)}</td>
                       <td class="mono">${fmt(row.acu || 0)}</td>
                       <td class="mono">${fmt(row.watch_ucnt || 0)}</td>
-                      <td class="mono" style="color:var(--gold);">${fmt(row.fans_watch_ucnt || 0)}</td>
-                      <td class="mono" style="color:var(--blue);">${fmt(row.non_fans_watch_ucnt || 0)}</td>
+                      <td class="mono accent">${fmt(row.fans_watch_ucnt || 0)}</td>
+                      <td class="mono" style="color:var(--color-blue);">${fmt(row.non_fans_watch_ucnt || 0)}</td>
                       <td class="green mono" style="font-weight:500;">${fmt(row.follow_ucnt || 0)}</td>
                       <td class="mono">${fmt(row.join_fansclub_ucnt || 0)}</td>
                       <td class="mono">${(row.avg_watch_duration || 0).toFixed(1)}</td>
-                      <td class="mono" style="color:var(--gold);">${(row.fans_avg_watch_duration || 0).toFixed(1)}</td>
-                      <td class="mono" style="color:var(--blue);">${(row.non_fans_avg_watch_duration || 0).toFixed(1)}</td>
+                      <td class="mono accent">${(row.fans_avg_watch_duration || 0).toFixed(1)}</td>
+                      <td class="mono" style="color:var(--color-blue);">${(row.non_fans_avg_watch_duration || 0).toFixed(1)}</td>
                       <td class="mono">${fmt(row.like_cnt || 0)}</td>
                       <td class="mono">${followRate}%</td>
                       <td class="mono">${commentRate}%</td>
@@ -1744,23 +1665,23 @@ async function loadLiveDetails() {
             </details>
             <!-- AI 详细分析结果（可折叠） -->
             <details class="prompt-detail" id="anchor-ai-${chartIndex}" style="display:none;margin-top:12px;">
-              <summary style="background:var(--bg2);padding:10px 12px;border-radius:var(--r);font-size:13px;">
-                🤖 AI 详细分析报告
+              <summary style="background:var(--color-bg-2);padding:10px 12px;border-radius:var(--radius-sm);font-size:13px;">
+                AI 详细分析报告
               </summary>
-              <div style="padding:12px;">
+              <div class="pad-md">
                 <!-- 核心要点 -->
-                <div class="anchor-ai-points" style="margin-bottom:12px;padding:12px;background:rgba(45,189,133,0.1);border-radius:var(--r);border-left:3px solid var(--green);">
-                  <div style="font-size:12px;color:var(--green);margin-bottom:6px;font-weight:500;">✅ 核心要点</div>
+                <div class="anchor-ai-points" style="margin-bottom:12px;padding:12px;background:rgba(45,189,133,0.1);border-radius:var(--radius-sm);border-left:3px solid var(--color-green);">
+                  <div style="font-size:12px;color:var(--color-green);margin-bottom:6px;font-weight:500;">核心要点</div>
                   <div style="font-size:13px;line-height:1.6;"></div>
                 </div>
                 <!-- 存在问题 -->
-                <div class="anchor-ai-issues" style="margin-bottom:12px;padding:12px;background:rgba(224,82,82,0.1);border-radius:var(--r);border-left:3px solid var(--red);">
-                  <div style="font-size:12px;color:var(--red);margin-bottom:6px;font-weight:500;">⚠️ 存在问题</div>
+                <div class="anchor-ai-issues" style="margin-bottom:12px;padding:12px;background:rgba(224,82,82,0.1);border-radius:var(--radius-sm);border-left:3px solid var(--color-red);">
+                  <div style="font-size:12px;color:var(--color-red);margin-bottom:6px;font-weight:500;">存在问题</div>
                   <div style="font-size:13px;line-height:1.6;"></div>
                 </div>
                 <!-- 优化建议 -->
-                <div class="anchor-ai-suggestions" style="padding:12px;background:rgba(200,146,42,0.1);border-radius:var(--r);border-left:3px solid var(--gold);">
-                  <div style="font-size:12px;color:var(--gold);margin-bottom:6px;font-weight:500;">💡 优化建议</div>
+                <div class="anchor-ai-suggestions" style="padding:12px;background:rgba(200,146,42,0.1);border-radius:var(--radius-sm);border-left:3px solid var(--color-accent);">
+                  <div style="font-size:12px;color:var(--color-accent);margin-bottom:6px;font-weight:500;">优化建议</div>
                   <div style="font-size:13px;line-height:1.6;"></div>
                 </div>
               </div>
@@ -1824,7 +1745,7 @@ async function loadLiveDetails() {
       }, 100);
     })
     .catch(e => {
-      contentEl.innerHTML = `<div class="panel"><div class="empty" style="color:var(--red);">请求失败: ${e.message || e}</div></div>`;
+      contentEl.innerHTML = `<div class="panel"><div class="empty red">请求失败: ${e.message || e}</div></div>`;
     });
 }
 
@@ -1881,16 +1802,16 @@ async function loadAIKnowledgeList() {
           } else if (hasProfile) {
             desc = '（主播资料）';
           }
-          select.innerHTML += `<option value="${kb.id}">📚 ${name}${desc}</option>`;
+          select.innerHTML += `<option value="${kb.id}">${name}${desc}</option>`;
         } else if (kb.id?.startsWith('anchor:')) {
           const name = kb.id.replace('anchor:', '');
-          select.innerHTML += `<option value="${kb.id}">👤 ${name}（主播资料）</option>`;
+          select.innerHTML += `<option value="${kb.id}">${name}（主播资料）</option>`;
         } else if (kb.id?.startsWith('transcript:')) {
           const name = kb.id.replace('transcript:', '');
-          select.innerHTML += `<option value="${kb.id}">📝 ${name}（逐字稿）</option>`;
+          select.innerHTML += `<option value="${kb.id}">${name}（逐字稿）</option>`;
         } else if (kb.file_type !== 'distill') {
           // 普通知识库
-          select.innerHTML += `<option value="${kb.id}">📁 ${kb.name}</option>`;
+          select.innerHTML += `<option value="${kb.id}">${kb.name}</option>`;
         }
       }
     }
@@ -1912,10 +1833,10 @@ function updateKnowledgeStatus() {
   
   if (kbId.startsWith('distill:')) {
     statusEl.textContent = '将结合主播资料和逐字稿分析';
-    statusEl.style.color = 'var(--gold)';
+    statusEl.style.color = 'var(--color-accent)';
   } else if (kbId.startsWith('transcript:')) {
     statusEl.textContent = '将结合逐字稿分析话术技巧';
-    statusEl.style.color = 'var(--blue)';
+    statusEl.style.color = 'var(--color-blue)';
   } else {
     statusEl.textContent = '已选择知识库';
     statusEl.style.color = 'var(--textMuted)';
@@ -1948,12 +1869,12 @@ async function sendAIPrompt() {
   if (aiChatHistory.length === 0) {
     resultEl.innerHTML = '';
   }
-  resultEl.innerHTML += `<div style="margin-bottom:12px;padding:12px;background:var(--bg);border-radius:var(--r);border-left:3px solid var(--blue);">
-    <div style="font-size:12px;color:var(--blue);margin-bottom:4px;">👤 您</div>
+  resultEl.innerHTML += `<div style="margin-bottom:12px;padding:12px;background:var(--color-bg-1);border-radius:var(--radius-sm);border-left:3px solid var(--color-blue);">
+    <div style="font-size:12px;color:var(--color-blue);margin-bottom:4px;">您</div>
     <div style="line-height:1.5;">${escapeHtml(userPrompt)}</div>
   </div>`;
-  resultEl.innerHTML += `<div id="ai-loading" style="margin-bottom:12px;padding:12px;background:var(--bg2);border-radius:var(--r);border-left:3px solid var(--gold);">
-    <div style="font-size:12px;color:var(--gold);margin-bottom:4px;">🤖 AI</div>
+  resultEl.innerHTML += `<div id="ai-loading" style="margin-bottom:12px;padding:12px;background:var(--color-bg-2);border-radius:var(--radius-sm);border-left:3px solid var(--color-accent);">
+    <div style="font-size:12px;color:var(--color-accent);margin-bottom:4px;">AI</div>
     <div style="color:var(--textMuted);">思考中...</div>
   </div>`;
   
@@ -1972,7 +1893,7 @@ async function sendAIPrompt() {
       const data = await dataResp.json();
       
       if (!data.ok || !data.details || data.details.length === 0) {
-        $('ai-loading').innerHTML = `<div style="color:var(--red);">当前筛选条件下没有直播数据，请调整筛选条件后再提问</div>`;
+        $('ai-loading').innerHTML = `<div class="red">当前筛选条件下没有直播数据，请调整筛选条件后再提问</div>`;
         btn.disabled = false;
         btn.textContent = '发送';
         return;
@@ -2045,7 +1966,7 @@ ${aiDataContext}
     aiChatHistory.push({ role: 'assistant', content: markdown });
     
     // 显示 AI 回复
-    $('ai-loading').innerHTML = `<div style="font-size:12px;color:var(--gold);margin-bottom:4px;">🤖 AI</div>
+    $('ai-loading').innerHTML = `<div style="font-size:12px;color:var(--color-accent);margin-bottom:4px;">AI</div>
       <div style="line-height:1.6;">${renderSimpleMarkdown(markdown)}</div>`;
     
     // 滚动到底部
@@ -2054,7 +1975,7 @@ ${aiDataContext}
     inputEl.value = '';
     
   } catch (e) {
-    $('ai-loading').innerHTML = `<div style="color:var(--red);">分析失败: ${escapeHtml(e.message || e)}</div>`;
+    $('ai-loading').innerHTML = `<div class="red">分析失败: ${escapeHtml(e.message || e)}</div>`;
   }
   
   btn.disabled = false;
@@ -2086,7 +2007,7 @@ async function analyzeAllAnchors() {
     }
     
     if (anchors.length === 0) {
-      resultEl.innerHTML = '<div style="color:var(--red);text-align:center;padding:20px;">请先加载直播数据</div>';
+      resultEl.innerHTML = '<div style="color:var(--color-red);text-align:center;padding:20px;">请先加载直播数据</div>';
       btn.disabled = false;
       btn.textContent = '分析全部主播';
       return;
@@ -2181,9 +2102,9 @@ ${recentLives}`;
         const summaryEl = $('anchor-summary-' + anchor.index);
         if (summaryEl) {
           if (analysis && analysis.summary) {
-            summaryEl.innerHTML = '💡 ' + analysis.summary;
+            summaryEl.innerHTML = analysis.summary;
           } else {
-            summaryEl.innerHTML = '💡 ' + (markdown.slice(0, 100) || '分析完成');
+            summaryEl.innerHTML = (markdown.slice(0, 100) || '分析完成');
           }
         }
         
@@ -2224,10 +2145,10 @@ ${recentLives}`;
           }
         }
         
-        resultEl.innerHTML += `<div style="margin-bottom:8px;font-size:12px;color:var(--green);">✓ ${anchor.name} 分析完成</div>`;
+        resultEl.innerHTML += `<div style="margin-bottom:8px;font-size:12px;color:var(--color-green);">✓ ${anchor.name} 分析完成</div>`;
         
       } catch (e) {
-        resultEl.innerHTML += `<div style="margin-bottom:8px;font-size:12px;color:var(--red);">✗ ${anchor.name} 分析失败: ${escapeHtml(e.message || e)}</div>`;
+        resultEl.innerHTML += `<div style="margin-bottom:8px;font-size:12px;color:var(--color-red);">✗ ${anchor.name} 分析失败: ${escapeHtml(e.message || e)}</div>`;
       }
       
       // 小延迟避免请求过快
@@ -2236,10 +2157,10 @@ ${recentLives}`;
       }
     }
     
-    resultEl.innerHTML += `<div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:var(--r);text-align:center;color:var(--green);">全部主播分析完成！结果已显示在各主播卡片下方</div>`;
+    resultEl.innerHTML += `<div style="margin-top:12px;padding:12px;background:var(--color-bg-1);border-radius:var(--radius-sm);text-align:center;color:var(--color-green);">全部主播分析完成！结果已显示在各主播卡片下方</div>`;
     
   } catch (e) {
-    resultEl.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px;">分析失败: ${escapeHtml(e.message || e)}</div>`;
+    resultEl.innerHTML = `<div style="color:var(--color-red);text-align:center;padding:20px;">分析失败: ${escapeHtml(e.message || e)}</div>`;
   }
   
   btn.disabled = false;
@@ -2251,10 +2172,10 @@ function renderSimpleMarkdown(md) {
   if (!md) return '';
   
   // 代码块
-  md = md.replace(/```([\s\S]*?)```/g, '<pre style="background:var(--bg2);padding:12px;border-radius:var(--r);overflow-x:auto;font-size:13px;"><code>$1</code></pre>');
+  md = md.replace(/```([\s\S]*?)```/g, '<pre style="background:var(--color-bg-2);padding:12px;border-radius:var(--radius-sm);overflow-x:auto;font-size:13px;"><code>$1</code></pre>');
   
   // 行内代码
-  md = md.replace(/`([^`]+)`/g, '<code style="background:var(--bg2);padding:2px 6px;border-radius:3px;font-size:13px;">$1</code>');
+  md = md.replace(/`([^`]+)`/g, '<code style="background:var(--color-bg-2);padding:2px 6px;border-radius:var(--radius-sm);font-size:13px;">$1</code>');
   
   // 标题
   md = md.replace(/^### (.+)$/gm, '<h4 style="margin:16px 0 8px;font-weight:500;">$1</h4>');

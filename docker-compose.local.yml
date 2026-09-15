@@ -1,0 +1,36 @@
+# 本地构建 + allinone 单体部署
+# 用法: docker compose -f docker-compose.local.yml up -d
+# 镜像: finvue-web:local（由 Dockerfile.local 基于现有 allinone 镜像 + 本地代码构建）
+# 特性: 内置 MariaDB，单容器运行，零外网依赖
+services:
+  finvue:
+    image: finvue-web:local
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    ports:
+      - "8080:8080"
+    environment:
+      - ENV=production
+      - HOST=0.0.0.0
+      - PORT=8080
+      - MYSQL_HOST=localhost
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=finvue
+      - MYSQL_USER=finvue
+      - MYSQL_PASSWORD=finvue_password
+      - AUTH_SECRET=local-dev-secret-please-change-in-production
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=admin123
+      - USE_CEPH_S3=false
+      - AUTO_MIGRATE=true
+      - HOTSPOT_API_ENABLED=true
+      - HOTSPOT_NO_PROXY=1
+      - ALLOW_OPEN_REGISTRATION=true
+      - OBJECT_STORAGE_DIR=/srv/finvue/objects
+    volumes:
+      - finvue_objects:/srv/finvue/objects
+    restart: unless-stopped
+
+volumes:
+  finvue_objects:

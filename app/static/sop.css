@@ -1,62 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;800&family=DM+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@700;900&display=swap');
+/* ═══════════════════════════════════════════════════════════════════════════
+   FinVue SOP 页面样式 v5 — 继承主壳 token
+   必须先加载 /static/modules/theme-system.css
+   ═══════════════════════════════════════════════════════════════════════════ */
 
+/* ── v5: 接入主壳 token 体系,sop 自创 token 改为引用主系统 ── */
 :root {
-  --bg: #07090d;
-  --panel: rgba(19, 23, 31, 0.92);
-  --panel-2: rgba(24, 29, 39, 0.92);
-  --panel-3: rgba(35, 28, 18, 0.72);
-  --line: #293042;
-  --line-2: #374059;
-  --text: #f5f0e8;
-  --muted: #a6a0ad;
-  --muted-2: #746f82;
-  --gold: #d99a00;
-  --gold-2: #f3c14d;
-  --green: #08c487;
-  --blue: #3aa0ff;
-  --red: #ff5f68;
-  --purple: #a578ff;
-  --mono: 'DM Mono', monospace;
-  --sans: 'Noto Sans SC', sans-serif;
-  --serif: 'Noto Serif SC', serif;
-  --shadow: 0 26px 80px rgba(0, 0, 0, 0.34);
-}
-
-/* 浅色主题 */
-[data-theme="light"] {
-  --bg: #F8FAFC;
-  --panel: rgba(255, 255, 255, 0.92);
-  --panel-2: rgba(241, 245, 249, 0.92);
-  --panel-3: rgba(226, 232, 240, 0.72);
-  --line: #E2E8F0;
-  --line-2: #CBD5E1;
-  --text: #1E293B;
-  --muted: #64748B;
-  --muted-2: #94A3B8;
-  --gold: #D97706;
-  --gold-2: #F59E0B;
-  --green: #059669;
-  --blue: #2563EB;
-  --red: #DC2626;
-  --purple: #7C3AED;
+  --bg:     var(--color-bg-0);
+  --panel:  var(--color-bg-1);
+  --panel-2: var(--color-bg-2);
+  --panel-3: var(--color-bg-3);
+  --line:   var(--color-border);
+  --line-2: var(--color-border-strong);
+  --text:   var(--color-text-0);
+  --muted:  var(--color-text-1);
+  --muted-2: var(--color-text-2);
+  --gold:   var(--color-gold);
+  --gold-2: var(--color-amber);
+  --green:  var(--color-green);
+  --blue:   var(--color-blue);
+  --red:    var(--color-red);
+  --purple: var(--color-purple);
+  --mono:   var(--font-mono);
+  --sans:   var(--font-body);
+  --serif:  var(--font-display);
+  --shadow: var(--shadow-lg);
 }
 
 [data-theme="light"] body {
-  background:
-    radial-gradient(circle at 18% 0%, rgba(217, 119, 6, 0.08), transparent 24%),
-    radial-gradient(circle at 78% 18%, rgba(37, 99, 235, 0.05), transparent 26%),
-    linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
-}
-
-[data-theme="light"] body::before {
-  background-image:
-    linear-gradient(rgba(217, 119, 6, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(217, 119, 6, 0.02) 1px, transparent 1px);
+  background: var(--color-bg-0);
 }
 
 [data-theme="light"] .sidebar {
-  background: rgba(255, 255, 255, 0.92);
-  border-bottom-color: var(--line);
+  background: var(--color-bg-1);
+  border-bottom-color: var(--color-line);
 }
 
 [data-theme="light"] input,
@@ -66,40 +42,40 @@
 [data-theme="light"] .anchor-state-box,
 [data-theme="light"] .status-text,
 [data-theme="light"] .summary-cell {
-  background: rgba(241, 245, 249, 0.88);
-  color: var(--text);
+  background: var(--color-bg-2);
+  color: var(--color-text-0);
 }
 
 [data-theme="light"] .phase-status.current,
 [data-theme="light"] .nav-item:hover,
 [data-theme="light"] .nav-item.active {
-  background: rgba(217, 119, 6, 0.12);
-  border-color: rgba(217, 119, 6, 0.28);
+  background: var(--color-accent-dim);
+  border-color: var(--color-accent);
 }
 
-/* 主题切换按钮 */
+/* 主题切换按钮 — 与主壳一致 */
 .theme-btn {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  background: var(--panel);
-  color: var(--muted);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-2);
+  color: var(--color-text-2);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  transition: all .2s;
+  transition: all .2s ease;
 }
 .theme-btn:hover {
-  background: var(--panel-2);
-  color: var(--gold);
+  background: var(--color-bg-3);
+  color: var(--color-accent);
 }
 .theme-btn.active {
-  background: rgba(217, 154, 0, 0.12);
-  color: var(--gold);
-  border-color: var(--gold);
+  background: var(--color-accent-dim);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -108,10 +84,7 @@ body {
   min-height: 100vh;
   font-family: var(--sans);
   color: var(--text);
-  background:
-    radial-gradient(circle at 18% 0%, rgba(217, 154, 0, 0.12), transparent 24%),
-    radial-gradient(circle at 78% 18%, rgba(58, 160, 255, 0.08), transparent 26%),
-    linear-gradient(180deg, #0d1017 0%, #05070a 100%);
+  background: var(--color-bg-0);
   line-height: 1.7;
 }
 

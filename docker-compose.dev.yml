@@ -1,0 +1,55 @@
+# 本地开发专用 compose（不改动 docker-compose.yml）
+# 用法: docker compose -f docker-compose.dev.yml up -d
+# 特性: 复用本地已有镜像 + 挂载代码热更新，不拉 Docker Hub、不构建镜像
+services:
+  finvue:
+    image: crachenlie/finvue-web:v0.1.84-arm64
+    ports:
+      - "8080:8080"
+    environment:
+      - ENV=DEV
+      - HOST=0.0.0.0
+      - PORT=8080
+      - RELOAD=true
+      # Mac 挂载卷上 inotify 不生效，强制 watchfiles 轮询以支持热更新
+      - WATCHFILES_FORCE_POLLING=true
+      - MYSQL_HOST=db
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=finvue
+      - MYSQL_USER=finvue
+      - MYSQL_PASSWORD=finvue_password
+      - USE_CEPH_S3=false
+      - AUTO_MIGRATE=true
+      - HOTSPOT_API_ENABLED=true
+      - ALLOW_OPEN_REGISTRATION=true
+    volumes:
+      - .:/app
+      # 用匿名卷遮住本地大目录，避免热更新轮询扫描 .venv/.git/node_modules
+      - /app/.venv
+      - /app/.git
+      - /app/node_modules
+      - finvue_objects:/srv/finvue/objects
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=finvue
+      - MYSQL_USER=finvue
+      - MYSQL_PASSWORD=finvue_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  finvue_objects:

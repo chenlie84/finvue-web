@@ -198,8 +198,6 @@
         end: state.end
       });
       renderPortrait(payload);
-      const navBtn = Array.from(document.querySelectorAll("#pg-dashboard .sidebar .nav-item")).find((item) => item.textContent.includes("投顾画像") || item.textContent.includes("主播画像"));
-      if (navBtn) navBtn.innerHTML = `<span class="ni">◎</span> 主播画像`;
     } catch (error) {
       const section = document.getElementById("sec-portrait");
       if (section) {

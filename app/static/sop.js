@@ -1,13 +1,18 @@
-    // 主题切换
+    // 主题切换(v5: 委托给 FinVueTheme,统一深浅 key)
     function setTheme(theme) {
+      if (window.FinVueTheme && window.FinVueTheme.apply) {
+        window.FinVueTheme.apply(theme);
+        return;
+      }
+      // 兜底:theme-controller 未加载
       document.documentElement.setAttribute('data-theme', theme);
-      localStorage.setItem('theme', theme);
-      document.getElementById('theme-dark').classList.toggle('active', theme === 'dark');
-      document.getElementById('theme-light').classList.toggle('active', theme === 'light');
+      try { localStorage.setItem('finvue-theme', theme); } catch (e) {}
     }
     function initTheme() {
-      const saved = localStorage.getItem('theme') || 'dark';
-      setTheme(saved);
+      // theme-controller 会自动初始化并接管按钮;此处保留以兼容旧调用链
+      var saved;
+      try { saved = localStorage.getItem('finvue-theme') || localStorage.getItem('theme'); } catch (e) { saved = 'dark'; }
+      setTheme(saved || 'dark');
     }
 
     const STORE_KEY = "anchor_onboarding_sop_v2";

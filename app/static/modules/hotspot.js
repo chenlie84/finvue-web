@@ -1,19 +1,43 @@
 // ══ 热点追踪相关函数 ══
 
 const PLATFORM_META = {
-  zhihu: { name: '知乎', icon: '📘' },
-  bilibili: { name: 'B站', icon: '📺' },
-  toutiao: { name: '头条', icon: '📰' },
-  weibo: { name: '微博', icon: '🔥' },
-  baidu: { name: '百度', icon: '🔍' },
-  douyin: { name: '抖音', icon: '🎵' },
-  cls: { name: '财联社', icon: '💰' },
-  wallstreetcn: { name: '华尔街见闻', icon: '📈' },
-  ifeng: { name: '凤凰网', icon: '📰' },
-  pengpai: { name: '澎湃新闻', icon: '🌊' },
-  tieba: { name: '贴吧热议', icon: '💬' }
+  zhihu: { name: '知乎', icon: '◈' },
+  bilibili: { name: 'B站', icon: '▶' },
+  toutiao: { name: '头条', icon: '≡' },
+  weibo: { name: '微博', icon: '●' },
+  baidu: { name: '百度', icon: '◉' },
+  douyin: { name: '抖音', icon: '◆' },
+  cls: { name: '财联社', icon: '■' },
+  wallstreetcn: { name: '华尔街见闻', icon: '▲' },
+  ifeng: { name: '凤凰网', icon: '◇' },
+  pengpai: { name: '澎湃新闻', icon: '▽' },
+  tieba: { name: '贴吧热议', icon: '◉' }
 };
-let hotspotState = { platforms: [], settings: null, filter: '', keyword: '', latestSummary: '' };
+const HOTSPOT_VISIBLE_KEY = 'finvue-hotspot-visible-platforms';
+let hotspotState = {
+  platforms: [],
+  settings: null,
+  filter: '',
+  keyword: '',
+  latestSummary: '',
+  hotspots: { byPlatform: {}, items: [] },
+  visiblePlatforms: null
+};
+
+function loadVisibleHotspotPlatforms() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HOTSPOT_VISIBLE_KEY) || 'null');
+    return Array.isArray(raw) ? raw : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveVisibleHotspotPlatforms(ids) {
+  try {
+    localStorage.setItem(HOTSPOT_VISIBLE_KEY, JSON.stringify(ids));
+  } catch (e) {}
+}
 
 async function loadHotspotMain() {
   try {
@@ -31,63 +55,182 @@ async function loadHotspotMain() {
     hotspotState.platforms = platforms;
     hotspotState.settings = settingsRes.ok ? (await settingsRes.json()).settings || null : null;
     const enabledIds = new Set((hotspotState.settings?.enabledPlatforms || platforms.map(p => p.id)).filter(Boolean));
-    const visiblePlatforms = platforms.filter(p => enabledIds.has(p.id));
-    document.getElementById('hotspotPlatformBtns').innerHTML = 
-      '<button class="tag active" data-platform="" onclick="filterHotspotPlatform(\'\')">全部</button>' +
-      visiblePlatforms.map(p => `<button class="tag" data-platform="${p.id}" onclick="filterHotspotPlatform('${p.id}')">${(PLATFORM_META[p.id]||{}).icon||'🔥'} ${(PLATFORM_META[p.id]||{}).name||p.name}</button>`).join('');
-    
+    const fetchedPlatforms = platforms.filter(p => enabledIds.has(p.id));
+    const storedVisible = loadVisibleHotspotPlatforms();
+    hotspotState.visiblePlatforms = storedVisible
+      ? new Set(storedVisible.filter(id => enabledIds.has(id)))
+      : new Set(fetchedPlatforms.map(p => p.id));
+
     const hotspots = hotspotsRes.ok ? await hotspotsRes.json() : { byPlatform: {}, items: [] };
-    const configuredByPlatform = Object.fromEntries(
-      Object.entries(hotspots.byPlatform || {}).filter(([platformId]) => enabledIds.has(platformId))
-    );
-    const configuredCount = Object.values(configuredByPlatform).reduce((sum, items) => sum + items.length, 0);
-    document.getElementById('hotspotTotalCount').textContent = fmt(configuredCount || stats.active || 0);
-    renderHotspotGridMain(configuredByPlatform);
-    
+    hotspotState.hotspots = {
+      byPlatform: Object.fromEntries(
+        Object.entries(hotspots.byPlatform || {}).filter(([platformId]) => enabledIds.has(platformId))
+      ),
+      items: hotspots.items || []
+    };
+    renderHotspotPlatformBtns(fetchedPlatforms);
+    renderHotspotMainList();
+
     const latest = (hotspots.items||[]).reduce((m,i) => Math.max(m, new Date(i.lastSeenAt||0).getTime()), 0) || Date.now();
     document.getElementById('hotspotUpdateTime').textContent = formatTimeShort(new Date(latest));
     loadCachedHotspotSummary();
   } catch(e) { console.log('热搜加载失败', e); }
 }
 
-function renderHotspotGridMain(byPlatform) {
-  if (!Object.keys(byPlatform).length) {
-    document.getElementById('hotspotGridMain').innerHTML = '<div style="grid-column:span 3;text-align:center;padding:30px;color:var(--text1);">暂无数据，点击刷新获取</div>';
+function renderHotspotPlatformBtns(fetchedPlatforms) {
+  const selected = hotspotState.visiblePlatforms || new Set();
+  const byPlatform = hotspotState.hotspots.byPlatform || {};
+  const chips = fetchedPlatforms.map(p => {
+    const meta = PLATFORM_META[p.id] || { name: p.name, icon: '●' };
+    const on = selected.has(p.id);
+    const n = (byPlatform[p.id] || []).length;
+    const tip = n ? `${on ? '点击隐藏' : '点击展示'}（${n} 条）` : '暂无抓取数据';
+    return `<button class="tag hotspot-platform-chip${on ? ' active' : ''}${n ? '' : ' is-empty'}" data-platform="${escapeHtmlAttr(p.id)}"
+      onclick="toggleHotspotPlatform('${escapeHtmlAttr(p.id)}')" title="${tip}"
+      >${escapeHtml(meta.icon || '●')} ${escapeHtml(meta.name || p.name)}<span class="hotspot-chip-count">${n}</span></button>`;
+  }).join('');
+  document.getElementById('hotspotPlatformBtns').innerHTML =
+    '<span class="hotspot-filter-label">展示平台</span>' + chips + `
+    <button class="tag hotspot-platform-tool" onclick="selectAllHotspotPlatforms()">全选</button>
+    <button class="tag hotspot-platform-tool" onclick="clearHotspotPlatforms()">清空</button>`;
+}
+
+function toggleHotspotPlatform(pid) {
+  const selected = hotspotState.visiblePlatforms || new Set();
+  if (selected.has(pid)) selected.delete(pid); else selected.add(pid);
+  hotspotState.visiblePlatforms = selected;
+  saveVisibleHotspotPlatforms([...selected]);
+  renderHotspotPlatformBtns(hotspotState.platforms.filter(p => {
+    const enabled = hotspotState.settings?.enabledPlatforms;
+    return !enabled || enabled.includes(p.id);
+  }));
+  renderHotspotMainList();
+}
+
+function selectAllHotspotPlatforms() {
+  const enabled = hotspotState.settings?.enabledPlatforms;
+  const ids = (enabled && enabled.length ? enabled : hotspotState.platforms.map(p => p.id)).filter(Boolean);
+  hotspotState.visiblePlatforms = new Set(ids);
+  saveVisibleHotspotPlatforms(ids);
+  renderHotspotPlatformBtns(hotspotState.platforms.filter(p => !enabled || enabled.includes(p.id)));
+  renderHotspotMainList();
+}
+
+function clearHotspotPlatforms() {
+  hotspotState.visiblePlatforms = new Set();
+  saveVisibleHotspotPlatforms([]);
+  renderHotspotPlatformBtns(hotspotState.platforms.filter(p => {
+    const enabled = hotspotState.settings?.enabledPlatforms;
+    return !enabled || enabled.includes(p.id);
+  }));
+  renderHotspotMainList();
+}
+
+// ── 关键词过滤 ───────────────────────────────────────────────────────────────
+// 原先 hotspotSearch() 是跳 /hotspot.html?keyword=X，指望旧页面接参数；
+// 但那个路由已被改成 302 跳回 index.html，**查询参数被整个丢掉**，
+// 所以这个搜索框一直点了没反应（state.keyword 声明了却从来没人读）。
+//
+// 现在直接在前端过滤：数据本身就是「近 2 小时」的全量集合（后端 LIMIT 200），
+// 前端筛选与后端筛选等价，还省一次往返、能做到边打字边出结果。
+function normalizeHotspotKeyword(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function hotspotItemMatches(item, keyword) {
+  if (!keyword) return true;
+  const haystack = [
+    item?.title,
+    item?.hotValue,
+    ...(Array.isArray(item?.keywords) ? item.keywords : [])
+  ].filter(Boolean).join(" ").toLowerCase();
+  return haystack.includes(keyword);
+}
+
+// 命中片段高亮。必须先 escapeHtml 再插 <mark>：顺序反了会把用户输入当 HTML 注入。
+function highlightHotspotKeyword(text, keyword) {
+  const escaped = escapeHtml(String(text ?? ""));
+  if (!keyword) return escaped;
+  const needle = escapeHtml(keyword);
+  if (!needle) return escaped;
+  const pattern = new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+  return escaped.replace(pattern, (matched) => `<mark class="hotspot-hit">${matched}</mark>`);
+}
+
+function renderHotspotMainList() {
+  const byPlatform = hotspotState.hotspots.byPlatform || {};
+  const selected = hotspotState.visiblePlatforms || new Set();
+  const keyword = normalizeHotspotKeyword(hotspotState.keyword);
+
+  // 平台选择是「本地勾选」筛的（服务端只在用旧版下拉时才带上 platform）
+  const filtered = Object.fromEntries(
+    Object.entries(byPlatform).filter(([pid]) => selected.has(pid))
+  );
+
+  const platformTotal = Object.values(filtered).reduce((sum, items) => sum + items.length, 0);
+  const matched = keyword
+    ? Object.fromEntries(
+        Object.entries(filtered)
+          .map(([pid, items]) => [pid, items.filter((i) => hotspotItemMatches(i, keyword))])
+          .filter(([, items]) => items.length)
+      )
+    : filtered;
+
+  const total = Object.values(matched).reduce((sum, items) => sum + items.length, 0);
+  document.getElementById('hotspotTotalCount').textContent = fmt(total);
+  renderHotspotSearchMeta(keyword, total, platformTotal);
+
+  const entries = Object.entries(matched);
+  const grid = document.getElementById('hotspotGridMain');
+  if (!entries.length) {
+    grid.innerHTML = keyword
+      ? `<div class="hotspot-empty">没有匹配「${escapeHtml(String(hotspotState.keyword).trim())}」的热搜。换个词，或点「清除」看全部。</div>`
+      : '<div class="hotspot-empty">暂无数据。请点击「刷新」抓取，或在上方选择要展示的平台。</div>';
     return;
   }
-  let html = '';
-  for (const [pid, items] of Object.entries(byPlatform)) {
-    const meta = PLATFORM_META[pid] || hotspotState.platforms.find(p=>p.id===pid) || { name: pid, icon: '🔥' };
-    html += `<div class="hotspot-platform-card">
-      <div class="hotspot-card-header">
-        <div>
-          <div class="hotspot-card-title">${meta.icon} ${meta.name}</div>
-          <div class="hotspot-card-sub">实时热榜 · 按平台排名</div>
-        </div>
-        <div class="hotspot-card-count"><strong>${items.length}</strong><span>条</span></div>
+
+  grid.innerHTML = entries.map(([pid, items]) => {
+    const meta = PLATFORM_META[pid] || hotspotState.platforms.find(p => p.id === pid) || { name: pid, icon: '●' };
+    const latest = items.reduce((m, i) => Math.max(m, new Date(i.lastSeenAt || 0).getTime()), 0);
+    return `<section class="hotspot-group">
+      <div class="hotspot-group-hd">
+        <span class="hotspot-group-name">${escapeHtml(meta.icon || '●')} ${escapeHtml(meta.name || pid)}</span>
+        <span class="hotspot-group-count">${items.length} 条</span>
+        ${latest ? `<span class="hotspot-group-time">${formatTimeShort(new Date(latest))}</span>` : ''}
       </div>
-      <div class="hotspot-card-body">${items.map(i => {
-        const r = i.rank||0, rc = r===1?'r1':r===2?'r2':r===3?'r3':'';
-        const titleText = escapeHtml(i.title || '');
-        const safeIdArg = escapeHtmlAttr(JSON.stringify(String(i.id || '')));
-        const safeTitleArg = escapeHtmlAttr(JSON.stringify(String(i.title || '')));
-        const hotText = i.hotValue ? `<span class="hotspot-item-hot">${escapeHtml(String(i.hotValue))}</span>` : '<span class="hotspot-item-hot muted">--</span>';
-        return `<div class="hotspot-item-main"><div class="hotspot-item-row">
-          <div class="hotspot-item-rank ${rc}">#${r||'--'}</div>
-          <div class="hotspot-item-content">
-            ${i.url ? `<a class="hotspot-item-title" href="${escapeHtmlAttr(i.url)}" target="_blank">${titleText}<span class="arrow">↗</span></a>` : `<span class="hotspot-item-title">${titleText}</span>`}
-            <div class="hotspot-item-meta">
-              ${hotText}
-              <span>${formatTimeShort(new Date(i.lastSeenAt))}</span>
-            </div>
-          </div>
-          <div class="hotspot-actions">
-            <button class="hotspot-action-btn" onclick="analyzeHotspotMain(${safeIdArg}, ${safeTitleArg})">分析</button>
-          </div>
-        </div></div>`;
-      }).join('')}</div></div>`;
+      <ol class="hotspot-list">${items.map(item => renderHotspotRow(item, keyword)).join('')}</ol>
+    </section>`;
+  }).join('');
+}
+
+// 更新「筛选命中 N / M 条」提示，并按有无关键词切换「清除」按钮
+function renderHotspotSearchMeta(keyword, hitCount, platformTotal) {
+  const meta = document.getElementById('hotspotSearchMeta');
+  if (meta) {
+    meta.innerHTML = keyword
+      ? `· 命中 <b>${fmt(hitCount)}</b> / ${fmt(platformTotal)} 条`
+      : '';
   }
-  document.getElementById('hotspotGridMain').innerHTML = html;
+  const clearBtn = document.getElementById('hotspotSearchClearBtn');
+  if (clearBtn) clearBtn.hidden = !keyword;
+}
+
+function renderHotspotRow(i, keyword = '') {
+  const r = i.rank || 0;
+  const rc = r === 1 ? 'r1' : r === 2 ? 'r2' : r === 3 ? 'r3' : '';
+  const titleText = highlightHotspotKeyword(i.title || '', keyword);
+  const safeIdArg = escapeHtmlAttr(JSON.stringify(String(i.id || '')));
+  const safeTitleArg = escapeHtmlAttr(JSON.stringify(String(i.title || '')));
+  const hotText = i.hotValue ? `<span class="hotspot-row-hot">${escapeHtml(String(i.hotValue))}</span>` : '';
+  const title = i.url
+    ? `<a class="hotspot-row-title" href="${escapeHtmlAttr(i.url)}" target="_blank" rel="noopener">${titleText}<span class="arrow">↗</span></a>`
+    : `<span class="hotspot-row-title">${titleText}</span>`;
+  return `<li class="hotspot-row">
+    <span class="hotspot-row-rank ${rc}">${r || '-'}</span>
+    ${title}
+    ${hotText}
+    <button class="hotspot-row-action" onclick="analyzeHotspotMain(${safeIdArg}, ${safeTitleArg})">分析</button>
+  </li>`;
 }
 
 function getConfiguredHotspotPlatformIds() {
@@ -111,7 +254,7 @@ function renderHotspotConfigForm() {
   const settings = hotspotState.settings || {};
   const enabled = new Set(settings.enabledPlatforms || hotspotState.platforms.map(p => p.id));
   document.getElementById('hotspotPlatformConfigGrid').innerHTML = hotspotState.platforms.map(p => {
-    const meta = PLATFORM_META[p.id] || { name: p.name, icon: p.icon || '🔥' };
+    const meta = PLATFORM_META[p.id] || { name: p.name, icon: p.icon || '●' };
     return `
       <label class="hotspot-platform-option">
         <input type="checkbox" class="hotspot-platform-config-check" value="${escapeHtmlAttr(p.id)}" ${enabled.has(p.id) ? 'checked' : ''}>
@@ -376,7 +519,7 @@ async function analyzeHotspotSummaryMain(options = {}) {
   const btn = document.getElementById('hotspotSummaryBtn');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = '⏳ 总览中...';
+    btn.textContent = '总览中...';
   }
   setHotspotSummaryLoading(options.message || "AI 正在筛选本轮重要热搜...");
   try {
@@ -407,7 +550,7 @@ async function analyzeHotspotSummaryMain(options = {}) {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = '✨ AI总览';
+      btn.textContent = 'AI总览';
     }
   }
 }
@@ -665,14 +808,32 @@ function filterHotspotPlatform(p) {
   loadHotspotMain();
 }
 
+// 点「搜索」/按回车：把输入框的值落到 state 再重绘（不再跳页）
 function hotspotSearch() {
-  const kw = document.getElementById('hotspotSearchInput').value.trim();
-  if (kw) location.href = `/hotspot.html?keyword=${encodeURIComponent(kw)}`;
+  const input = document.getElementById('hotspotSearchInput');
+  hotspotState.keyword = input ? input.value : '';
+  renderHotspotMainList();
+}
+
+// 边打字边筛，不用等回车
+function hotspotSearchInput(value) {
+  hotspotState.keyword = value || '';
+  renderHotspotMainList();
+}
+
+function hotspotClearSearch() {
+  hotspotState.keyword = '';
+  const input = document.getElementById('hotspotSearchInput');
+  if (input) {
+    input.value = '';
+    input.focus();
+  }
+  renderHotspotMainList();
 }
 
 async function fetchHotspotsMain() {
   const btn = document.getElementById('hotspotFetchBtn');
-  btn.disabled = true; btn.textContent = '⏳ 抓取中...';
+  btn.disabled = true; btn.textContent = '抓取中...';
   try {
     const platforms = getConfiguredHotspotPlatformIds();
     const res = await fetch('/api/hotspot/fetch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ platforms }) });
@@ -692,5 +853,5 @@ async function fetchHotspotsMain() {
     await loadHotspotMain();
     analyzeHotspotSummaryMain({ silent: true, message: "热搜已更新，正在生成 AI 总览..." });
   } catch(e) { showToast('抓取失败: '+e.message); }
-  btn.disabled = false; btn.textContent = '📥 刷新';
+  btn.disabled = false; btn.textContent = '刷新';
 }

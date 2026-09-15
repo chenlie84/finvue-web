@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+import logging
 import re
 from typing import Any, Optional
 
@@ -13,7 +14,146 @@ import security
 import store
 
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+
+
+# 运营 / SOP 表：这些表的 anchor_name 参与唯一键，改名时不能简单 UPDATE。
+#
+# 外键关系（`information_schema.REFERENTIAL_CONSTRAINTS` 实测）：
+#   sop_action_progress.anchor_name  -> sop_anchors.anchor_name  ON DELETE CASCADE
+#   sop_week_completion.anchor_name  -> sop_anchors.anchor_name  ON DELETE CASCADE
+#   operation_fans_stats 无外键，独立。
+#
+# 元组含义：(表名, 除主播名外的其余唯一键列)
+_INDEPENDENT_ANCHOR_TABLES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("finvue_operation_fans_stats", ("stat_date",)),
+)
+_SOP_ANCHOR_TABLE = "finvue_sop_anchors"
+_SOP_CHILD_TABLES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("finvue_sop_action_progress", ("week", "action_index", "sub_index", "child_index")),
+    ("finvue_sop_week_completion", ("week",)),
+)
+
+
+def _table_has_column(table: str, column: str) -> bool:
+    """表里有没有这一列。用于给「有 / 没有 updated_at」的表生成不同 SQL。"""
+    row = db.fetch_one(
+        "SELECT 1 AS x FROM information_schema.COLUMNS"
+        " WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s LIMIT 1",
+        (table, column),
+    )
+    return bool(row)
+
+
+def _drop_colliding_rows(table: str, old_name: str, new_name: str, key_cols: tuple[str, ...]) -> int:
+    """删掉 old 中「改完会跟 new 撞唯一键」的行。
+
+    语义上两边是同一个人的同一条记录，所以「目标优先」：new 已有同键行时丢弃 old 的。
+    先删冲突行，剩下的 UPDATE 才不会触发 Duplicate entry。
+    """
+    if not key_cols:
+        if db.fetch_one(
+            f"SELECT 1 AS x FROM {table} WHERE anchor_name = %s LIMIT 1", (new_name,)
+        ):
+            return db.execute(f"DELETE FROM {table} WHERE anchor_name = %s", (old_name,)) or 0
+        return 0
+    condition = " AND ".join(f"o.`{col}` <=> n.`{col}`" for col in key_cols)
+    return db.execute(
+        f"DELETE o FROM {table} o JOIN {table} n"
+        f" ON n.anchor_name = %s AND {condition}"
+        f" WHERE o.anchor_name = %s",
+        (new_name, old_name),
+    ) or 0
+
+
+def _fork_sop_anchor_row(source: str, target: str) -> bool:
+    """确保 sop_anchors 里存在 target 行，不存在就从 source 复制一份。
+
+    子表的外键指向 sop_anchors，所以必须先有目标父行，子表才能改过去；
+    又不能直接改父行的名字 —— 外键是 ON UPDATE NO ACTION，父行一改就违反约束。
+    列名从 information_schema 现取，避免以后加字段时这里漏写。
+    """
+    if db.fetch_one(
+        f"SELECT 1 AS x FROM {_SOP_ANCHOR_TABLE} WHERE anchor_name = %s LIMIT 1", (target,)
+    ):
+        return False
+    cols = [
+        row["COLUMN_NAME"]
+        for row in db.fetch_all(
+            "SELECT COLUMN_NAME FROM information_schema.COLUMNS"
+            " WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s ORDER BY ORDINAL_POSITION",
+            (_SOP_ANCHOR_TABLE,),
+        )
+        if row.get("COLUMN_NAME") and row["COLUMN_NAME"] != "anchor_name"
+    ]
+    if not cols:
+        raise RuntimeError(f"{_SOP_ANCHOR_TABLE} 除 anchor_name 外没有其他列，无法复制")
+    col_sql = ", ".join(f"`{col}`" for col in cols)
+    db.execute(
+        f"INSERT INTO {_SOP_ANCHOR_TABLE} (anchor_name, {col_sql})"
+        f" SELECT %s, {col_sql} FROM {_SOP_ANCHOR_TABLE} WHERE anchor_name = %s",
+        (target, source),
+    )
+    return True
+
+
+def _rename_sop_family(old_name: str, new_name: str) -> dict[str, int]:
+    """SOP 三张表（父表 + 两张 ON DELETE CASCADE 子表）。
+
+    ⚠️ 执行顺序不能变，反了会**静默丢数据**：
+    第一版先删父表的旧行，级联把该主播在子表里还没搬走的行一起删了
+    （实测 week=2 那行就这么没了），而且不报错。
+    正确顺序固定为：确保目标父行存在 → 迁子表 → 最后才删源父行（此时已无子行可级联）。
+    """
+    result: dict[str, int] = {}
+    forked = _fork_sop_anchor_row(old_name, new_name)
+    for table, key_cols in _SOP_CHILD_TABLES:
+        _drop_colliding_rows(table, old_name, new_name, key_cols)
+        set_clause = "anchor_name = %s"
+        if _table_has_column(table, "updated_at"):
+            set_clause += ", updated_at = CURRENT_TIMESTAMP"
+        result[table] = db.execute(
+            f"UPDATE {table} SET {set_clause} WHERE anchor_name = %s", (new_name, old_name)
+        ) or 0
+    removed = db.execute(
+        f"DELETE FROM {_SOP_ANCHOR_TABLE} WHERE anchor_name = %s", (old_name,)
+    ) or 0
+    result[_SOP_ANCHOR_TABLE] = removed
+    logger.info(
+        "[library-identity] SOP 改名 %s -> %s，forked=%s，明细=%s",
+        old_name, new_name, forked, result,
+    )
+    return result
+
+
+def _rename_aux_anchor_tables(old_name: str, new_name: str) -> dict[str, int]:
+    """把运营 / SOP 表里的主播名从 old_name 改成 new_name。
+
+    这几张表的 anchor_name 参与唯一键，目标名已存在同键行时直接 UPDATE 会抛
+    Duplicate entry，把整个改名请求打成 500，所以都要「先删冲突行再改」。
+    单表失败只记日志，不影响主流程 —— 主播档案 / 逐字稿 / 报告那几张核心表已经更新完了。
+    """
+    moved: dict[str, int] = {}
+    for table, key_cols in _INDEPENDENT_ANCHOR_TABLES:
+        try:
+            _drop_colliding_rows(table, old_name, new_name, key_cols)
+            set_clause = "anchor_name = %s"
+            if _table_has_column(table, "updated_at"):
+                set_clause += ", updated_at = CURRENT_TIMESTAMP"
+            moved[table] = db.execute(
+                f"UPDATE {table} SET {set_clause} WHERE anchor_name = %s", (new_name, old_name)
+            ) or 0
+        except Exception:
+            logger.exception("[library-identity] 更新 %s 失败（已跳过）", table)
+            moved[table] = -1
+
+    try:
+        moved.update(_rename_sop_family(old_name, new_name))
+    except Exception:
+        logger.exception("[library-identity] SOP 表改名失败（已跳过）")
+    return moved
 
 
 @router.get("/api/anchor-profiles")
@@ -261,6 +401,9 @@ async def patch_identity(request: Request, _: dict = Depends(security.require_an
     db.execute("UPDATE finvue_customer_profiles SET latest_anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE latest_anchor_name = %s", (new_name, old_name))
     db.execute("UPDATE finvue_customer_sessions SET anchor_name = %s, updated_at = CURRENT_TIMESTAMP WHERE anchor_name = %s", (new_name, old_name))
 
+    # 运营 / SOP 表：anchor_name 参与唯一键，需要特殊处理键冲突（详见函数注释）
+    aux_moved = _rename_aux_anchor_tables(old_name, new_name)
+
     # 同步更新逐字稿 raw JSON 中的 anchorName
     # 查询所有 anchor_name = new_name 的逐字稿（包括原本就是 new_name 的和新更新的）
     all_transcripts_with_new_name = db.fetch_all("SELECT id, raw FROM finvue_transcripts WHERE anchor_name = %s", (new_name,))
@@ -281,8 +424,11 @@ async def patch_identity(request: Request, _: dict = Depends(security.require_an
     # 合并主播资料库
     all_profiles_to_merge = old_profiles + new_profiles
     if all_profiles_to_merge:
-        # 选择最新的一条作为主记录（优先选择 new_profiles 中最新的，因为它更稳定）
-        main_profile = all_profiles_to_merge[0]
+        # 选主记录要跟注释口径一致：优先用「目标名」那条 —— 它是用户选定的规范名，
+        # 可能已经攒了快照，比旧名那条更该保留。
+        # 原实现写的是 all_profiles_to_merge[0]，而 old_profiles 拼在前面，
+        # 所以取到的永远是旧名那条，跟注释恰好相反。
+        main_profile = new_profiles[0] if new_profiles else old_profiles[0]
         main_raw = store.parse_json(main_profile.get("raw"), {})
         main_raw["anchorName"] = new_name
 
@@ -335,6 +481,9 @@ async def patch_identity(request: Request, _: dict = Depends(security.require_an
         "ok": True,
         "oldName": old_name,
         "newName": new_name,
+        # 运营 / SOP 表的改名明细（表名 -> 影响行数，-1 表示该表失败已跳过）。
+        # 之前只写进日志，接口不回传，前端无从知道这几张表到底改没改。
+        "auxTables": aux_moved,
         "profiles": [store.parse_json(p.get("raw"), {}) for p in profiles],
         "entries": [store.parse_json(e.get("raw"), {}) for e in entries]
     }

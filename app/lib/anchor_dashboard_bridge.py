@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import types
 from pathlib import Path
@@ -10,16 +11,29 @@ import pandas as pd
 import pymysql
 
 
-ANCHOR_DASHBOARD_DIR = Path("/Users/beeerjack/Desktop/develop/anchor_dashboard")
+def _env(name: str, default: str = "") -> str:
+    return str(os.environ.get(name, default) or "").strip()
+
+
+# 主播看板外部项目目录：优先读环境变量，未配置时回退到 develop 同级目录
+ANCHOR_DASHBOARD_DIR = Path(
+    _env("ANCHOR_DASHBOARD_DIR") or str(Path(__file__).resolve().parents[3] / "anchor_dashboard")
+)
 
 
 def fetch_douyin_info_data(sql: str) -> pd.DataFrame:
+    host = _env("DOUYIN_DB_HOST")
+    if not host:
+        raise RuntimeError(
+            "缺少抖音数据源配置，请设置 DOUYIN_DB_HOST / DOUYIN_DB_PORT / "
+            "DOUYIN_DB_DATABASE / DOUYIN_DB_USER / DOUYIN_DB_PASSWORD 环境变量"
+        )
     conn = pymysql.connect(
-        host="10.170.32.218",
-        port=3306,
-        database="demo",
-        user="root",
-        password="Python3.8",
+        host=host,
+        port=int(_env("DOUYIN_DB_PORT", "3306")),
+        database=_env("DOUYIN_DB_DATABASE", "demo"),
+        user=_env("DOUYIN_DB_USER", "root"),
+        password=_env("DOUYIN_DB_PASSWORD"),
         charset="utf8",
         connect_timeout=30,
     )

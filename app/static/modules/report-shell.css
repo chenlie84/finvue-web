@@ -1,0 +1,239 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   FinVue 报告壳 v1 — 复盘/直播/热点/AI 摘要共用
+   使用方式:外层 .report-skin,内部用 .report-shell 包裹完整报告
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.report-shell {
+  max-width: 1080px;
+  margin: 0 auto;
+  background: var(--report-surface);
+  border: 1.5px solid var(--report-line);
+  border-radius: var(--report-radius);
+  box-shadow: var(--report-shadow-soft);
+  overflow: hidden;
+}
+
+/* 直播分析页：报告满宽，去掉 max-width 居中限制 */
+#sec-live .report-shell {
+  max-width: none;
+  margin: 0;
+  width: 100%;
+  border-radius: var(--radius-md);
+}
+
+.report-shell-header {
+  padding: 24px 28px 18px;
+  border-bottom: var(--report-divider);
+  background:
+    linear-gradient(135deg, rgba(200,146,42,.08) 0%, transparent 60%),
+    var(--report-surface);
+  position: relative;
+}
+.report-shell-header::after {
+  content: "";
+  position: absolute;
+  left: 28px; bottom: -1px;
+  height: 2px; width: 56px;
+  background: var(--report-accent);
+  border-radius: 1px;
+}
+.report-shell-header h1 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
+  color: var(--report-text);
+}
+.report-shell-header .eyebrow {
+  display: block;
+  font-size: 10px;
+  color: var(--report-accent);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+.report-shell-header p.lead {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--report-text-1);
+  max-width: 820px;
+}
+.report-shell-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.report-shell-meta .chip {
+  border: 1px solid var(--report-line);
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: var(--report-accent-soft);
+  color: var(--report-text-1);
+}
+.report-shell-meta .chip.is-primary {
+  background: var(--report-accent);
+  color: #0A0B0E;
+  border-color: var(--report-accent);
+}
+
+.report-shell-body {
+  padding: 24px 28px;
+  background: var(--report-surface);
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--report-text);
+}
+.report-shell-body h1 { font-size: 20px; margin: 24px 0 10px; }
+.report-shell-body h2 {
+  font-size: 15px;
+  margin: 22px 0 10px;
+  color: var(--report-accent);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.report-shell-body h3 { font-size: 14px; margin: 16px 0 6px; color: var(--report-text); }
+.report-shell-body p, .report-shell-body li { font-size: 13px; line-height: 1.85; }
+.report-shell-body ul, .report-shell-body ol { padding-left: 20px; margin: 8px 0 12px; }
+.report-shell-body strong { color: var(--report-text); font-weight: 700; }
+.report-shell-body em    { color: var(--report-accent-2); font-style: normal; }
+
+.report-shell-body table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--report-line);
+  margin: 12px 0;
+  font-size: 12px;
+}
+.report-shell-body th {
+  background: var(--report-accent-soft);
+  text-align: left;
+  padding: 8px 10px;
+  font-family: var(--font-display);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: var(--report-text-1);
+  border-bottom: 1px solid var(--report-line);
+}
+.report-shell-body td {
+  padding: 8px 10px;
+  border-bottom: 1px dashed var(--report-line);
+  color: var(--report-text);
+}
+.report-shell-body tr:last-child td { border-bottom: none; }
+
+.report-shell-body blockquote {
+  border-left: 3px solid var(--report-accent);
+  padding: 4px 12px;
+  margin: 12px 0;
+  color: var(--report-text-1);
+  background: var(--report-surface-soft);
+  border-radius: 0 var(--report-radius-sm) var(--report-radius-sm) 0;
+}
+
+.report-shell-body code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--report-surface-soft);
+  border: 1px solid var(--report-line);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--report-accent-2);
+}
+
+.report-shell-body hr {
+  border: 0;
+  border-top: var(--report-divider);
+  margin: 18px 0;
+}
+
+.report-shell-footer {
+  padding: 12px 28px;
+  border-top: var(--report-divider);
+  background: var(--report-surface-soft);
+  font-size: 11px;
+  color: var(--report-text-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.report-shell-footer .actions { display: flex; gap: 8px; }
+.report-shell-footer .actions .btn { font-size: 11px; padding: 4px 10px; }
+
+/* 报告内 KPI 块 */
+.report-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1px;
+  background: var(--report-line);
+  border: 1px solid var(--report-line);
+  border-radius: var(--report-radius);
+  overflow: hidden;
+  margin: 16px 0;
+}
+.report-kpi-cell {
+  background: var(--report-surface);
+  padding: 14px 16px;
+}
+.report-kpi-cell .lbl {
+  font-size: 10px;
+  color: var(--report-text-2);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-family: var(--font-mono);
+  margin-bottom: 6px;
+}
+.report-kpi-cell .val {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--report-text);
+}
+.report-kpi-cell .delta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  margin-top: 4px;
+}
+.report-kpi-cell .delta.up   { color: var(--color-red); }
+.report-kpi-cell .delta.down { color: var(--color-green); }
+
+/* 报告内双栏布局 */
+.report-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.report-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 900px) {
+  .report-grid-2, .report-grid-3 { grid-template-columns: 1fr; }
+}
+
+/* 报告内"重点提示框" */
+.report-callout {
+  border: 1px solid var(--report-line);
+  background: var(--report-accent-soft);
+  border-left: 4px solid var(--report-accent);
+  border-radius: var(--report-radius);
+  padding: 12px 16px;
+  margin: 12px 0;
+  font-size: 13px;
+  color: var(--report-text);
+}
+.report-callout.is-warn   { border-left-color: var(--color-red); background: rgba(224,82,82,.06); }
+.report-callout.is-good   { border-left-color: var(--color-green); background: rgba(45,189,133,.06); }
+.report-callout strong    { color: var(--report-accent-2); }
+.report-callout .ct-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--report-accent);
+  margin-bottom: 6px;
+  font-weight: 700;
+}

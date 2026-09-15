@@ -561,19 +561,20 @@ async def fetch_hotspots(
 # ============================================
 
 def cleanup_old_data(retention_days: int = 30) -> dict:
-    """清理超过保留天数的历史数据"""
-    cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
-    cutoff_str = cutoff_date.strftime("%Y-%m-%d %H:%M:%S")
+    """清理超过保留天数的历史数据。
 
-    # 删除旧的热搜条目
-    items_deleted = db.execute(
-        "DELETE FROM finvue_hotspot_items WHERE last_seen_at < %s",
-        (cutoff_str,)
-    )
+    直接复用 services 里的实现，避免两处逻辑各写一遍后跑偏
+    （之前这里的注释写「快照表会通过外键自动删除」，但该表根本没有外键）。
+    """
+    from services.hotspot_fetcher import cleanup_old_data as _cleanup
 
-    # 快照表会通过外键自动删除
-
-    return {"ok": True, "itemsDeleted": items_deleted or 0, "cutoffDate": cutoff_str}
+    result = _cleanup(retention_days)
+    return {
+        "ok": True,
+        "itemsDeleted": result.get("deleted", 0),
+        "snapshotsDeleted": result.get("snapshotsDeleted", 0),
+        "cutoffDate": result.get("cutoffDate", ""),
+    }
 
 
 @router.post("/api/hotspot/cleanup")

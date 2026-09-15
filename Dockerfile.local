@@ -1,0 +1,20 @@
+# 本地代码覆盖版 allinone 镜像构建
+# 基础层用现成的 crachenlie/finvue-web:allinone-arm64-v0.1.84（含 MariaDB + Python + 依赖）
+# 顶层用本地源码覆盖 /app，复用基础层已安装的系统包和 Python 依赖
+FROM crachenlie/finvue-web:allinone-arm64-v0.1.84
+
+# 强制 amd64/arm64 自动选择：build 时通过 --build-arg ARCH=arm64 切换
+ARG ARCH=arm64
+ARG BASE_TAG=allinone-arm64-v0.1.84
+
+WORKDIR /app
+
+# 覆盖代码：先清空再拷本地（避免遗留旧文件）
+COPY . /app/
+
+# 确保 entrypoint 脚本可执行
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 8080
+
+ENTRYPOINT ["/entrypoint.sh"]

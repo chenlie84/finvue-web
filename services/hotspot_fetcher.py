@@ -699,17 +699,55 @@ def sync_fetch_all_platforms(platforms: list[str] | None = None) -> dict:
     return fetch_all_platforms(platforms)
 
 
-def cleanup_old_data(retention_days: int = 30) -> dict:
-    """清理超过保留天数的历史数据"""
+def _retention_cutoff(retention_days: int) -> str:
+    """保留期截止时刻（UTC 字符串）。
+
+    统一用 UTC：容器时区是 UTC，MySQL 里存的也是 UTC（NOW() 与会话时区都是 UTC），
+    三处对齐，否则按本地时间算会整体偏移 8 小时、删多或删少。
+    """
     from datetime import timedelta
 
-    cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
-    cutoff_str = cutoff_date.strftime("%Y-%m-%d %H:%M:%S")
+    return (datetime.now(timezone.utc) - timedelta(days=retention_days)).strftime("%Y-%m-%d %H:%M:%S")
 
-    # 删除旧的热搜条目（快照会通过外键级联删除）
-    result = db.execute(
+
+def has_expired_data(retention_days: int = 30) -> bool:
+    """是否已有超过保留期的快照。
+
+    给调度器用的廉价探测：走 idx_snapshot_time 索引 seek，命中即返回，
+    不需要 COUNT 全量匹配行，所以每分钟调一次也不心疼。
+    """
+    try:
+        row = db.fetch_one(
+            "SELECT 1 AS due FROM finvue_hotspot_snapshots WHERE snapshot_time < %s LIMIT 1",
+            (_retention_cutoff(retention_days),),
+        )
+    except Exception:
+        logger.exception("[hotspot] has_expired_data 查询失败")
+        return False
+    return bool(row)
+
+
+def cleanup_old_data(retention_days: int = 30) -> dict:
+    """清理超过保留天数的历史数据。
+
+    注意：finvue_hotspot_snapshots 建表时**没有** FOREIGN KEY，
+    所以删 items 不会级联删除快照——必须显式清理，否则快照表只增不减。
+    """
+    cutoff_str = _retention_cutoff(retention_days)
+
+    # 先删快照（按快照时间），再删条目，避免留下孤儿快照
+    snapshots_deleted = db.execute(
+        "DELETE FROM finvue_hotspot_snapshots WHERE snapshot_time < %s",
+        (cutoff_str,)
+    )
+    items_deleted = db.execute(
         "DELETE FROM finvue_hotspot_items WHERE last_seen_at < %s",
         (cutoff_str,)
     )
 
-    return {"ok": True, "deleted": result or 0, "cutoffDate": cutoff_str}
+    return {
+        "ok": True,
+        "deleted": items_deleted or 0,
+        "snapshotsDeleted": snapshots_deleted or 0,
+        "cutoffDate": cutoff_str,
+    }

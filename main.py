@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.responses import JSONResponse
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import uvicorn
@@ -172,6 +173,14 @@ def index(request: Request) -> HTMLResponse:
     return _page(request, "index.html")
 
 
+# 下面这 4 个页面必须「真的返回页面」，不能做 302 跳转：
+#   1) index.html 自己是用**带参数的链接**指向它们的（见 index.html:10694/10695/10706/10782/10906），
+#      例如 /customer-list.html?anchor=X、/customer-profile.html?customer=X&anchor=Y；
+#      RedirectResponse 用固定 URL，**会把查询参数整个丢掉**，跳过去页面就不知道要显示谁。
+#   2) 其中三个的跳转目标分节（#sec-operation / #sec-customer-profile / #sec-customer-trends）
+#      在 index.html 里**根本不存在**，浏览器忽略未知锚点 → 直接落回首页顶部。
+#      这就是「点运营数据却回到首页」的原因。
+# 等 index.html 里真的做出对应分节、且不再需要参数传递时，再改回 302 也不迟。
 @app.get("/customer-list.html")
 def customer_list(request: Request) -> HTMLResponse:
     return _page(request, "customer-list.html")
@@ -187,9 +196,11 @@ def customer_trends(request: Request) -> HTMLResponse:
     return _page(request, "customer-trends.html")
 
 
+# /sop 与 /hotspot.html 保留 302：目标分节 #sec-sop、#sec-hotspot 在 index.html 里确实存在，
+# 且这两个入口不需要传参数，跳转后行为正确。
 @app.get("/sop")
-def sop_page(request: Request) -> HTMLResponse:
-    return _page(request, "sop.html")
+def sop_page() -> RedirectResponse:
+    return RedirectResponse(url="/index.html#sec-sop", status_code=302)
 
 
 @app.get("/operation-dashboard.html")
@@ -198,8 +209,8 @@ def operation_dashboard(request: Request) -> HTMLResponse:
 
 
 @app.get("/hotspot.html")
-def hotspot_page(request: Request) -> HTMLResponse:
-    return _page(request, "hotspot.html")
+def hotspot_page() -> RedirectResponse:
+    return RedirectResponse(url="/index.html#sec-hotspot", status_code=302)
 
 
 @app.get("/favicon.ico")
@@ -213,5 +224,14 @@ if __name__ == "__main__":
         host=config.HOST,
         port=config.PORT,
         reload=config.RELOAD,
+        reload_excludes=[
+            "**/__pycache__/**",
+            "**/*.pyc",
+            "**/.git/**",
+            "**/.venv/**",
+            "**/node_modules/**",
+            "**/*.csv",
+            "**/*.log",
+        ],
         factory=False,
     )

@@ -45,7 +45,7 @@ async function initAiChat() {
 
     // 普通知识库
     if (normalKb.length) {
-      html += '<optgroup label="📁 上传的知识库">';
+      html += '<optgroup label="上传的知识库">';
       normalKb.forEach(k => {
         html += `<option value="${k.id}">${escapeHtml(k.name)} (${k.file_type})</option>`;
       });
@@ -54,10 +54,10 @@ async function initAiChat() {
 
     // 主播蒸馏库
     if (distillKb.length) {
-      html += '<optgroup label="🎯 主播蒸馏库">';
+      html += '<optgroup label="主播蒸馏库">';
       distillKb.forEach(k => {
-        const badge = k.has_profile ? '📋' : '';
-        const countBadge = k.transcript_count > 0 ? `📝${k.transcript_count}` : '';
+        const badge = k.has_profile ? '[画像]' : '';
+        const countBadge = k.transcript_count > 0 ? `逐字稿${k.transcript_count}` : '';
         html += `<option value="${k.id}" style="color:var(--gold);">${escapeHtml(k.name.replace('主播蒸馏：', ''))} ${badge} ${countBadge}</option>`;
       });
       html += '</optgroup>';
@@ -99,12 +99,12 @@ async function loadChatMessages(sessionId) {
     const messages = await res.json();
     const container = document.getElementById("ai-chat-messages");
     if (!messages.length) {
-      container.innerHTML = '<div class="ai-msg ai-msg-assistant" style="max-width:80%;"><div style="font-size:12px;color:var(--text1);margin-bottom:4px;">🤖 AI 助手</div><div style="background:var(--bg2);padding:12px;border-radius:var(--r);">开始新对话吧！</div></div>';
+      container.innerHTML = '<div class="ai-msg ai-msg-assistant" style="max-width:80%;"><div style="font-size:12px;color:var(--text1);margin-bottom:4px;">AI 助手</div><div style="background:var(--bg2);padding:12px;border-radius:var(--r);">开始新对话吧！</div></div>';
       return;
     }
     container.innerHTML = messages.map(m => `
       <div class="ai-msg ${m.role === 'user' ? 'ai-msg-user' : 'ai-msg-assistant'}" style="max-width:80%;align-self:${m.role === 'user' ? 'flex-end' : 'flex-start'};">
-        <div style="font-size:12px;color:var(--text1);margin-bottom:4px;">${m.role === 'user' ? '👤 你' : '🤖 AI 助手'}</div>
+        <div style="font-size:12px;color:var(--text1);margin-bottom:4px;">${m.role === 'user' ? '你' : 'AI 助手'}</div>
         <div class="${m.role === 'user' ? 'ai-msg-user-content' : 'ai-msg-assistant-content'}">${m.role === 'user' ? escapeHtml(m.content) : markdownToReportHtml(m.content)}</div>
       </div>
     `).join('');
@@ -136,13 +136,13 @@ async function sendAiChat() {
   const container = document.getElementById("ai-chat-messages");
   container.innerHTML += `
     <div class="ai-msg ai-msg-user" style="max-width:80%;align-self:flex-end;">
-      <div style="font-size:12px;color:var(--text1);margin-bottom:4px;">👤 你</div>
+      <div style="font-size:12px;color:var(--text1);margin-bottom:4px;">你</div>
       <div class="ai-msg-user-content">${escapeHtml(message)}</div>
     </div>
   `;
   container.innerHTML += `
     <div class="ai-msg ai-msg-assistant" style="max-width:80%;">
-      <div style="font-size:12px;color:var(--text1);margin-bottom:4px;">🤖 AI 助手</div>
+      <div style="font-size:12px;color:var(--text1);margin-bottom:4px;">AI 助手</div>
       <div class="ai-msg-assistant-content"><span class="spinner"></span> 思考中...</div>
     </div>
   `;
@@ -184,7 +184,7 @@ async function sendAiChat() {
 
 async function createNewChat() {
   currentChatSession = null;
-  document.getElementById("ai-chat-messages").innerHTML = '<div class="ai-msg ai-msg-assistant" style="max-width:80%;"><div style="font-size:12px;color:var(--text1);margin-bottom:4px;">🤖 AI 助手</div><div style="background:var(--bg2);padding:12px;border-radius:var(--r);">你好！我是 AI 助手，有什么可以帮你的吗？</div></div>';
+  document.getElementById("ai-chat-messages").innerHTML = '<div class="ai-msg ai-msg-assistant" style="max-width:80%;"><div style="font-size:12px;color:var(--text1);margin-bottom:4px;">AI 助手</div><div style="background:var(--bg2);padding:12px;border-radius:var(--r);">你好！我是 AI 助手，有什么可以帮你的吗？</div></div>';
   loadChatSessions();
 }
 
@@ -405,7 +405,7 @@ function addAiChatButton() {
   btn.id = "ai-chat-toggle-btn";
   btn.className = "btn btn-outline";
   btn.style.cssText = "font-size:12px;padding:5px 10px;";
-  btn.innerHTML = "🤖 AI";
+  btn.innerHTML = "AI";
   btn.onclick = openAiDrawer;
   topnav.insertBefore(btn, topnav.lastElementChild);
 }

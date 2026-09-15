@@ -810,8 +810,13 @@ def save_transcript_library(payload: dict[str, Any]) -> dict[str, Any]:
                 continue
             item_id = text(item.get("id")) or _id("transcript")
             anchor_name = text(item.get("anchorName") or item.get("anchor") or item.get("name"))
-            title = text(item.get("title") or item.get("fileName"))
-            content = text(item.get("content") or item.get("text") or item.get("transcript"))
+            # 前端传的是 sourceFileName / transcriptText，之前只找 title / fileName、
+            # content / text，结果这两列永远是 NULL，SQL 层的搜索和展示都用不上。
+            title = text(item.get("title") or item.get("fileName") or item.get("sourceFileName") or item.get("liveTheme"))
+            content = text(
+                item.get("content") or item.get("text") or item.get("transcript")
+                or item.get("transcriptText")
+            )
             raw = {**item, "id": item_id}
             cur.execute(
                 """
@@ -830,8 +835,12 @@ def save_transcript_library(payload: dict[str, Any]) -> dict[str, Any]:
 def append_transcript_entry(item: dict[str, Any]) -> dict[str, Any]:
     item_id = text(item.get("id")) or _id("transcript")
     anchor_name = text(item.get("anchorName") or item.get("anchor") or item.get("name"))
-    title = text(item.get("title") or item.get("fileName"))
-    content = text(item.get("content") or item.get("text") or item.get("transcript"))
+    # 同 save_transcript_library：兼容前端实际用的 sourceFileName / transcriptText
+    title = text(item.get("title") or item.get("fileName") or item.get("sourceFileName") or item.get("liveTheme"))
+    content = text(
+        item.get("content") or item.get("text") or item.get("transcript")
+        or item.get("transcriptText")
+    )
     raw = {**item, "id": item_id, "anchorName": anchor_name, "title": title, "content": content}
     db.execute(
         """
