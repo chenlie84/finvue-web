@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import mimetypes
 from uuid import uuid4
 from contextlib import asynccontextmanager
 
@@ -96,6 +97,13 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="FinVue", version="2.0.0-fastapi", lifespan=lifespan)
 templates = Jinja2Templates(directory=str(config.APP_DIR))
+
+# 自托管字体 /static/vendor/fonts/*.woff2：容器里 Python 的 mimetypes 表不认识 woff2，
+# Starlette 会退化成 text/plain。按规范显式注册为 font/woff2（woff/ttf 一并补上），
+# 避免不同运行环境（本地容器 vs Northflank）猜出来的类型不一致。
+for _ext, _mime in ((".woff2", "font/woff2"), (".woff", "font/woff"), (".ttf", "font/ttf")):
+    if mimetypes.guess_type("x" + _ext)[0] != _mime:
+        mimetypes.add_type(_mime, _ext)
 
 if config.STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(config.STATIC_DIR)), name="static")

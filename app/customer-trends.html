@@ -4,7 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>粉丝运营趋势看板</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- 字体已自托管（原 Google Fonts 国内被墙）：同源 13KB CSS，JetBrains Mono / Playfair Display / Outfit 都在里面 -->
+<link rel="stylesheet" href="/static/vendor/fonts/google-fonts.css?v=20260915b">
 <style>
 :root{--bg0:#0A0B0E;--bg1:#11131A;--bg2:#181B24;--bg3:#1E2230;--border:#252836;--border2:#2E3347;--gold:#C8922A;--gold2:#E5B84A;--gold-dim:rgba(200,146,42,.12);--text0:#EAE6DD;--text1:#9B97A0;--text2:#5A566A;--green:#2DBD85;--red:#E05252;--blue:#4A90D9;--purple:#9B7FE8;--primary:var(--gold);--primary-light:var(--gold2);--bg:var(--bg0);--card:var(--bg1);--text:var(--text0);--dim:var(--text1);--muted:var(--text2);--accent:var(--green);--danger:var(--red);--warning:var(--gold2)}
 [data-theme="light"]{--bg0:#F8FAFC;--bg1:#FFFFFF;--bg2:#F1F5F9;--bg3:#E2E8F0;--border:#E2E8F0;--border2:#CBD5E1;--gold:#D97706;--gold2:#F59E0B;--gold-dim:rgba(217,119,6,.08);--text0:#1E293B;--text1:#64748B;--text2:#94A3B8;--green:#059669;--red:#DC2626;--blue:#2563EB;--purple:#7C3AED;--bg:var(--bg0);--card:var(--bg1);--text:var(--text0);--dim:var(--text1);--muted:var(--text2)}
@@ -76,7 +77,10 @@ function exportHTML() {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${esc(title)}</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- ⚠️ 导出的是「下载到本地、脱离服务器上下文」的独立文件，指向 /static/vendor/ 必然 404，
+     所以这里只能保留绝对 URL（Google Fonts）。改用 media="print" 的异步加载技巧：
+     拿不到就退回系统字体，绝不阻塞白屏。 -->
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>${styles}
 .export-btn{display:none}
 </style>

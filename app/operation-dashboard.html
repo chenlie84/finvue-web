@@ -5,8 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>运营数据中心 · FinVue</title>
 <link rel="stylesheet" href="/static/modules/theme-system.css?v=20260914a" />
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<!-- 字体与 echarts【已自托管到 /static/vendor/】——原先这两个都是境外资源（Google Fonts / jsDelivr）
+     且「阻塞渲染」：实测冷启动 DCL 2.83s（字体 1.84s + echarts 2.66s/1MB），
+     而本页的数据加载挂在 DOMContentLoaded 上，连 defer 都会拖到它 → 点进来要白等近 3 秒。
+     现在走同源，跨境依赖清零。策略不变：
+       1) 字体同源 13KB CSS 直接阻塞加载（几乎瞬时），JetBrains Mono 首屏就位
+       2) echarts 用 async 完全不参与首屏；图表函数已有 typeof echarts 守卫，
+          库没到就跳过，另有 watchEchartsThenRedraw() 在库到位后自动补画 -->
+<link rel="stylesheet" href="/static/vendor/fonts/google-fonts.css?v=20260915b" />
+<script async src="/static/vendor/echarts-5.4.3.min.js?v=20260915b"></script>
 <style>
 /* ── Operation Dashboard Page Specific ── */
 :root { --chart-bg: #181B24; }
@@ -1447,7 +1454,11 @@ function exportFansTrendHTML() {
 <head>
 <meta charset="UTF-8">
 <title>${esc(title)}</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- ⚠️ 导出的是「下载到本地、脱离服务器上下文」的独立文件，指向 /static/vendor/ 必然 404，
+     所以这两个外链只能是绝对 URL（保留 CDN）。为了不重蹈「外链阻塞渲染」的覆辙，
+     字体改为 media="print" 的异步加载技巧：拿不到就退回系统字体，绝不白屏。
+     echarts 拿不到则图表不渲染（图表函数本身有 typeof 守卫，不会报错中断）。 -->
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"><\/script>
 <style>${styles}</style>
 </head>
@@ -1700,7 +1711,8 @@ async function loadLiveDetails() {
         const colors = getThemeColors();
         for (const [chartId, lives] of Object.entries(liveDetailsChartInstances)) {
           const chartEl = document.getElementById(chartId);
-          if (!chartEl || lives.length === 0) continue;
+          // echarts 是 defer 加载的：库还没到就跳过，别抛 ReferenceError
+          if (!chartEl || lives.length === 0 || typeof echarts === 'undefined') continue;
           
           // 按日期排序
           const sortedLives = lives.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
@@ -2197,6 +2209,29 @@ function renderSimpleMarkdown(md) {
   return '<p style="margin:12px 0;">' + md + '</p>';
 }
 
+// echarts 现在是 async 加载（不再参与首屏）。若首屏渲染时库还没到，图表会被守卫跳过，
+// 这里等库到位后把当前分节重画一次，用户不用手动刷新。
+function watchEchartsThenRedraw() {
+  if (window.echarts) return;            // 已就绪（多半是浏览器缓存命中）→ 什么都不用做
+  let tries = 0;
+  const timer = setInterval(() => {
+    if (!window.echarts) {
+      if (++tries > 80) clearInterval(timer);   // 最多等 20 秒，之后放弃（图表缺失但不报错）
+      return;
+    }
+    clearInterval(timer);
+    try {
+      const active = document.querySelector('.tab-content.active');
+      const activeId = active ? active.id : '';
+      if (activeId === 'tab-weekly') loadWeeklyReport();
+      else if (activeId === 'tab-monthly') loadMonthlyReport();
+      else if (activeId === 'tab-fans-trend') loadFansTrend();
+    } catch (e) {
+      console.warn('[charts] echarts 到位后补画失败', e);
+    }
+  }, 250);
+}
+
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
@@ -2204,6 +2239,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initMonthSelector();
   loadAccounts();
   loadWeeklyReport();
+  watchEchartsThenRedraw();
   
   // 初始化直播明细
   loadLiveDetails();

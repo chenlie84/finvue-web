@@ -4,11 +4,20 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FinVue · 投顾分析平台</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+<!-- 第三方库与字体【已自托管到 /static/vendor/】——原先这 5 个都是境外资源
+     （Google Fonts / cdnjs / jsDelivr），国内访问常被墙或超时：实测阻塞渲染 + 冷启动白屏 2.9s、外链合计 2.25MB，
+     且启动挂在 window.load 上（要等这些库全下完）→ 整个工作台白等约 3 秒。
+     现在走同源，跨境依赖清零。加载策略保持「不阻塞首屏」：
+       1) 字体：同源 13KB CSS，直接阻塞加载（同源几乎瞬时），保证 JetBrains Mono 首屏就位、不闪字体。
+          字体文件本体在 /static/vendor/fonts/*.woff2（12 个，共 ~198KB），带 font-display:swap。
+       2) 4 个库仍用 async —— 它们只在「导入 Excel / PDF&OCR 解析 / 图表」这类用户动作里才用到，
+          每个使用点都有 window.X 存在性守卫（见 ensurePdfOcrRuntime / XLSX 检查），
+          因此让它们后台并行下载即可，不参与首屏，也不延迟 DOMContentLoaded。 -->
+<link rel="stylesheet" href="/static/vendor/fonts/google-fonts.css?v=20260915b" />
+<script async src="/static/vendor/pdf-3.11.174.min.js?v=20260915b"></script>
+<script async src="/static/vendor/tesseract/tesseract.min.js?v=20260915b"></script>
+<script async src="/static/vendor/xlsx-0.18.5.full.min.js?v=20260915b"></script>
+<script async src="/static/vendor/echarts-5.5.1.min.js?v=20260915b"></script>
 <script src="/static/modules/report-export.js?v=20260824a"></script>
 <script src="/static/modules/releases.js?v=20260914a"></script>
 <script src="/static/modules/theme-controller.js?v=20260914a"></script>
@@ -22,6 +31,8 @@
 <link rel="stylesheet" href="/static/modules/feishu.css?v=20260914a" />
 <link rel="stylesheet" href="/static/modules/data-collection.css?v=20260828g" />
 <link rel="stylesheet" href="/static/modules/anchor-dashboard.css?v=20260914a">
+<!-- 预取「运营数据」独立页：它是左侧唯一整页跳转的入口，提前取好点起来更跟手 -->
+<link rel="prefetch" href="/operation-dashboard.html" />
 </head>
 <body>
 <!-- ══════════════ LOGIN ══════════════ -->
@@ -2776,6 +2787,9 @@ function goOperationDashboard() {
     showToast("当前账号没有“运营数据中心”模块权限");
     return;
   }
+  // 「运营数据」是唯一的整页跳转（其它导航都是页内切分节），给个即时反馈，
+  // 免得点了没动静、像是卡住（首屏若还在加载，浏览器要等当前解析完成才提交导航）
+  showToast("正在打开运营数据中心…");
   window.location.href = "/operation-dashboard.html";
 }
 
@@ -6476,17 +6490,20 @@ async function afterAuth() {
   generateDefaultAiSummary();
   // 加载热搜
   loadHotspotMain();
-  if (hasDashboardPermission("anchor-library")) await loadAnchorProfiles();
-  if (hasDashboardPermission("customer-library")) await loadCustomerLibrary();
-  if (hasDashboardPermission("transcript-library")) await loadTranscriptLibrary();
-  if (hasDashboardPermission("compliance-library")) await loadComplianceLibrary();
-  if (hasDashboardPermission("case-library")) await loadCaseLibrary();
+  // 各分库之间互不依赖。原先串行 await 会把首屏「忙」的时间拉成全部之和（实测末尾要到 1.8s），
+  // 现改成并发发起 + allSettled：单个失败既不中断其余，也不会冒泡成「登录失效」。
+  const libraryLoaders = [];
+  if (hasDashboardPermission("anchor-library")) libraryLoaders.push(loadAnchorProfiles());
+  if (hasDashboardPermission("customer-library")) libraryLoaders.push(loadCustomerLibrary());
+  if (hasDashboardPermission("transcript-library")) libraryLoaders.push(loadTranscriptLibrary());
+  if (hasDashboardPermission("compliance-library")) libraryLoaders.push(loadComplianceLibrary());
+  if (hasDashboardPermission("case-library")) libraryLoaders.push(loadCaseLibrary());
   if (isAdmin()) {
-    await loadAdminUsers();
-    await loadRemoteDbSettings();
+    libraryLoaders.push(loadAdminUsers(), loadRemoteDbSettings());
   } else {
     els.adminStatus.textContent = "当前账号不是管理员。";
   }
+  await Promise.allSettled(libraryLoaders);
   updateAdminDashboardSummary();
   updateNotifyBadge();
   window.setTimeout(maybeShowReleaseModal, 600);
@@ -6700,21 +6717,32 @@ function generateDefaultAiSummary() {
 }
 
 async function bootstrap() {
+  let payload = null;
   try {
     const response = await fetch("/api/session");
-    const payload = await response.json();
-    state.registrationEnabled = Boolean(payload.registrationEnabled);
-    syncRegistrationUi();
-    if (payload.authenticated) {
-      applyAuthUser(payload.user);
-      await afterAuth();
-    } else {
-      showPage("login");
-    }
-  } catch {
+    payload = await response.json();
+  } catch (error) {
+    // 「连不上后端」不等于「未登录」：只提示，不要让用户以为自己被登出了
     state.registrationEnabled = false;
     syncRegistrationUi();
     showPage("login");
+    if (els.loginStatus) els.loginStatus.textContent = "无法连接服务，请确认后端已启动后刷新重试";
+    return;
+  }
+  state.registrationEnabled = Boolean(payload.registrationEnabled);
+  syncRegistrationUi();
+  if (!payload.authenticated) {
+    showPage("login");
+    return;
+  }
+  applyAuthUser(payload.user);
+  // ⚠️ afterAuth 里任何一个分库/模块初始化抛错，都不能等同于「登录失效」。
+  // 否则已登录用户会被莫名弹回登录页（「返回首页却看到登录界面」就是这个原因）。
+  try {
+    await afterAuth();
+  } catch (error) {
+    console.error("[bootstrap] 工作台初始化未全部完成：", error);
+    showToast("部分模块加载失败，可刷新页面重试");
   }
 }
 
@@ -6934,6 +6962,26 @@ async function readUploadedFile(file, key) {
   return await file.text();
 }
 
+// tesseract.js 自托管配置：worker / core / 语言包全部走本站 /static/vendor/，
+// 不再请求 jsDelivr 与 tessdata CDN。core 按浏览器是否支持 WASM SIMD 显式二选一
+// （两个文件都在 vendor 里；不依赖库内部的自动判定，避免升级 tesseract.js 后静默 404）。
+// 语言包是 tessdata_fast 版（chi_sim+eng 共 3.7MB，比标准版小 27MB，速度约快 4 倍）。
+const TESSERACT_LOCAL = (() => {
+  let supportsSimd = false;
+  try {
+    supportsSimd = WebAssembly.validate(new Uint8Array([
+      0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11,
+    ]));
+  } catch (error) {
+    supportsSimd = false;
+  }
+  return {
+    workerPath: "/static/vendor/tesseract/worker.min.js?v=20260915b",
+    corePath: `/static/vendor/tesseract/tesseract-core${supportsSimd ? "-simd" : ""}.wasm.js?v=20260915b`,
+    langPath: "/static/vendor/tesseract/tessdata",
+  };
+})();
+
 function ensurePdfOcrRuntime() {
   if (!window.pdfjsLib) {
     throw new Error("PDF 解析组件加载失败");
@@ -6941,7 +6989,7 @@ function ensurePdfOcrRuntime() {
   if (!window.Tesseract) {
     throw new Error("OCR 组件加载失败");
   }
-  window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = "/static/vendor/pdf-3.11.174.worker.min.js?v=20260915b";
 }
 
 async function extractPdfWithBrowserOcr(buffer, fileName, key) {
@@ -6960,6 +7008,7 @@ async function extractPdfWithBrowserOcr(buffer, fileName, key) {
     canvas.height = Math.ceil(viewport.height);
     await page.render({ canvasContext: context, viewport }).promise;
     const result = await window.Tesseract.recognize(canvas, "chi_sim+eng", {
+      ...TESSERACT_LOCAL,
       logger: (message) => {
         if (message.status === "recognizing text" && typeof message.progress === "number") {
           const percent = Math.round(message.progress * 100);
@@ -11273,7 +11322,10 @@ document.querySelectorAll('input[name="liveReportType"]').forEach((input) => inp
   if (typeof updateTaskConfigSummary === "function") updateTaskConfigSummary();
 }));
 
-window.addEventListener("load", async () => {
+// ⚠️ 原来挂在 window「load」事件上：load 必须等**所有**子资源下载完，
+// 其中包括 4 个境外 CDN 库（冷启动实测约 2.8s）→ 工作台白等 3 秒才开始启动。
+// 改挂 DOMContentLoaded：DOM 一解析完就启动，CDN 库慢或被墙都不再拖累工作台。
+window.addEventListener("DOMContentLoaded", async () => {
   initTheme();
   addAiChatButton();
   document.querySelectorAll(".toggle").forEach((t) => t.addEventListener("click", () => {
