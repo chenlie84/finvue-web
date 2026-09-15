@@ -1708,6 +1708,99 @@ input[type="checkbox"] {
 /* 直播分析页：报告展示区满宽，去除 padding 让报告填满 */
 #sec-live .live-report-view { padding: 0; overflow: visible; width: 100%; }
 
+/* ── AI 报告正文排版（Markdown 报告的兜底样式） ──────────────────────────
+   背景：报告正文有两条渲染路径，样式来源完全不同 ——
+   1) AI 返回 HTML 文档时，内容进 shadow DOM，靠「报告自带的 <style>」渲染，不依赖本文件；
+   2) AI 返回 Markdown 时，markdownToReportHtml 只生成裸标签（h2/ul/table…），
+      而本文件此前只有容器 .live-report-view 的样式，没有元素级排版，
+      于是正文退化成浏览器默认样式：标题不分级、表格没边框、列表没缩进。
+   这里为「路径 2」补齐与主题一致的排版。同时也能兜住 AI 返回的 HTML 片段。 */
+#liveReportBodyContent {
+  font-size: var(--text-sm);
+  line-height: 1.7;
+  color: var(--color-text-1);
+}
+#liveReportBodyContent > :first-child { margin-top: 0; }
+#liveReportBodyContent h1,
+#liveReportBodyContent h2,
+#liveReportBodyContent h3,
+#liveReportBodyContent h4,
+#liveReportBodyContent h5 {
+  color: var(--color-text-0);
+  font-weight: 600;
+  line-height: 1.4;
+}
+#liveReportBodyContent h1 { font-size: 20px; margin: 18px 0 10px; }
+#liveReportBodyContent h2 {
+  font-size: 17px;
+  margin: 22px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+#liveReportBodyContent h3 { font-size: 15px; margin: 16px 0 8px; }
+#liveReportBodyContent h4,
+#liveReportBodyContent h5 { font-size: 14px; margin: 14px 0 6px; }
+#liveReportBodyContent p { margin: 8px 0; }
+#liveReportBodyContent ul,
+#liveReportBodyContent ol { margin: 8px 0; padding-left: 22px; }
+#liveReportBodyContent ul { list-style: disc; }
+#liveReportBodyContent ol { list-style: decimal; }
+#liveReportBodyContent li { margin: 4px 0; }
+#liveReportBodyContent li > ul,
+#liveReportBodyContent li > ol { margin: 4px 0; }
+#liveReportBodyContent li > ul { list-style: circle; }
+#liveReportBodyContent strong { color: var(--color-text-0); font-weight: 600; }
+#liveReportBodyContent em { color: var(--color-text-2); }
+#liveReportBodyContent a { color: var(--color-accent); text-decoration: none; }
+#liveReportBodyContent a:hover { text-decoration: underline; }
+#liveReportBodyContent hr { margin: 18px 0; border: 0; border-top: 1px solid var(--color-border); }
+#liveReportBodyContent blockquote {
+  margin: 10px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--color-border-strong);
+  background: var(--color-bg-0);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--color-text-2);
+}
+#liveReportBodyContent code {
+  padding: 1px 5px;
+  background: var(--color-bg-0);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 0.92em;
+}
+#liveReportBodyContent pre {
+  margin: 10px 0;
+  padding: 12px;
+  overflow: auto;
+  background: var(--color-bg-0);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+#liveReportBodyContent pre code { padding: 0; border: 0; background: none; }
+#liveReportBodyContent table {
+  width: 100%;
+  margin: 12px 0;
+  border-collapse: collapse;
+  border: 1px solid var(--color-border-strong);
+  font-size: var(--text-sm);
+}
+#liveReportBodyContent th,
+#liveReportBodyContent td {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+  word-break: break-word;
+}
+#liveReportBodyContent th {
+  background: var(--color-bg-2);
+  color: var(--color-text-0);
+  font-weight: 600;
+  white-space: nowrap;
+}
+#liveReportBodyContent tbody tr:nth-child(even) td { background: var(--color-bg-0); }
+
 /* ── Live Analysis Section ─────────────────────────────────────────────── */
 
 #sec-live .page-title { font-size: var(--text-xl); }
